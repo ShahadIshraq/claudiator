@@ -47,14 +47,12 @@ pub struct HookEvent {
 }
 
 impl HookEvent {
-    #[allow(dead_code)]
     pub fn from_stdin() -> Result<HookEvent, EventError> {
         let stdin = io::stdin();
         let reader = stdin.lock();
         Self::from_reader(reader)
     }
 
-    #[allow(dead_code)]
     pub fn from_reader<R: io::Read>(reader: R) -> Result<HookEvent, EventError> {
         serde_json::from_reader(reader).map_err(EventError::ParseFailed)
     }

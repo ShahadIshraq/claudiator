@@ -1,7 +1,6 @@
 use std::io;
 use std::path::PathBuf;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ConfigError {
     NoHomeDir,
@@ -23,7 +22,6 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum EventError {
     ParseFailed(serde_json::Error),
@@ -37,7 +35,6 @@ impl std::fmt::Display for EventError {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum SendError {
     Serialize(serde_json::Error),

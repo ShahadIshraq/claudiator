@@ -4,20 +4,14 @@ use crate::config::Config;
 use crate::error::SendError;
 use crate::payload::EventPayload;
 
-/// Build the events endpoint URL
-#[allow(dead_code)]
 fn build_events_url(server_url: &str) -> String {
     format!("{}/api/v1/events", server_url.trim_end_matches('/'))
 }
 
-/// Build the ping endpoint URL
-#[allow(dead_code)]
 fn build_ping_url(server_url: &str) -> String {
     format!("{}/api/v1/ping", server_url.trim_end_matches('/'))
 }
 
-/// Send an event payload to the server
-#[allow(dead_code)]
 pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendError> {
     let body = serde_json::to_string(payload).map_err(SendError::Serialize)?;
     let url = build_events_url(&config.server_url);
@@ -54,8 +48,6 @@ pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendErr
     }
 }
 
-/// Test connection to the server
-#[allow(dead_code)]
 pub fn test_connection(config: &Config) -> Result<String, SendError> {
     let url = build_ping_url(&config.server_url);
 

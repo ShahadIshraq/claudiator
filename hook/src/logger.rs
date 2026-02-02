@@ -2,7 +2,6 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-#[allow(dead_code)]
 pub fn log_error(message: &str) {
     let Some(home_dir) = dirs::home_dir() else {
         return;

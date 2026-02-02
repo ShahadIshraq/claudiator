@@ -5,7 +5,6 @@ use serde::Deserialize;
 
 use crate::error::ConfigError;
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub server_url: String,
@@ -16,14 +15,12 @@ pub struct Config {
 }
 
 impl Config {
-    #[allow(dead_code)]
     pub fn load() -> Result<Config, ConfigError> {
         let home = dirs::home_dir().ok_or(ConfigError::NoHomeDir)?;
         let path = home.join(".claude").join("claudiator").join("config.toml");
         Self::load_from(&path)
     }
 
-    #[allow(dead_code)]
     pub fn load_from(path: &Path) -> Result<Config, ConfigError> {
         let content = fs::read_to_string(path)
             .map_err(|err| ConfigError::ReadFailed(path.to_path_buf(), err))?;
