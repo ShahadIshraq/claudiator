@@ -1,10 +1,11 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::Deserialize;
 
 use crate::error::ConfigError;
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub server_url: String,
@@ -15,22 +16,25 @@ pub struct Config {
 }
 
 impl Config {
+    #[allow(dead_code)]
     pub fn load() -> Result<Config, ConfigError> {
         let home = dirs::home_dir().ok_or(ConfigError::NoHomeDir)?;
         let path = home.join(".claude").join("claudiator").join("config.toml");
         Self::load_from(&path)
     }
 
+    #[allow(dead_code)]
     pub fn load_from(path: &Path) -> Result<Config, ConfigError> {
         let content = fs::read_to_string(path)
             .map_err(|err| ConfigError::ReadFailed(path.to_path_buf(), err))?;
-        toml::from_str(&content)
-            .map_err(|err| ConfigError::ParseFailed(path.to_path_buf(), err))
+        toml::from_str(&content).map_err(|err| ConfigError::ParseFailed(path.to_path_buf(), err))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use tempfile::NamedTempFile;
 
@@ -52,10 +56,7 @@ platform = "mac"
         assert_eq!(config.server_url, "https://example.com");
         assert_eq!(config.api_key, "test-key-123");
         assert_eq!(config.device_name, "test-machine");
-        assert_eq!(
-            config.device_id,
-            "550e8400-e29b-41d4-a716-446655440000"
-        );
+        assert_eq!(config.device_id, "550e8400-e29b-41d4-a716-446655440000");
         assert_eq!(config.platform, "mac");
     }
 

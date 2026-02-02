@@ -19,6 +19,7 @@ pub struct EventPayload {
 }
 
 impl EventPayload {
+    #[allow(dead_code)]
     pub fn new(config: &Config, event: HookEvent) -> EventPayload {
         let device = DeviceInfo {
             device_id: config.device_id.clone(),
