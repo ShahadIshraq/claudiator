@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="claudiator-icon-no-bg.png" alt="Claudiator" width="200">
+</p>
+
 # Claudiator
 
 Orchestrate Claude Code sessions across all your devices.
