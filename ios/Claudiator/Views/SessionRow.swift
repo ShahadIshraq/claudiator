@@ -11,7 +11,7 @@ struct SessionRow: View {
                 .frame(width: 10, height: 10)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(cwdShortDisplay(session.cwd ?? session.sessionId))
+                Text(session.title ?? cwdShortDisplay(session.cwd ?? session.sessionId))
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .lineLimit(1)
