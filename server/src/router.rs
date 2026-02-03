@@ -19,11 +19,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             get(handlers::devices::list_devices_handler),
         )
         .route(
-            "/api/v1/devices/{device_id}/sessions",
+            "/api/v1/devices/:device_id/sessions",
             get(handlers::devices::list_device_sessions_handler),
         )
         .route(
-            "/api/v1/sessions/{session_id}/events",
+            "/api/v1/sessions/:session_id/events",
             get(handlers::sessions::list_session_events_handler),
         )
         .route(

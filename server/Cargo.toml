@@ -1,0 +1,18 @@
+[package]
+name = "claudiator-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive", "env"] }
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.24"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+tower-http = { version = "0.5", features = ["trace"] }
