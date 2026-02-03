@@ -29,12 +29,15 @@ See [plans/ARCHITECTURE.md](plans/ARCHITECTURE.md) for the full architecture dia
 
 ```
 claudiator/
-├── .github/workflows/release.yml   — CI/CD release workflow
-├── hook/                            — claudiator-hook CLI binary (Rust)
-│   ├── src/                         — Source modules
-│   ├── scripts/                     — Install scripts (macOS/Linux/Windows)
-│   └── test-server/                 — Local test server (Axum)
-├── plans/                           — Architecture docs
+├── .github/workflows/               — CI/CD release workflows
+├── hook/                             — claudiator-hook CLI binary (Rust)
+│   ├── src/                          — Source modules
+│   ├── scripts/                      — Install scripts (macOS/Linux/Windows)
+│   └── test-server/                  — Local test server (Axum)
+├── server/                           — Claudiator server (Rust, Axum + SQLite)
+│   ├── src/                          — Server source code
+│   └── scripts/                      — Server install script (Linux/systemd)
+├── plans/                            — Architecture & planning docs
 └── README.md
 ```
 
