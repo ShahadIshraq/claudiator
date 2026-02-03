@@ -46,6 +46,8 @@ pub struct SessionResponse {
     pub last_event: String,
     pub status: String,
     pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

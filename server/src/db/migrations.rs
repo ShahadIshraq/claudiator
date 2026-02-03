@@ -53,6 +53,9 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
         CREATE INDEX IF NOT EXISTS idx_push_tokens_platform ON push_tokens(platform);",
     )?;
 
+    // Add title column to sessions (idempotent)
+    let _ = conn.execute("ALTER TABLE sessions ADD COLUMN title TEXT", []);
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

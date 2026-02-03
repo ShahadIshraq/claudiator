@@ -29,17 +29,19 @@ pub fn upsert_session(
     now: &str,
     status: Option<&str>,
     cwd: Option<&str>,
+    title: Option<&str>,
 ) -> Result<(), AppError> {
     // First try to insert. If it conflicts, update selectively.
     let initial_status = status.unwrap_or("active");
 
     conn.execute(
-        "INSERT INTO sessions (session_id, device_id, started_at, last_event, status, cwd)
-         VALUES (?1, ?2, ?3, ?3, ?4, ?5)
+        "INSERT INTO sessions (session_id, device_id, started_at, last_event, status, cwd, title)
+         VALUES (?1, ?2, ?3, ?3, ?4, ?5, ?6)
          ON CONFLICT(session_id) DO UPDATE SET
             last_event = excluded.last_event,
-            cwd = COALESCE(excluded.cwd, sessions.cwd)",
-        rusqlite::params![session_id, device_id, now, initial_status, cwd],
+            cwd = COALESCE(excluded.cwd, sessions.cwd),
+            title = COALESCE(sessions.title, excluded.title)",
+        rusqlite::params![session_id, device_id, now, initial_status, cwd, title],
     )
     .map_err(|e| AppError::Internal(format!("Failed to upsert session: {}", e)))?;
 
@@ -121,7 +123,7 @@ pub fn list_sessions(
 ) -> Result<Vec<SessionResponse>, AppError> {
     let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
         Some(s) => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd
+            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
              FROM sessions
              WHERE device_id = ?1 AND status = ?2
              ORDER BY last_event DESC
@@ -134,7 +136,7 @@ pub fn list_sessions(
             ],
         ),
         None => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd
+            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
              FROM sessions
              WHERE device_id = ?1
              ORDER BY last_event DESC
@@ -159,6 +161,7 @@ pub fn list_sessions(
                 last_event: row.get(3)?,
                 status: row.get(4)?,
                 cwd: row.get(5)?,
+                title: row.get(6)?,
             })
         })
         .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?

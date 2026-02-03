@@ -36,6 +36,24 @@ pub async fn events_handler(
 
     let received_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
 
+    // Extract title from UserPromptSubmit events
+    let title: Option<String> = if payload.event.hook_event_name == "UserPromptSubmit" {
+        payload.event.prompt.as_deref().map(|p| {
+            if p.len() > 200 {
+                // Find a safe char boundary at or before position 200
+                let mut boundary = 200;
+                while boundary > 0 && !p.is_char_boundary(boundary) {
+                    boundary -= 1;
+                }
+                format!("{}…", &p[..boundary])
+            } else {
+                p.to_string()
+            }
+        })
+    } else {
+        None
+    };
+
     // Derive session status
     let session_status = derive_session_status(
         &payload.event.hook_event_name,
@@ -72,6 +90,7 @@ pub async fn events_handler(
             &received_at,
             session_status.as_deref(),
             payload.event.cwd.as_deref(),
+            title.as_deref(),
         )?;
 
         queries::insert_event(
