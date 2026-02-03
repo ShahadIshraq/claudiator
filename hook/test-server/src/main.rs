@@ -126,6 +126,10 @@ async fn events_handler(
         println!("  {}: {}", "Message".cyan(), message);
     }
 
+    if let Some(prompt) = body["event"]["prompt"].as_str() {
+        println!("  {}: {}", "Prompt".cyan(), prompt);
+    }
+
     println!("{}", "---".dimmed());
 
     (

@@ -183,13 +183,20 @@ List sessions for a specific device.
       "started_at": "string (RFC 3339)",
       "last_event": "string (RFC 3339)",
       "status": "string",
-      "cwd": "string | null"
+      "cwd": "string | null",
+      "title": "string | null"
     }
   ]
 }
 ```
 
 Sessions are ordered by `last_event` descending. Returns an empty array if the device has no sessions.
+
+**Field Details**
+
+| Field        | Type          | Description                                                                 |
+|--------------|---------------|-----------------------------------------------------------------------------|
+| `title`      | string / null | Session title derived from the first user prompt. Null if no prompt has been submitted yet. |
 
 ---
 
