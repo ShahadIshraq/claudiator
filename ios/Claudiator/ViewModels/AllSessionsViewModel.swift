@@ -65,11 +65,13 @@ class AllSessionsViewModel {
             session.deviceId
         }
 
-        // Auto-expand devices with active sessions
-        expandedDevices = Set(
-            groupedSessions.compactMap { deviceId, sessions in
-                sessions.contains { $0.status != "ended" } ? deviceId : nil
-            }
-        )
+        // Auto-expand devices with active sessions when grouping is enabled
+        if isGroupedByDevice {
+            expandedDevices = Set(
+                groupedSessions.compactMap { deviceId, sessions in
+                    sessions.contains { $0.status != "ended" } ? deviceId : nil
+                }
+            )
+        }
     }
 }

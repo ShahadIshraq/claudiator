@@ -4,7 +4,24 @@ struct AllSessionsView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = AllSessionsViewModel()
+
+    private var useWideLayout: Bool {
+        horizontalSizeClass == .regular && viewModel.isGroupedByDevice
+    }
+
+    private var sortedDeviceIds: [String] {
+        viewModel.groupedSessions.keys.sorted()
+    }
+
+    private func deviceName(for deviceId: String) -> String {
+        viewModel.groupedSessions[deviceId]?.first?.deviceName ?? "Unknown Device"
+    }
+
+    private func platform(for deviceId: String) -> String {
+        viewModel.groupedSessions[deviceId]?.first?.platform ?? "unknown"
+    }
 
     var body: some View {
         Group {
@@ -16,7 +33,8 @@ struct AllSessionsView: View {
                     systemImage: "terminal",
                     description: Text("No active sessions found across any devices.")
                 )
-            } else {
+            } else if !viewModel.isGroupedByDevice {
+                // Ungrouped flat list
                 List(viewModel.sessions) { session in
                     NavigationLink(value: session) {
                         AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
@@ -24,6 +42,61 @@ struct AllSessionsView: View {
                     .themedCard()
                 }
                 .scrollContentBackground(.hidden)
+                .refreshable {
+                    await viewModel.refresh(apiClient: apiClient)
+                }
+            } else if !useWideLayout {
+                // Grouped narrow: List with collapsible sections
+                List {
+                    ForEach(sortedDeviceIds, id: \.self) { deviceId in
+                        Section {
+                            if viewModel.expandedDevices.contains(deviceId) {
+                                ForEach(viewModel.groupedSessions[deviceId] ?? []) { session in
+                                    NavigationLink(value: session) {
+                                        AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
+                                    }
+                                    .themedCard()
+                                }
+                            }
+                        } header: {
+                            DeviceGroupHeader(
+                                deviceId: deviceId,
+                                deviceName: deviceName(for: deviceId),
+                                platform: platform(for: deviceId),
+                                sessionCount: viewModel.groupedSessions[deviceId]?.count ?? 0,
+                                isExpanded: viewModel.expandedDevices.contains(deviceId),
+                                onTap: {
+                                    withAnimation {
+                                        if viewModel.expandedDevices.contains(deviceId) {
+                                            viewModel.expandedDevices.remove(deviceId)
+                                        } else {
+                                            viewModel.expandedDevices.insert(deviceId)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+                .scrollContentBackground(.hidden)
+                .refreshable {
+                    await viewModel.refresh(apiClient: apiClient)
+                }
+            } else {
+                // Grouped wide: Grid with device cards
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                        ForEach(sortedDeviceIds, id: \.self) { deviceId in
+                            DeviceGroupCard(
+                                deviceId: deviceId,
+                                deviceName: deviceName(for: deviceId),
+                                platform: platform(for: deviceId),
+                                sessions: viewModel.groupedSessions[deviceId] ?? []
+                            )
+                        }
+                    }
+                    .padding()
+                }
                 .refreshable {
                     await viewModel.refresh(apiClient: apiClient)
                 }
@@ -58,6 +131,14 @@ struct AllSessionsView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 150)
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: {
+                    viewModel.toggleGrouping()
+                }) {
+                    Image(systemName: viewModel.isGroupedByDevice ? "square.grid.2x2.fill" : "square.grid.2x2")
+                }
             }
         }
         .task(id: viewModel.filter) {
@@ -117,5 +198,121 @@ struct AllSessionRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - Device Group Components
+
+struct DeviceGroupHeader: View {
+    @Environment(ThemeManager.self) private var themeManager
+    let deviceId: String
+    let deviceName: String
+    let platform: String
+    let sessionCount: Int
+    let isExpanded: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                PlatformIcon(platform: platform, size: 20)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(deviceName)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("\(sessionCount) session\(sessionCount == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct DeviceGroupCard: View {
+    @Environment(ThemeManager.self) private var themeManager
+    let deviceId: String
+    let deviceName: String
+    let platform: String
+    let sessions: [Session]
+
+    var body: some View {
+        NavigationLink(value: Device(
+            deviceId: deviceId,
+            deviceName: deviceName,
+            platform: platform,
+            firstSeen: "",
+            lastSeen: "",
+            activeSessions: sessions.count
+        )) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    PlatformIcon(platform: platform, size: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(deviceName)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                        Text("\(sessions.count) session\(sessions.count == 1 ? "" : "s")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(sessions.prefix(3)) { session in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(themeManager.current.statusColor(for: session.status))
+                                .frame(width: 8, height: 8)
+
+                            Text(session.title ?? cwdShortDisplay(session.cwd ?? session.sessionId))
+                                .font(.caption)
+                                .lineLimit(1)
+                                .foregroundStyle(.primary)
+
+                            Spacer()
+
+                            Text(relativeTime(session.lastEvent))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if sessions.count > 3 {
+                        Text("+\(sessions.count - 3) more")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                    .fill(themeManager.current.cardBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                            .strokeBorder(
+                                themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
+                                lineWidth: AppTheme.cardBorderWidth
+                            )
+                    )
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
