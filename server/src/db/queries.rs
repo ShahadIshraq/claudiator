@@ -171,6 +171,56 @@ pub fn list_sessions(
     Ok(sessions)
 }
 
+pub fn list_all_sessions(
+    conn: &Connection,
+    status: Option<&str>,
+    limit: i64,
+) -> Result<Vec<SessionResponse>, AppError> {
+    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
+        Some(s) => (
+            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
+             FROM sessions
+             WHERE status = ?1
+             ORDER BY last_event DESC
+             LIMIT ?2"
+                .to_string(),
+            vec![Box::new(s.to_string()), Box::new(limit)],
+        ),
+        None => (
+            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
+             FROM sessions
+             ORDER BY last_event DESC
+             LIMIT ?1"
+                .to_string(),
+            vec![Box::new(limit)],
+        ),
+    };
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {}", e)))?;
+
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+    let sessions = stmt
+        .query_map(params_refs.as_slice(), |row| {
+            Ok(SessionResponse {
+                session_id: row.get(0)?,
+                device_id: row.get(1)?,
+                started_at: row.get(2)?,
+                last_event: row.get(3)?,
+                status: row.get(4)?,
+                cwd: row.get(5)?,
+                title: row.get(6)?,
+            })
+        })
+        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {}", e)))?;
+
+    Ok(sessions)
+}
+
 pub fn list_events(
     conn: &Connection,
     session_id: &str,

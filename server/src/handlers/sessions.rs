@@ -7,7 +7,7 @@ use std::sync::Arc;
 use crate::auth::check_auth;
 use crate::db::queries;
 use crate::error::AppError;
-use crate::models::response::EventListResponse;
+use crate::models::response::{EventListResponse, SessionListResponse};
 use crate::router::AppState;
 
 #[derive(Deserialize)]
@@ -33,4 +33,23 @@ pub async fn list_session_events_handler(
     let events = queries::list_events(&conn, &session_id, limit)?;
 
     Ok(Json(EventListResponse { events }))
+}
+
+pub async fn list_all_sessions_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Query(params): Query<super::devices::SessionQueryParams>,
+) -> Result<Json<SessionListResponse>, AppError> {
+    check_auth(&headers, &state.api_key)?;
+
+    let limit = params.limit.unwrap_or(200);
+
+    let conn = state
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+
+    let sessions = queries::list_all_sessions(&conn, params.status.as_deref(), limit)?;
+
+    Ok(Json(SessionListResponse { sessions }))
 }
