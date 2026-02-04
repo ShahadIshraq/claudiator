@@ -31,6 +31,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("[Push] Registration failed: \(error.localizedDescription)")
     }
 
+    // Show notification banners even when app is in foreground
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        return [.banner, .sound, .badge]
+    }
+
     private static func isSandboxEnvironment() -> Bool {
         #if DEBUG
         return true
@@ -43,11 +49,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         return !content.contains("<string>production</string>")
         #endif
-    }
-
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        return [.banner, .sound]
     }
 }
 
