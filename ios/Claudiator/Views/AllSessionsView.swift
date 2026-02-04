@@ -111,7 +111,13 @@ struct AllSessionsView: View {
                                 deviceId: deviceId,
                                 deviceName: deviceName(for: deviceId),
                                 platform: platform(for: deviceId),
-                                sessions: viewModel.groupedSessions[deviceId] ?? []
+                                sessions: viewModel.groupedSessions[deviceId] ?? [],
+                                isExpanded: viewModel.expandedDevices.contains(deviceId),
+                                onToggle: {
+                                    withAnimation {
+                                        viewModel.toggleDevice(deviceId)
+                                    }
+                                }
                             )
                         }
                     }
@@ -270,6 +276,8 @@ struct DeviceGroupCard: View {
     let deviceName: String
     let platform: String
     let sessions: [Session]
+    let isExpanded: Bool
+    let onToggle: () -> Void
 
     private var priorityStatus: String {
         if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
@@ -288,15 +296,9 @@ struct DeviceGroupCard: View {
     }
 
     var body: some View {
-        NavigationLink(value: Device(
-            deviceId: deviceId,
-            deviceName: deviceName,
-            platform: platform,
-            firstSeen: "",
-            lastSeen: "",
-            activeSessions: sessions.count
-        )) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header - tappable to expand/collapse
+            Button(action: onToggle) {
                 HStack(spacing: 12) {
                     Circle()
                         .fill(themeManager.current.statusColor(for: priorityStatus))
@@ -314,40 +316,53 @@ struct DeviceGroupCard: View {
                     }
 
                     Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(sessions.prefix(3)) { session in
-                        AllSessionRow(
-                            session: session,
-                            deviceName: deviceName,
-                            platform: platform
-                        )
-                    }
-
-                    if sessions.count > 3 {
-                        Text("+\(sessions.count - 3) more")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
-                    }
-                }
+                .padding(12)
+                .contentShape(Rectangle())
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                    .fill(themeManager.current.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                            .strokeBorder(
-                                themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
-                                lineWidth: AppTheme.cardBorderWidth
+            .buttonStyle(.plain)
+
+            // Sessions - only shown when expanded
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                VStack(spacing: 8) {
+                    ForEach(sessions) { session in
+                        NavigationLink(value: session) {
+                            AllSessionRow(
+                                session: session,
+                                deviceName: deviceName,
+                                platform: platform
                             )
-                    )
-            )
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+
+                        if session.id != sessions.last?.id {
+                            Divider()
+                                .padding(.horizontal, 12)
+                        }
+                    }
+                }
+                .padding(.bottom, 8)
+            }
         }
-        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                .fill(themeManager.current.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                        .strokeBorder(
+                            themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
+                            lineWidth: AppTheme.cardBorderWidth
+                        )
+                )
+        )
     }
 }
