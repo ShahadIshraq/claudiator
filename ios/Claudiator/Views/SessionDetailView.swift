@@ -4,6 +4,7 @@ struct SessionDetailView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
+    @Environment(NotificationManager.self) private var notificationManager
     @State private var viewModel = EventListViewModel()
     @State private var device: Device?
     @State private var showDetails = true
@@ -176,6 +177,7 @@ struct SessionDetailView: View {
             await viewModel.refresh(apiClient: apiClient, sessionId: session.sessionId)
         }
         .task {
+            notificationManager.markSessionRead(session.sessionId)
             if device == nil {
                 if let devices = try? await apiClient.fetchDevices() {
                     device = devices.first { $0.deviceId == session.deviceId }
