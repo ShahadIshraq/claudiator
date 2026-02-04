@@ -65,40 +65,68 @@ struct AllSessionsView: View {
                     await viewModel.refresh(apiClient: apiClient)
                 }
             } else if !useWideLayout {
-                // Grouped narrow: List with collapsible sections
-                List {
-                    ForEach(sortedDeviceIds, id: \.self) { deviceId in
-                        Section {
-                            if viewModel.expandedDevices.contains(deviceId) {
-                                ForEach(viewModel.groupedSessions[deviceId] ?? []) { session in
-                                    NavigationLink(value: session) {
-                                        AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
-                                    }
-                                    .themedCard()
-                                }
-                            }
-                        } header: {
-                            DeviceGroupHeader(
-                                deviceId: deviceId,
-                                deviceName: deviceName(for: deviceId),
-                                platform: platform(for: deviceId),
-                                sessionCount: viewModel.groupedSessions[deviceId]?.count ?? 0,
-                                isExpanded: viewModel.expandedDevices.contains(deviceId),
-                                status: priorityStatus(for: deviceId),
-                                onTap: {
-                                    withAnimation {
-                                        if viewModel.expandedDevices.contains(deviceId) {
-                                            viewModel.expandedDevices.remove(deviceId)
-                                        } else {
-                                            viewModel.expandedDevices.insert(deviceId)
+                // Grouped narrow: Manual groups with container backgrounds
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(sortedDeviceIds, id: \.self) { deviceId in
+                            VStack(alignment: .leading, spacing: 0) {
+                                // Header
+                                DeviceGroupHeader(
+                                    deviceId: deviceId,
+                                    deviceName: deviceName(for: deviceId),
+                                    platform: platform(for: deviceId),
+                                    sessionCount: viewModel.groupedSessions[deviceId]?.count ?? 0,
+                                    isExpanded: viewModel.expandedDevices.contains(deviceId),
+                                    status: priorityStatus(for: deviceId),
+                                    onTap: {
+                                        withAnimation {
+                                            if viewModel.expandedDevices.contains(deviceId) {
+                                                viewModel.expandedDevices.remove(deviceId)
+                                            } else {
+                                                viewModel.expandedDevices.insert(deviceId)
+                                            }
                                         }
                                     }
+                                )
+                                .padding(.horizontal, 12)
+
+                                // Sessions
+                                if viewModel.expandedDevices.contains(deviceId) {
+                                    VStack(spacing: 8) {
+                                        ForEach(viewModel.groupedSessions[deviceId] ?? []) { session in
+                                            NavigationLink(value: session) {
+                                                AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
+                                            }
+                                            .buttonStyle(.plain)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                                    .fill(themeManager.current.cardBackground)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                                            .strokeBorder(
+                                                                themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
+                                                                lineWidth: AppTheme.cardBorderWidth
+                                                            )
+                                                    )
+                                            )
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 12)
                                 }
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                    .fill(themeManager.current.cardBackground.opacity(0.3))
                             )
                         }
                     }
+                    .padding(16)
                 }
-                .scrollContentBackground(.hidden)
+                .background(themeManager.current.pageBackground)
                 .refreshable {
                     await viewModel.refresh(apiClient: apiClient)
                 }
@@ -322,6 +350,7 @@ struct DeviceGroupCard: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 8)
+                .padding(.horizontal, 12)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -353,7 +382,13 @@ struct DeviceGroupCard: View {
                         )
                     }
                 }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
         }
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                .fill(themeManager.current.cardBackground.opacity(0.3))
+        )
     }
 }
