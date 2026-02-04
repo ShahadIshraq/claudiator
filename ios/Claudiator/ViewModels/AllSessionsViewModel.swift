@@ -3,7 +3,7 @@ import Observation
 
 @Observable
 class AllSessionsViewModel {
-    var sessions: [(session: Session, deviceName: String, platform: String)] = []
+    var sessions: [Session] = []
     var isLoading = false
     var errorMessage: String?
     var filter: SessionFilter = .active
@@ -16,28 +16,11 @@ class AllSessionsViewModel {
     func refresh(apiClient: APIClient) async {
         if sessions.isEmpty { isLoading = true }
         do {
-            async let fetchedDevices = apiClient.fetchDevices()
-            async let fetchedSessions = apiClient.fetchAllSessions()
-            let (devices, allSessions) = try await (fetchedDevices, fetchedSessions)
-
-            let deviceMap = Dictionary(uniqueKeysWithValues: devices.map { ($0.deviceId, $0) })
-
-            var combined: [(session: Session, deviceName: String, platform: String)] = []
-            for s in allSessions {
-                let device = deviceMap[s.deviceId]
-                combined.append((
-                    session: s,
-                    deviceName: device?.deviceName ?? "Unknown",
-                    platform: device?.platform ?? "unknown"
-                ))
-            }
-
-            combined.sort { $0.session.lastEvent > $1.session.lastEvent }
-
+            let allSessions = try await apiClient.fetchAllSessions()
             if filter == .active {
-                sessions = combined.filter { $0.session.status != "ended" }
+                sessions = allSessions.filter { $0.status != "ended" }
             } else {
-                sessions = combined
+                sessions = allSessions
             }
             errorMessage = nil
         } catch {
