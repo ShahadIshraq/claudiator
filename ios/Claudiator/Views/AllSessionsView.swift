@@ -320,28 +320,18 @@ struct DeviceGroupCard: View {
 
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(sessions.prefix(3)) { session in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(themeManager.current.statusColor(for: session.status))
-                                .frame(width: 8, height: 8)
-
-                            Text(session.title ?? cwdShortDisplay(session.cwd ?? session.sessionId))
-                                .font(.caption)
-                                .lineLimit(1)
-                                .foregroundStyle(.primary)
-
-                            Spacer()
-
-                            Text(relativeTime(session.lastEvent))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        AllSessionRow(
+                            session: session,
+                            deviceName: deviceName,
+                            platform: platform
+                        )
                     }
 
                     if sessions.count > 3 {
                         Text("+\(sessions.count - 3) more")
-                            .font(.caption2)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                            .padding(.top, 4)
                     }
                 }
             }
