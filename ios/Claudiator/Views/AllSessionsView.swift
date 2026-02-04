@@ -42,6 +42,12 @@ struct AllSessionsView: View {
                         AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
                     }
                     .themedCard()
+                    .overlay {
+                        if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(themeManager.current.eventNotification, lineWidth: 2)
+                        }
+                    }
                 }
                 .scrollContentBackground(.hidden)
             } else if !useWideLayout {
@@ -91,6 +97,12 @@ struct AllSessionsView: View {
                                                             )
                                                     )
                                             )
+                                            .overlay {
+                                                if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
+                                                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                                        .stroke(themeManager.current.eventNotification, lineWidth: 2)
+                                                }
+                                            }
                                         }
                                     }
                                     .padding(.horizontal, 12)
@@ -256,13 +268,6 @@ struct AllSessionRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
-        .overlay(alignment: .leading) {
-            if hasNotification {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(themeManager.current.eventNotification)
-                    .frame(width: 3)
-            }
-        }
     }
 }
 
@@ -311,6 +316,7 @@ struct DeviceGroupHeader: View {
 
 struct DeviceGroupCard: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(NotificationManager.self) private var notificationManager
     let deviceId: String
     let deviceName: String
     let platform: String
@@ -379,6 +385,12 @@ struct DeviceGroupCard: View {
                                         )
                                 )
                         )
+                        .overlay {
+                            if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
+                                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                    .stroke(themeManager.current.eventNotification, lineWidth: 2)
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 12)
