@@ -7,6 +7,8 @@ pub struct StatusOk {
     pub server_version: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data_version: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notification_version: Option<u64>,
 }
 
 impl StatusOk {
@@ -15,6 +17,7 @@ impl StatusOk {
             status: "ok",
             server_version: None,
             data_version: None,
+            notification_version: None,
         }
     }
 
@@ -23,6 +26,7 @@ impl StatusOk {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
             data_version: None,
+            notification_version: None,
         }
     }
 
@@ -31,6 +35,16 @@ impl StatusOk {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
             data_version: Some(v),
+            notification_version: None,
+        }
+    }
+
+    pub fn with_versions(data_v: u64, notif_v: u64) -> Self {
+        StatusOk {
+            status: "ok",
+            server_version: Some(env!("CARGO_PKG_VERSION")),
+            data_version: Some(data_v),
+            notification_version: Some(notif_v),
         }
     }
 }
@@ -84,4 +98,23 @@ pub struct EventResponse {
 #[derive(Debug, Serialize)]
 pub struct EventListResponse {
     pub events: Vec<EventResponse>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NotificationResponse {
+    pub id: String,
+    pub event_id: i64,
+    pub session_id: String,
+    pub device_id: String,
+    pub title: String,
+    pub body: String,
+    pub notification_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload_json: Option<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NotificationListResponse {
+    pub notifications: Vec<NotificationResponse>,
 }

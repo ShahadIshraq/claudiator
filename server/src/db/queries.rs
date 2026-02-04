@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
 use crate::error::AppError;
-use crate::models::response::{DeviceResponse, EventResponse, SessionResponse};
+use crate::models::response::{DeviceResponse, EventResponse, NotificationResponse, SessionResponse};
 
 pub fn upsert_device(
     conn: &Connection,
@@ -68,7 +68,7 @@ pub fn insert_event(
     tool_name: Option<&str>,
     notification_type: Option<&str>,
     event_json: &str,
-) -> Result<(), AppError> {
+) -> Result<i64, AppError> {
     conn.execute(
         "INSERT INTO events (device_id, session_id, hook_event_name, timestamp, received_at, tool_name, notification_type, event_json)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -84,7 +84,7 @@ pub fn insert_event(
         ],
     )
     .map_err(|e| AppError::Internal(format!("Failed to insert event: {}", e)))?;
-    Ok(())
+    Ok(conn.last_insert_rowid())
 }
 
 pub fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> {
@@ -268,15 +268,141 @@ pub fn upsert_push_token(
     platform: &str,
     push_token: &str,
     now: &str,
+    sandbox: bool,
 ) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO push_tokens (platform, push_token, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?3)
+        "INSERT INTO push_tokens (platform, push_token, created_at, updated_at, sandbox)
+         VALUES (?1, ?2, ?3, ?3, ?4)
          ON CONFLICT(push_token) DO UPDATE SET
             platform = excluded.platform,
-            updated_at = excluded.updated_at",
-        rusqlite::params![platform, push_token, now],
+            updated_at = excluded.updated_at,
+            sandbox = excluded.sandbox",
+        rusqlite::params![platform, push_token, now, sandbox as i32],
     )
     .map_err(|e| AppError::Internal(format!("Failed to upsert push token: {}", e)))?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn insert_notification(
+    conn: &Connection,
+    id: &str,
+    event_id: i64,
+    session_id: &str,
+    device_id: &str,
+    title: &str,
+    body: &str,
+    notification_type: &str,
+    payload_json: Option<&str>,
+    created_at: &str,
+) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO notifications (id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        rusqlite::params![id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at],
+    )
+    .map_err(|e| AppError::Internal(format!("Failed to insert notification: {}", e)))?;
+    Ok(())
+}
+
+pub fn list_notifications(
+    conn: &Connection,
+    since_id: Option<&str>,
+    limit: i64,
+) -> Result<Vec<NotificationResponse>, AppError> {
+    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match since_id {
+        Some(id) => (
+            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at
+             FROM notifications
+             WHERE created_at > (SELECT created_at FROM notifications WHERE id = ?1)
+             ORDER BY created_at ASC
+             LIMIT ?2".to_string(),
+            vec![Box::new(id.to_string()), Box::new(limit)],
+        ),
+        None => (
+            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at
+             FROM notifications
+             ORDER BY created_at ASC
+             LIMIT ?1".to_string(),
+            vec![Box::new(limit)],
+        ),
+    };
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| AppError::Internal(format!("Failed to prepare notifications query: {}", e)))?;
+
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+    let notifications = stmt
+        .query_map(params_refs.as_slice(), |row| {
+            Ok(NotificationResponse {
+                id: row.get(0)?,
+                event_id: row.get(1)?,
+                session_id: row.get(2)?,
+                device_id: row.get(3)?,
+                title: row.get(4)?,
+                body: row.get(5)?,
+                notification_type: row.get(6)?,
+                payload_json: row.get(7)?,
+                created_at: row.get(8)?,
+            })
+        })
+        .map_err(|e| AppError::Internal(format!("Failed to query notifications: {}", e)))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Internal(format!("Failed to collect notifications: {}", e)))?;
+
+    Ok(notifications)
+}
+
+pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError> {
+    let cutoff = chrono::Utc::now()
+        .checked_sub_signed(chrono::Duration::hours(24))
+        .unwrap()
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    let count = conn
+        .execute(
+            "DELETE FROM notifications WHERE created_at < ?1",
+            rusqlite::params![cutoff],
+        )
+        .map_err(|e| AppError::Internal(format!("Failed to delete expired notifications: {}", e)))?;
+
+    Ok(count)
+}
+
+pub struct PushTokenRow {
+    pub push_token: String,
+    pub platform: String,
+    pub sandbox: bool,
+}
+
+pub fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError> {
+    let mut stmt = conn
+        .prepare("SELECT push_token, platform, sandbox FROM push_tokens")
+        .map_err(|e| AppError::Internal(format!("Failed to prepare push tokens query: {}", e)))?;
+
+    let tokens = stmt
+        .query_map([], |row| {
+            let sandbox_int: i32 = row.get(2)?;
+            Ok(PushTokenRow {
+                push_token: row.get(0)?,
+                platform: row.get(1)?,
+                sandbox: sandbox_int != 0,
+            })
+        })
+        .map_err(|e| AppError::Internal(format!("Failed to query push tokens: {}", e)))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Internal(format!("Failed to collect push tokens: {}", e)))?;
+
+    Ok(tokens)
+}
+
+pub fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppError> {
+    conn.execute(
+        "DELETE FROM push_tokens WHERE push_token = ?1",
+        rusqlite::params![push_token],
+    )
+    .map_err(|e| AppError::Internal(format!("Failed to delete push token: {}", e)))?;
     Ok(())
 }

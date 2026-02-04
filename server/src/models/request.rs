@@ -61,4 +61,6 @@ pub struct EventData {
 pub struct PushRegisterRequest {
     pub platform: String,
     pub push_token: String,
+    #[serde(default)]
+    pub sandbox: Option<bool>,
 }

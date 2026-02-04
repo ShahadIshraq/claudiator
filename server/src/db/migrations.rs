@@ -56,6 +56,28 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
     // Add title column to sessions (idempotent)
     let _ = conn.execute("ALTER TABLE sessions ADD COLUMN title TEXT", []);
 
+    // Add notifications table (idempotent)
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS notifications (
+            id                TEXT PRIMARY KEY,
+            event_id          INTEGER NOT NULL,
+            session_id        TEXT NOT NULL,
+            device_id         TEXT NOT NULL,
+            title             TEXT NOT NULL,
+            body              TEXT NOT NULL,
+            notification_type TEXT NOT NULL,
+            payload_json      TEXT,
+            created_at        TEXT NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_notifications_session_id ON notifications(session_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);",
+    )?;
+
+    // Add sandbox column to push_tokens (idempotent)
+    let _ = conn.execute("ALTER TABLE push_tokens ADD COLUMN sandbox INTEGER NOT NULL DEFAULT 0", []);
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

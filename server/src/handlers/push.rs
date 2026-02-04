@@ -26,13 +26,14 @@ pub async fn push_register_handler(
     }
 
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+    let sandbox = payload.sandbox.unwrap_or(false);
 
     let conn = state
         .db_pool
         .get()
         .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
 
-    queries::upsert_push_token(&conn, &payload.platform, &payload.push_token, &now)?;
+    queries::upsert_push_token(&conn, &payload.platform, &payload.push_token, &now, sandbox)?;
 
     tracing::info!(
         platform = %payload.platform,

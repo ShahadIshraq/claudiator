@@ -93,7 +93,7 @@ pub async fn events_handler(
             title.as_deref(),
         )?;
 
-        queries::insert_event(
+        let _event_id = queries::insert_event(
             &conn,
             &payload.device.device_id,
             &payload.event.session_id,
