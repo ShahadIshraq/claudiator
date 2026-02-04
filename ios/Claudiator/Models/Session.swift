@@ -9,4 +9,6 @@ struct Session: Codable, Identifiable {
     let status: String
     let cwd: String?
     let title: String?
+    let deviceName: String?
+    let platform: String?
 }

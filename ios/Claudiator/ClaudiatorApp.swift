@@ -4,12 +4,14 @@ import SwiftUI
 struct ClaudiatorApp: App {
     @State private var apiClient = APIClient()
     @State private var themeManager = ThemeManager()
+    @State private var versionMonitor = VersionMonitor()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(apiClient)
                 .environment(themeManager)
+                .environment(versionMonitor)
                 .preferredColorScheme(themeManager.appearance.colorScheme)
         }
     }
@@ -33,30 +35,132 @@ struct ContentView: View {
 struct MainTabView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(VersionMonitor.self) private var versionMonitor
+    @State private var selectedTab = 0
+    @State private var devicesPath = NavigationPath()
+    @State private var sessionsPath = NavigationPath()
+    @State private var settingsPath = NavigationPath()
+
+    @GestureState private var dragOffset: CGFloat = 0
+
+    private var isOnDetailView: Bool {
+        !devicesPath.isEmpty || !sessionsPath.isEmpty || !settingsPath.isEmpty
+    }
 
     var body: some View {
-        TabView {
-            NavigationStack {
-                DeviceListView()
-            }
-            .tabItem {
-                Label("Devices", systemImage: "desktopcomputer")
+        VStack(spacing: 0) {
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    NavigationStack(path: $devicesPath) {
+                        DeviceListView()
+                    }
+                    .frame(width: geometry.size.width)
+
+                    NavigationStack(path: $sessionsPath) {
+                        AllSessionsView()
+                    }
+                    .frame(width: geometry.size.width)
+
+                    NavigationStack(path: $settingsPath) {
+                        SettingsView()
+                    }
+                    .frame(width: geometry.size.width)
+                }
+                .frame(width: geometry.size.width, alignment: .leading)
+                .offset(x: -CGFloat(selectedTab) * geometry.size.width)
+                .offset(x: isOnDetailView ? 0 : dragOffset)
+                .animation(.interactiveSpring(), value: selectedTab)
+                .animation(.interactiveSpring(), value: dragOffset)
+                .gesture(
+                    isOnDetailView ? nil :
+                    DragGesture(minimumDistance: 20)
+                        .updating($dragOffset) { value, state, _ in
+                            let horizontal = value.translation.width
+                            let vertical = value.translation.height
+                            if abs(horizontal) > abs(vertical) {
+                                state = horizontal
+                            }
+                        }
+                        .onEnded { value in
+                            let horizontal = value.translation.width
+                            let vertical = value.translation.height
+                            guard abs(horizontal) > abs(vertical) else { return }
+                            let threshold = geometry.size.width * 0.25
+                            let velocity = value.predictedEndTranslation.width
+                            if horizontal < -threshold || velocity < -500 {
+                                selectedTab = min(selectedTab + 1, 2)
+                            } else if horizontal > threshold || velocity > 500 {
+                                selectedTab = max(selectedTab - 1, 0)
+                            }
+                        }
+                )
             }
 
-            NavigationStack {
-                AllSessionsView()
-            }
-            .tabItem {
-                Label("Sessions", systemImage: "terminal")
-            }
+            if !isOnDetailView {
+                // Custom Tab Bar
+                VStack(spacing: 0) {
+                    Divider()
 
-            NavigationStack {
-                SettingsView()
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
+                    HStack(spacing: 0) {
+                        TabBarItem(
+                            icon: "desktopcomputer",
+                            title: "Devices",
+                            isSelected: selectedTab == 0,
+                            tintColor: themeManager.current.uiTint
+                        ) {
+                            selectedTab = 0
+                        }
+
+                        TabBarItem(
+                            icon: "terminal",
+                            title: "Sessions",
+                            isSelected: selectedTab == 1,
+                            tintColor: themeManager.current.uiTint
+                        ) {
+                            selectedTab = 1
+                        }
+
+                        TabBarItem(
+                            icon: "gearshape",
+                            title: "Settings",
+                            isSelected: selectedTab == 2,
+                            tintColor: themeManager.current.uiTint
+                        ) {
+                            selectedTab = 2
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+                }
+                .background(.ultraThinMaterial)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .tint(themeManager.current.uiTint)
+        .animation(.easeInOut(duration: 0.2), value: isOnDetailView)
+        .ignoresSafeArea(.keyboard)
+        .onAppear {
+            versionMonitor.start(apiClient: apiClient)
+        }
+    }
+}
+
+struct TabBarItem: View {
+    let icon: String
+    let title: String
+    let isSelected: Bool
+    let tintColor: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                Text(title)
+                    .font(.caption2)
+            }
+            .foregroundStyle(isSelected ? tintColor : .secondary)
+            .frame(maxWidth: .infinity)
+        }
     }
 }
