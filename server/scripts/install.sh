@@ -145,6 +145,41 @@ CLAUDIATOR_BIND=$BIND
 CLAUDIATOR_DB_PATH=$DB_PATH
 EOF
 
+    # Optional APNs configuration
+    echo ""
+    read -p "Configure Apple Push Notifications (APNs)? [y/N] " -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        read -p "APNs .p8 key file path: " -r APNS_KEY_PATH
+        if [[ ! -f "$APNS_KEY_PATH" ]]; then
+            echo "Warning: File not found: $APNS_KEY_PATH"
+            echo "You can update CLAUDIATOR_APNS_KEY_PATH in /opt/claudiator/.env later."
+        fi
+
+        read -p "APNs Key ID (10-character string): " -r APNS_KEY_ID
+        read -p "APNs Team ID (10-character string): " -r APNS_TEAM_ID
+        read -p "APNs Bundle ID [com.example.claudiator]: " -r APNS_BUNDLE_ID
+        APNS_BUNDLE_ID=${APNS_BUNDLE_ID:-com.example.claudiator}
+
+        read -p "Use APNs sandbox environment? [y/N] " -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            APNS_SANDBOX="true"
+        else
+            APNS_SANDBOX="false"
+        fi
+
+        cat >> /opt/claudiator/.env <<EOF
+CLAUDIATOR_APNS_KEY_PATH=$APNS_KEY_PATH
+CLAUDIATOR_APNS_KEY_ID=$APNS_KEY_ID
+CLAUDIATOR_APNS_TEAM_ID=$APNS_TEAM_ID
+CLAUDIATOR_APNS_BUNDLE_ID=$APNS_BUNDLE_ID
+CLAUDIATOR_APNS_SANDBOX=$APNS_SANDBOX
+EOF
+
+        echo "APNs configuration saved."
+    fi
+
     chmod 600 /opt/claudiator/.env
     chown claudiator:claudiator /opt/claudiator/.env
 
