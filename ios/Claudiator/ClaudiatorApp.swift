@@ -35,7 +35,7 @@ struct MainTabView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
-    @State private var selectedTab = 0
+    @State private var selectedTab = 1
     @State private var devicesPath = NavigationPath()
     @State private var sessionsPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
