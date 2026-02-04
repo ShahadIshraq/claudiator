@@ -23,25 +23,6 @@ struct AllSessionsView: View {
         viewModel.groupedSessions[deviceId]?.first?.platform ?? "unknown"
     }
 
-    private func priorityStatus(for deviceId: String) -> String {
-        guard let sessions = viewModel.groupedSessions[deviceId] else { return "ended" }
-
-        // Priority order: waiting_for_permission > waiting_for_input > active > idle > ended
-        if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
-            return "waiting_for_permission"
-        }
-        if sessions.contains(where: { $0.status == "waiting_for_input" }) {
-            return "waiting_for_input"
-        }
-        if sessions.contains(where: { $0.status == "active" }) {
-            return "active"
-        }
-        if sessions.contains(where: { $0.status == "idle" }) {
-            return "idle"
-        }
-        return "ended"
-    }
-
     var body: some View {
         Group {
             if viewModel.isLoading {
@@ -61,9 +42,6 @@ struct AllSessionsView: View {
                     .themedCard()
                 }
                 .scrollContentBackground(.hidden)
-                .refreshable {
-                    await viewModel.refresh(apiClient: apiClient)
-                }
             } else if !useWideLayout {
                 // Grouped narrow: Manual groups with container backgrounds
                 ScrollView {
@@ -77,7 +55,7 @@ struct AllSessionsView: View {
                                     platform: platform(for: deviceId),
                                     sessionCount: viewModel.groupedSessions[deviceId]?.count ?? 0,
                                     isExpanded: viewModel.expandedDevices.contains(deviceId),
-                                    status: priorityStatus(for: deviceId),
+                                    status: priorityStatus(for: viewModel.groupedSessions[deviceId] ?? []),
                                     onTap: {
                                         withAnimation {
                                             if viewModel.expandedDevices.contains(deviceId) {
@@ -127,9 +105,6 @@ struct AllSessionsView: View {
                     .padding(16)
                 }
                 .background(themeManager.current.pageBackground)
-                .refreshable {
-                    await viewModel.refresh(apiClient: apiClient)
-                }
             } else {
                 // Grouped wide: Grid with device cards
                 ScrollView {
@@ -151,10 +126,10 @@ struct AllSessionsView: View {
                     }
                     .padding()
                 }
-                .refreshable {
-                    await viewModel.refresh(apiClient: apiClient)
-                }
             }
+        }
+        .refreshable {
+            await viewModel.refresh(apiClient: apiClient)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(themeManager.current.pageBackground)
@@ -307,20 +282,8 @@ struct DeviceGroupCard: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
-    private var priorityStatus: String {
-        if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
-            return "waiting_for_permission"
-        }
-        if sessions.contains(where: { $0.status == "waiting_for_input" }) {
-            return "waiting_for_input"
-        }
-        if sessions.contains(where: { $0.status == "active" }) {
-            return "active"
-        }
-        if sessions.contains(where: { $0.status == "idle" }) {
-            return "idle"
-        }
-        return "ended"
+    private var priorityStatusValue: String {
+        priorityStatus(for: sessions)
     }
 
     var body: some View {
@@ -329,7 +292,7 @@ struct DeviceGroupCard: View {
             Button(action: onToggle) {
                 HStack(spacing: 12) {
                     Circle()
-                        .fill(themeManager.current.statusColor(for: priorityStatus))
+                        .fill(themeManager.current.statusColor(for: priorityStatusValue))
                         .frame(width: 10, height: 10)
 
                     PlatformIcon(platform: platform, size: 20)
