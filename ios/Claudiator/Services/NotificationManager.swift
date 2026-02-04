@@ -17,6 +17,7 @@ class NotificationManager {
     private let userDefaults = UserDefaults.standard
     private let lastSeenKey = "lastSeenNotificationId"
     private let readIdsKey = "readNotificationIds"
+    private let pushReceivedKey = "pushReceivedNotificationIds"
     private let maxNotifications = 100
 
     init() {
@@ -37,13 +38,15 @@ class NotificationManager {
                 userDefaults.set(mostRecent.notificationId, forKey: lastSeenKey)
             }
 
-            // Get current read notification IDs
+            // Get current read notification IDs and push-received IDs
             let readIds = getReadNotificationIds()
+            let pushReceivedIds = getPushReceivedIds()
 
             // Fire local notification ONLY for the most recent unread notification
-            // (All notifications still appear in the notification list)
+            // SKIP if it was already received via APNs push (deduplication)
             if let mostRecent = notifications.first,
-               !readIds.contains(mostRecent.notificationId) {
+               !readIds.contains(mostRecent.notificationId),
+               !pushReceivedIds.contains(mostRecent.notificationId) {
                 await fireLocalNotification(mostRecent)
             }
 
@@ -134,5 +137,23 @@ class NotificationManager {
 
     private func saveReadNotificationIds(_ ids: Set<String>) {
         userDefaults.set(Array(ids), forKey: readIdsKey)
+    }
+
+    private func getPushReceivedIds() -> Set<String> {
+        if let array = userDefaults.array(forKey: pushReceivedKey) as? [String] {
+            return Set(array)
+        }
+        return Set()
+    }
+
+    private func savePushReceivedIds(_ ids: Set<String>) {
+        userDefaults.set(Array(ids), forKey: pushReceivedKey)
+    }
+
+    // Called when an APNs push notification is received
+    func markReceivedViaPush(notificationId: String) {
+        var ids = getPushReceivedIds()
+        ids.insert(notificationId)
+        savePushReceivedIds(ids)
     }
 }

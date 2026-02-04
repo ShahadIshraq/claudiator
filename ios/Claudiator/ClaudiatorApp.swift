@@ -3,10 +3,22 @@ import UserNotifications
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     var apiClient: APIClient?
+    var notificationManager: NotificationManager?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         return true
+    }
+
+    // Handle APNs push notifications (for deduplication)
+    func application(_ application: UIApplication,
+                     didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        // Extract notification_id from push payload
+        if let notificationId = userInfo["notification_id"] as? String {
+            print("[Push] Received APNs push for notification: \(notificationId)")
+            notificationManager?.markReceivedViaPush(notificationId: notificationId)
+        }
+        return .newData
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
@@ -70,6 +82,7 @@ struct ClaudiatorApp: App {
                 .preferredColorScheme(themeManager.appearance.colorScheme)
                 .onAppear {
                     appDelegate.apiClient = apiClient
+                    appDelegate.notificationManager = notificationManager
                 }
         }
     }
