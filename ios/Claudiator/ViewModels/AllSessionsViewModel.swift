@@ -36,8 +36,10 @@ class AllSessionsViewModel {
             }
             errorMessage = nil
 
-            // Always group sessions for use in both layouts
-            groupSessions()
+            // Only group when grouping is enabled
+            if isGroupedByDevice {
+                groupSessions()
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
