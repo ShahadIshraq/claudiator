@@ -40,11 +40,11 @@ class NotificationManager {
             // Get current read notification IDs
             let readIds = getReadNotificationIds()
 
-            // Fire local notifications for new unread notifications
-            for notification in notifications {
-                if !readIds.contains(notification.notificationId) {
-                    await fireLocalNotification(notification)
-                }
+            // Fire local notification ONLY for the most recent unread notification
+            // (All notifications still appear in the notification list)
+            if let mostRecent = notifications.first,
+               !readIds.contains(mostRecent.notificationId) {
+                await fireLocalNotification(mostRecent)
             }
 
             // Update internal state
