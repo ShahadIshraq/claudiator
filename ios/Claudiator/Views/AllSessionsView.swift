@@ -4,8 +4,10 @@ struct AllSessionsView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
+    @Environment(NotificationManager.self) private var notificationManager
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = AllSessionsViewModel()
+    @State private var showNotifications = false
 
     private var useWideLayout: Bool {
         horizontalSizeClass == .regular && viewModel.isGroupedByDevice
@@ -152,6 +154,25 @@ struct AllSessionsView: View {
             DeviceDetailView(device: device)
         }
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showNotifications = true
+                } label: {
+                    Image(systemName: "bell")
+                        .overlay(alignment: .topTrailing) {
+                            if notificationManager.unreadCount > 0 {
+                                Text("\(notificationManager.unreadCount)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(3)
+                                    .background(themeManager.current.uiError)
+                                    .clipShape(Circle())
+                                    .offset(x: 6, y: -6)
+                            }
+                        }
+                }
+            }
+
             ToolbarItem(placement: .principal) {
                 Picker("Filter", selection: $viewModel.filter) {
                     ForEach(AllSessionsViewModel.SessionFilter.allCases, id: \.self) { filter in
@@ -176,6 +197,9 @@ struct AllSessionsView: View {
         .onChange(of: versionMonitor.dataVersion) { _, _ in
             Task { await viewModel.refresh(apiClient: apiClient) }
         }
+        .sheet(isPresented: $showNotifications) {
+            NotificationListView()
+        }
         .overlay(alignment: .top) {
             if let error = viewModel.errorMessage, !viewModel.sessions.isEmpty {
                 Text(error)
@@ -191,9 +215,14 @@ struct AllSessionsView: View {
 
 struct AllSessionRow: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(NotificationManager.self) private var notificationManager
     let session: Session
     let deviceName: String
     let platform: String
+
+    private var hasNotification: Bool {
+        notificationManager.sessionsWithNotifications.contains(session.sessionId)
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -227,6 +256,13 @@ struct AllSessionRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+        .overlay(alignment: .leading) {
+            if hasNotification {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(themeManager.current.eventNotification)
+                    .frame(width: 3)
+            }
+        }
     }
 }
 
