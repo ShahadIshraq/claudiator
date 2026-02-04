@@ -166,7 +166,7 @@ pub async fn events_handler(
             let push_pool = state.db_pool.clone();
             let push_title = notif_title.clone();
             let push_body = notif_body.clone();
-            let collapse_id = payload.event.session_id.clone();
+            let collapse_id = notification_id.clone();
 
             tokio::spawn(async move {
                 let tokens = match push_pool.get() {
