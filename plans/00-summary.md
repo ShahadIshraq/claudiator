@@ -81,6 +81,27 @@ Remote server deployment script:
 - Upgrade path: preserves config, replaces binary, restarts service
 - Health check validation via `/api/v1/ping` endpoint
 
+#### iOS App (`ios/`)
+Production-ready native iOS application:
+
+- **Platform**: SwiftUI, iOS 17+, zero external dependencies
+- **Project Setup**: XcodeGen with `project.yml` for reproducible builds
+- **Architecture**: MVVM with `@Observable` (modern Swift concurrency)
+- **Core Features**:
+  - Devices tab: List all devices with last-seen timestamps, active session badges
+  - Sessions tab: Cross-device session aggregation view
+  - Session detail: Full event timeline with color-coded event types
+  - Settings tab: Server URL, API key, theme, appearance
+  - Pull-to-refresh on all lists
+  - Auto-refresh every 10 seconds
+- **Session Titles**: Displays first user prompt (truncated to 200 chars) as session title
+- **Theme System**: Four color schemes (Standard, Neon Ops, Solarized, Arctic)
+- **Appearance**: Dark mode, light mode, system automatic
+- **Security**: API key stored in Keychain, server URL in UserDefaults
+- **Platform Icons**: SVG-based device icons (Apple logo, Linux Tux, Windows logo)
+- **Push Notifications**: Client-side token registration to server (dispatch pending server-side)
+- **UI**: Native SwiftUI with iOS design patterns
+
 ### 🚧 In Progress / Planned
 
 #### Android App
@@ -100,30 +121,17 @@ Native Android application for mobile notifications:
 - **UI**: Material Design 3
 - **Auth**: Bearer token configuration
 
-#### iOS App
-Native iOS application for mobile notifications:
-
-- **Platform**: Native iOS (Swift/SwiftUI)
-- **Server Integration**: REST API client for Claudiator server
-- **Core Features**:
-  - Device list view with last-seen timestamps
-  - Live session status per device
-  - Session detail view with event history
-  - Real-time updates when events occur
-- **Push Notifications** via Apple Push Notification Service (APNs):
-  - `Notification` events (permission prompts, idle prompts, elicitation dialogs)
-  - `Stop` events (agent finished, waiting for input)
-  - `SessionEnd` events (optional/configurable)
-- **UI**: Native iOS design patterns
-- **Auth**: Bearer token configuration
-
 #### Server Enhancements (Mobile App Support)
-Additional server functionality required for mobile apps:
+Additional server functionality for mobile apps:
 
 - **Read API Endpoints** (✅ Complete):
   - `GET /api/v1/devices` — list devices with active session counts
   - `GET /api/v1/devices/:device_id/sessions` — list sessions for a device
   - `GET /api/v1/sessions/:session_id/events` — list events for a session
+- **Session Titles** (✅ Complete):
+  - First `UserPromptSubmit` event stored as `title` in sessions table
+  - COALESCE logic prevents overwriting existing titles
+  - Truncated to 200 characters for display
 - **Push Token Registration** (✅ Complete):
   - `POST /api/v1/push/register` endpoint for mobile push tokens
   - `push_tokens` table in database
@@ -175,7 +183,7 @@ Additional server functionality required for mobile apps:
          ↓
 ┌─────────────────┐     ┌─────────────────┐
 │  Android App    │     │    iOS App      │
-│  (FCM)          │     │    (APNs)       │
+│  (Planned)      │     │    (SwiftUI)    │
 └─────────────────┘     └─────────────────┘
 ```
 
@@ -211,32 +219,37 @@ Additional server functionality required for mobile apps:
 
 ## Roadmap
 
-### Phase 1: Mobile App Foundation (In Progress)
+### Phase 1: Mobile App Foundation
 - [ ] Android app development
   - [ ] Project setup and dependencies
   - [ ] API client implementation
   - [ ] Device list UI
   - [ ] Session detail UI
-- [ ] iOS app development
-  - [ ] Project setup and dependencies
-  - [ ] API client implementation
-  - [ ] Device list UI
-  - [ ] Session detail UI
+- [x] iOS app development
+  - [x] Project setup with XcodeGen
+  - [x] API client implementation
+  - [x] Device list UI with Devices tab
+  - [x] Session detail UI with event timeline
+  - [x] Cross-device Sessions tab
+  - [x] Settings UI with theme and appearance
+  - [x] Session titles from first user prompt
+  - [x] Platform-specific device icons
+  - [x] Pull-to-refresh and auto-refresh
 
 ### Phase 2: Push Notifications
 - [ ] Server push notification support
-  - [ ] FCM integration
-  - [ ] APNs integration
-  - [ ] Device token registration endpoint
+  - [ ] FCM integration for Android
+  - [ ] APNs integration for iOS
+  - [x] Device token registration endpoint
   - [ ] Event-to-notification routing
 - [ ] Android push notifications
   - [ ] FCM SDK integration
   - [ ] Notification handling
   - [ ] Token registration
 - [ ] iOS push notifications
-  - [ ] APNs SDK integration
+  - [ ] APNs certificate/key setup
   - [ ] Notification handling
-  - [ ] Token registration
+  - [x] Token registration (client-side)
 
 ### Phase 3: Live Updates (Optional)
 - [ ] Server WebSocket/SSE support

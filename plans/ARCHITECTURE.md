@@ -26,14 +26,13 @@
                                                                       v
                                                             +--------------------+
                                                             |   Mobile Apps      |
-                                                            |  (Planned)         |
                                                             |                    |
-                                                            |  Android (Kotlin)  |
-                                                            |  iOS (Swift/UI)    |
+                                                            |  iOS (SwiftUI) ✅  |
+                                                            |  Android (Planned) |
                                                             |                    |
-                                                            |  Displays live     |
-                                                            |  session status    |
-                                                            |  Push notifications|
+                                                            |  Live session      |
+                                                            |  status, themes,   |
+                                                            |  push registration |
                                                             +--------------------+
 ```
 
@@ -74,7 +73,7 @@ Hook stdin (from Claude Code)        Outbound payload (to Server)
 ### Database Schema
 
 - **devices** — device_id (PK), device_name, platform, first_seen, last_seen
-- **sessions** — session_id (PK), device_id (FK), started_at, last_event, status, cwd
+- **sessions** — session_id (PK), device_id (FK), started_at, last_event, status, cwd, title
 - **events** — id (PK), device_id (FK), session_id (FK), hook_event_name, timestamp, received_at, tool_name, notification_type, event_json
 - **push_tokens** — id (PK), platform, push_token (UNIQUE), created_at, updated_at
 
@@ -117,6 +116,6 @@ The server is deployed as a systemd service on Linux:
 - **Connection pooling** — r2d2 manages SQLite connections for multi-threaded Axum
 
 ### Future Work
-- **Mobile apps** — Android (Kotlin) and iOS (Swift/SwiftUI) clients to consume the server API
-- **Push notifications** — server-initiated alerts when Claude Code activity occurs
+- **Android app** — Native Android (Kotlin) client to consume the server API
+- **Push notification dispatch** — Server-side APNs/FCM integration for sending push notifications
 - **Web dashboard** — optional browser-based UI for multi-device monitoring

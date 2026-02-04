@@ -1,8 +1,7 @@
 build/
 DerivedData/
 *.xcodeproj/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcshareddata/
+*.xcodeproj/project.xcworkspace/
 *.xcuserstate
 *.xcscmblueprint
 *.xccheckout
