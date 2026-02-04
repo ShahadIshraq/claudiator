@@ -38,11 +38,11 @@ class APIClient {
         self.baseURL = UserDefaults.standard.string(forKey: "server_url") ?? ""
     }
 
-    private var decoder: JSONDecoder {
+    private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
         return d
-    }
+    }()
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard !baseURL.isEmpty, let key = apiKey else { throw APIError.notConfigured }
@@ -76,14 +76,14 @@ class APIClient {
             let serverVersion: String?
             let dataVersion: UInt64?
         }
-        let response = try decoder.decode(PingResponse.self, from: data)
+        let response = try Self.decoder.decode(PingResponse.self, from: data)
         return response.dataVersion ?? 0
     }
 
     func fetchDevices() async throws -> [Device] {
         let data = try await request("/api/v1/devices")
         struct Wrapper: Decodable { let devices: [Device] }
-        return try decoder.decode(Wrapper.self, from: data).devices
+        return try Self.decoder.decode(Wrapper.self, from: data).devices
     }
 
     func fetchSessions(deviceId: String, status: String? = nil, limit: Int? = nil) async throws -> [Session] {
@@ -94,7 +94,7 @@ class APIClient {
         if !params.isEmpty { path += "?" + params.joined(separator: "&") }
         let data = try await request(path)
         struct Wrapper: Decodable { let sessions: [Session] }
-        return try decoder.decode(Wrapper.self, from: data).sessions
+        return try Self.decoder.decode(Wrapper.self, from: data).sessions
     }
 
     func fetchAllSessions(status: String? = nil, limit: Int? = nil) async throws -> [Session] {
@@ -105,7 +105,7 @@ class APIClient {
         if !params.isEmpty { path += "?" + params.joined(separator: "&") }
         let data = try await request(path)
         struct Wrapper: Decodable { let sessions: [Session] }
-        return try decoder.decode(Wrapper.self, from: data).sessions
+        return try Self.decoder.decode(Wrapper.self, from: data).sessions
     }
 
     func fetchEvents(sessionId: String, limit: Int? = nil) async throws -> [Event] {
@@ -113,7 +113,7 @@ class APIClient {
         if let limit { path += "?limit=\(limit)" }
         let data = try await request(path)
         struct Wrapper: Decodable { let events: [Event] }
-        return try decoder.decode(Wrapper.self, from: data).events
+        return try Self.decoder.decode(Wrapper.self, from: data).events
     }
 
     func registerPushToken(platform: String, token: String) async throws {
