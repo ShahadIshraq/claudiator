@@ -172,9 +172,6 @@ struct SessionDetailView: View {
         .themedPage()
         .navigationTitle(titleText)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: Device.self) { device in
-            DeviceDetailView(device: device)
-        }
         .refreshable {
             await viewModel.refresh(apiClient: apiClient, sessionId: session.sessionId)
         }

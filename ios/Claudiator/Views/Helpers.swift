@@ -30,21 +30,32 @@ struct PlatformIcon: View {
     }
 }
 
-func relativeTime(_ isoString: String) -> String {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+private enum FormatterCache {
+    static let iso8601: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 
-    // Try with fractional seconds first, then without
-    guard let date = formatter.date(from: isoString) ?? {
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: isoString)
-    }() else {
+    static let iso8601NoFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static let relative: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+}
+
+func relativeTime(_ isoString: String) -> String {
+    guard let date = FormatterCache.iso8601.date(from: isoString)
+            ?? FormatterCache.iso8601NoFractional.date(from: isoString) else {
         return isoString
     }
-
-    let relative = RelativeDateTimeFormatter()
-    relative.unitsStyle = .abbreviated
-    return relative.localizedString(for: date, relativeTo: Date())
+    return FormatterCache.relative.localizedString(for: date, relativeTo: Date())
 }
 
 /// Extracts last 2 path components from a working directory path for display

@@ -46,6 +46,9 @@ struct AllSessionsView: View {
         .navigationDestination(for: Session.self) { session in
             SessionDetailView(session: session)
         }
+        .navigationDestination(for: Device.self) { device in
+            DeviceDetailView(device: device)
+        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Picker("Filter", selection: $viewModel.filter) {
