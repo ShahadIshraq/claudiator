@@ -4,14 +4,22 @@ import Observation
 @Observable
 class VersionMonitor {
     private(set) var dataVersion: UInt64 = 0
+    private(set) var notificationVersion: UInt64 = 0
     private var task: Task<Void, Never>?
 
-    func start(apiClient: APIClient) {
+    func start(apiClient: APIClient, notificationManager: NotificationManager) {
         guard task == nil else { return }
         task = Task {
             while !Task.isCancelled {
-                if let (dataVersion, _) = try? await apiClient.ping() {
-                    await MainActor.run { self.dataVersion = dataVersion }
+                if let versions = try? await apiClient.ping() {
+                    let oldNotifVersion = self.notificationVersion
+                    await MainActor.run {
+                        self.dataVersion = versions.dataVersion
+                        self.notificationVersion = versions.notificationVersion
+                    }
+                    if versions.notificationVersion != oldNotifVersion {
+                        await notificationManager.fetchNewNotifications(apiClient: apiClient)
+                    }
                 }
                 try? await Task.sleep(for: .seconds(10))
             }

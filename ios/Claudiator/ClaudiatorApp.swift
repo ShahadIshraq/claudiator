@@ -46,6 +46,7 @@ struct ClaudiatorApp: App {
     @State private var apiClient = APIClient()
     @State private var themeManager = ThemeManager()
     @State private var versionMonitor = VersionMonitor()
+    @State private var notificationManager = NotificationManager()
 
     var body: some Scene {
         WindowGroup {
@@ -53,6 +54,7 @@ struct ClaudiatorApp: App {
                 .environment(apiClient)
                 .environment(themeManager)
                 .environment(versionMonitor)
+                .environment(notificationManager)
                 .preferredColorScheme(themeManager.appearance.colorScheme)
                 .onAppear {
                     appDelegate.apiClient = apiClient
@@ -79,6 +81,7 @@ struct MainTabView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
+    @Environment(NotificationManager.self) private var notificationManager
     @State private var selectedTab = 1
     @State private var devicesPath = NavigationPath()
     @State private var sessionsPath = NavigationPath()
@@ -182,7 +185,7 @@ struct MainTabView: View {
         .animation(.easeInOut(duration: 0.2), value: isOnDetailView)
         .ignoresSafeArea(.keyboard)
         .onAppear {
-            versionMonitor.start(apiClient: apiClient)
+            versionMonitor.start(apiClient: apiClient, notificationManager: notificationManager)
             Task {
                 _ = await NotificationService.requestPermissionAndRegister()
             }
