@@ -123,10 +123,11 @@ pub fn list_sessions(
 ) -> Result<Vec<SessionResponse>, AppError> {
     let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
         Some(s) => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
-             FROM sessions
-             WHERE device_id = ?1 AND status = ?2
-             ORDER BY last_event DESC
+            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+             FROM sessions s
+             LEFT JOIN devices d ON d.device_id = s.device_id
+             WHERE s.device_id = ?1 AND s.status = ?2
+             ORDER BY s.last_event DESC
              LIMIT ?3"
                 .to_string(),
             vec![
@@ -136,10 +137,11 @@ pub fn list_sessions(
             ],
         ),
         None => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
-             FROM sessions
-             WHERE device_id = ?1
-             ORDER BY last_event DESC
+            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+             FROM sessions s
+             LEFT JOIN devices d ON d.device_id = s.device_id
+             WHERE s.device_id = ?1
+             ORDER BY s.last_event DESC
              LIMIT ?2"
                 .to_string(),
             vec![Box::new(device_id.to_string()), Box::new(limit)],
@@ -162,6 +164,8 @@ pub fn list_sessions(
                 status: row.get(4)?,
                 cwd: row.get(5)?,
                 title: row.get(6)?,
+                device_name: row.get(7)?,
+                platform: row.get(8)?,
             })
         })
         .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?
@@ -178,18 +182,20 @@ pub fn list_all_sessions(
 ) -> Result<Vec<SessionResponse>, AppError> {
     let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
         Some(s) => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
-             FROM sessions
-             WHERE status = ?1
-             ORDER BY last_event DESC
+            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+             FROM sessions s
+             LEFT JOIN devices d ON d.device_id = s.device_id
+             WHERE s.status = ?1
+             ORDER BY s.last_event DESC
              LIMIT ?2"
                 .to_string(),
             vec![Box::new(s.to_string()), Box::new(limit)],
         ),
         None => (
-            "SELECT session_id, device_id, started_at, last_event, status, cwd, title
-             FROM sessions
-             ORDER BY last_event DESC
+            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+             FROM sessions s
+             LEFT JOIN devices d ON d.device_id = s.device_id
+             ORDER BY s.last_event DESC
              LIMIT ?1"
                 .to_string(),
             vec![Box::new(limit)],
@@ -212,6 +218,8 @@ pub fn list_all_sessions(
                 status: row.get(4)?,
                 cwd: row.get(5)?,
                 title: row.get(6)?,
+                device_name: row.get(7)?,
+                platform: row.get(8)?,
             })
         })
         .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?

@@ -5,6 +5,8 @@ pub struct StatusOk {
     pub status: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub server_version: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_version: Option<u64>,
 }
 
 impl StatusOk {
@@ -12,6 +14,7 @@ impl StatusOk {
         StatusOk {
             status: "ok",
             server_version: None,
+            data_version: None,
         }
     }
 
@@ -19,6 +22,15 @@ impl StatusOk {
         StatusOk {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
+            data_version: None,
+        }
+    }
+
+    pub fn with_data_version(v: u64) -> Self {
+        StatusOk {
+            status: "ok",
+            server_version: Some(env!("CARGO_PKG_VERSION")),
+            data_version: Some(v),
         }
     }
 }
@@ -48,6 +60,10 @@ pub struct SessionResponse {
     pub cwd: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub platform: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
