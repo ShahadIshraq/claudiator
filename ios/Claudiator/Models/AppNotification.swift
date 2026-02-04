@@ -8,9 +8,9 @@ struct AppNotification: Codable, Identifiable, Hashable {
     let title: String
     let body: String
     let notificationType: String
-    let payloadJson: String
+    let payloadJson: String?
     let createdAt: String
-    let acknowledged: Bool
+    let acknowledged: Bool?
 
     enum CodingKeys: String, CodingKey {
         case notificationId = "id"
