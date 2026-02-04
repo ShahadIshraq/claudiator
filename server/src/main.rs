@@ -7,6 +7,7 @@ mod models;
 mod router;
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use clap::Parser;
 
@@ -29,6 +30,7 @@ async fn main() {
     let state = Arc::new(AppState {
         api_key: config.api_key.clone(),
         db_pool,
+        version: AtomicU64::new(0),
     });
 
     let app = router::build_router(state);

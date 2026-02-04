@@ -1,6 +1,7 @@
 use axum::Router;
 use axum::routing::{get, post};
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use crate::db::pool::DbPool;
 use crate::handlers;
@@ -8,6 +9,7 @@ use crate::handlers;
 pub struct AppState {
     pub api_key: String,
     pub db_pool: DbPool,
+    pub version: AtomicU64,
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {

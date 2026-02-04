@@ -3,6 +3,7 @@ import SwiftUI
 struct DeviceListView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(VersionMonitor.self) private var versionMonitor
     @State private var viewModel = DeviceListViewModel()
 
     var body: some View {
@@ -34,14 +35,30 @@ struct DeviceListView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(themeManager.current.pageBackground)
         .navigationTitle("Devices")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("")
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            Text("Devices")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 0)
+                .background(themeManager.current.pageBackground)
+        }
         .navigationDestination(for: Device.self) { device in
             DeviceDetailView(device: device)
         }
         .task {
-            while !Task.isCancelled {
-                await viewModel.refresh(apiClient: apiClient)
-                try? await Task.sleep(for: .seconds(15))
-            }
+            await viewModel.refresh(apiClient: apiClient)
+        }
+        .onChange(of: versionMonitor.dataVersion) { _, _ in
+            Task { await viewModel.refresh(apiClient: apiClient) }
         }
         .overlay(alignment: .top) {
             if let error = viewModel.errorMessage, !viewModel.devices.isEmpty {

@@ -69,9 +69,15 @@ class APIClient {
         return data
     }
 
-    func ping() async throws -> Bool {
-        _ = try await request("/api/v1/ping")
-        return true
+    func ping() async throws -> UInt64 {
+        let data = try await request("/api/v1/ping")
+        struct PingResponse: Decodable {
+            let status: String
+            let serverVersion: String?
+            let dataVersion: UInt64?
+        }
+        let response = try decoder.decode(PingResponse.self, from: data)
+        return response.dataVersion ?? 0
     }
 
     func fetchDevices() async throws -> [Device] {

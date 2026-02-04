@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -26,6 +26,7 @@
 		8FA725AB1CB53A0EAD468D2B /* AllSessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */; };
 		9AC90BCF10C5CB88CD6EF362 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD09398533E36AEBEF7166B /* KeychainService.swift */; };
 		A1C53FBC2B4DC5C27EE7A9DE /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */; };
+		A35EE0647C8E3F95726BD67A /* VersionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8040BE8BC24416A1A9EBE88A /* VersionMonitor.swift */; };
 		B56E028DF73F878B4B86DCD3 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB82A2D03E889685C1EA5B8 /* Session.swift */; };
 		B5CF20E40C3F591343773E90 /* SessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3125752B14533C0B090C24AE /* SessionDetailView.swift */; };
 		B6B843DAE40C3AEF5C26651D /* SetupViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7654B1BBD5CF0A7CF6A6922 /* SetupViewModel.swift */; };
@@ -54,6 +55,7 @@
 		728C111D63CF0C7931892291 /* AllSessionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllSessionsViewModel.swift; sourceTree = "<group>"; };
 		7B9C45824F59F74B9AD93273 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7C1D242197C2DF3D58182B00 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		8040BE8BC24416A1A9EBE88A /* VersionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionMonitor.swift; sourceTree = "<group>"; };
 		8859CCC46CD74710BAE87C93 /* AppTheme+Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppTheme+Themes.swift"; sourceTree = "<group>"; };
 		88D2C344A561EA3126452D67 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		8AB82A2D03E889685C1EA5B8 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
@@ -62,7 +64,7 @@
 		997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRow.swift; sourceTree = "<group>"; };
 		A1F7E01CBCC958502E20846A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
-		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EFA2349E52FA004421D9903E /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
 		F7654B1BBD5CF0A7CF6A6922 /* SetupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -155,6 +157,7 @@
 				0F7EAD4C0052956689AC888B /* APIClient.swift */,
 				1DD09398533E36AEBEF7166B /* KeychainService.swift */,
 				02AAF855F4092FF49D97095A /* NotificationService.swift */,
+				8040BE8BC24416A1A9EBE88A /* VersionMonitor.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -204,7 +207,6 @@
 			);
 			mainGroup = B95F982188FE10D4D22125FC;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -254,6 +256,7 @@
 				A1C53FBC2B4DC5C27EE7A9DE /* SetupView.swift in Sources */,
 				B6B843DAE40C3AEF5C26651D /* SetupViewModel.swift in Sources */,
 				5C6A86C452DD67D69C23359B /* ThemeManager.swift in Sources */,
+				A35EE0647C8E3F95726BD67A /* VersionMonitor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,7 +271,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -329,7 +332,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -348,7 +351,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
+				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -415,7 +418,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

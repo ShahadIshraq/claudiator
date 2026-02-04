@@ -3,6 +3,7 @@ import SwiftUI
 struct AllSessionsView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(VersionMonitor.self) private var versionMonitor
     @State private var viewModel = AllSessionsViewModel()
 
     var body: some View {
@@ -16,9 +17,9 @@ struct AllSessionsView: View {
                     description: Text("No active sessions found across any devices.")
                 )
             } else {
-                List(viewModel.sessions, id: \.session.id) { item in
-                    NavigationLink(value: item.session) {
-                        AllSessionRow(session: item.session, deviceName: item.deviceName, platform: item.platform)
+                List(viewModel.sessions) { session in
+                    NavigationLink(value: session) {
+                        AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
                     }
                     .themedCard()
                 }
@@ -31,11 +32,22 @@ struct AllSessionsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(themeManager.current.pageBackground)
         .navigationTitle("Sessions")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top) {
+            Text("Sessions")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 0)
+                .background(themeManager.current.pageBackground)
+        }
         .navigationDestination(for: Session.self) { session in
             SessionDetailView(session: session)
         }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .principal) {
                 Picker("Filter", selection: $viewModel.filter) {
                     ForEach(AllSessionsViewModel.SessionFilter.allCases, id: \.self) { filter in
                         Text(filter.rawValue).tag(filter)
@@ -46,10 +58,10 @@ struct AllSessionsView: View {
             }
         }
         .task(id: viewModel.filter) {
-            while !Task.isCancelled {
-                await viewModel.refresh(apiClient: apiClient)
-                try? await Task.sleep(for: .seconds(10))
-            }
+            await viewModel.refresh(apiClient: apiClient)
+        }
+        .onChange(of: versionMonitor.dataVersion) { _, _ in
+            Task { await viewModel.refresh(apiClient: apiClient) }
         }
         .overlay(alignment: .top) {
             if let error = viewModel.errorMessage, !viewModel.sessions.isEmpty {

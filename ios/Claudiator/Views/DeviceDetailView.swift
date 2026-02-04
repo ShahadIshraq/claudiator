@@ -3,6 +3,7 @@ import SwiftUI
 struct DeviceDetailView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(VersionMonitor.self) private var versionMonitor
     @State private var viewModel = SessionListViewModel()
     let device: Device
 
@@ -31,13 +32,6 @@ struct DeviceDetailView: View {
 
             // Device details section
             Section("Details") {
-                LabeledContent("Platform") {
-                    HStack(spacing: 6) {
-                        PlatformIcon(platform: device.platform, size: 14)
-                        Text(platformDisplayName)
-                    }
-                }
-                .themedCard()
                 LabeledContent("Device ID") {
                     Text(device.deviceId)
                         .font(.caption)
@@ -63,7 +57,16 @@ struct DeviceDetailView: View {
             }
 
             // Sessions section
-            Section("Sessions") {
+            Section {
+                Picker("Filter", selection: $viewModel.filter) {
+                    ForEach(SessionListViewModel.SessionFilter.allCases, id: \.self) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 if viewModel.isLoading && viewModel.sessions.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -86,34 +89,14 @@ struct DeviceDetailView: View {
         .navigationDestination(for: Session.self) { session in
             SessionDetailView(session: session)
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Picker("Filter", selection: $viewModel.filter) {
-                    ForEach(SessionListViewModel.SessionFilter.allCases, id: \.self) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 150)
-            }
-        }
         .refreshable {
             await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId)
         }
         .task(id: viewModel.filter) {
-            while !Task.isCancelled {
-                await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId)
-                try? await Task.sleep(for: .seconds(10))
-            }
+            await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId)
         }
-    }
-
-    private var platformDisplayName: String {
-        switch device.platform.lowercased() {
-        case "mac", "macos", "darwin": return "macOS"
-        case "linux": return "Linux"
-        case "windows": return "Windows"
-        default: return device.platform.capitalized
+        .onChange(of: versionMonitor.dataVersion) { _, _ in
+            Task { await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId) }
         }
     }
 }

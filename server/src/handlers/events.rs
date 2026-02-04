@@ -112,6 +112,7 @@ pub async fn events_handler(
         Ok(()) => {
             conn.execute_batch("COMMIT")
                 .map_err(|e| AppError::Internal(format!("Transaction commit failed: {}", e)))?;
+            state.version.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         }
         Err(e) => {
             let _ = conn.execute_batch("ROLLBACK");

@@ -4,6 +4,7 @@ struct SetupView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @State private var viewModel = SetupViewModel()
+    @State private var showAPIKey = false
 
     var body: some View {
         NavigationStack {
@@ -35,8 +36,23 @@ struct SetupView: View {
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    SecureField("API Key", text: $viewModel.apiKey)
-                        .textInputAutocapitalization(.never)
+                    HStack {
+                        if showAPIKey {
+                            TextField("API Key", text: $viewModel.apiKey)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        } else {
+                            SecureField("API Key", text: $viewModel.apiKey)
+                                .textInputAutocapitalization(.never)
+                        }
+                        Button {
+                            showAPIKey.toggle()
+                        } label: {
+                            Image(systemName: showAPIKey ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 if let error = viewModel.errorMessage {
