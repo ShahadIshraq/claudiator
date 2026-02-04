@@ -1,8 +1,20 @@
-# Phase 4f — iOS: Notification UI
+# Phase 4f — iOS: Notification UI ✅
+
+**Status**: COMPLETED
 
 ## Overview
 
 Add notification-related UI to the iOS app: bell icon with badge count, notification list sheet, session card highlighting for unread notifications, and foreground notification banners.
+
+## Completed Features
+
+✅ All planned features implemented
+✅ Enhanced with pulsing indicators:
+- Session cards pulse brightness (4-12%) when containing unread notifications
+- Group containers pulse opacity (30-70%) when containing unread notifications
+- Smooth 1.2s continuous animation cycle
+- Theme-aware adaptive colors for all themes
+- Swipe-to-mark-read gesture in notification list
 
 ## Bell Icon + Notification List
 
@@ -114,11 +126,59 @@ let center = UNUserNotificationCenter.current()
 _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
 ```
 
+## Additional Implementation Details
+
+### Pulsing Notification Indicators
+
+Instead of static highlighting, implemented breathing animations:
+
+**Session Cards**:
+- Normal: Base brightness
+- With notifications: Pulse between +4% and +12% brightness
+- Helper function: `sessionCardBrightness(_:) -> Double`
+
+**Group Containers**:
+- Normal: 30% opacity
+- With notifications: Pulse between 50% and 70% opacity
+- Helper function: `groupContainerOpacity(_:) -> Double`
+
+**Animation System**:
+```swift
+@State private var notificationPulse: Bool = false
+
+.onAppear {
+    Task {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(1.2))
+            notificationPulse.toggle()
+        }
+    }
+}
+```
+
+### Theme-Aware Colors
+
+Made `eventNotification` adaptive across all themes:
+- Standard: Adaptive red (light/dark variants)
+- Neon Ops: Adaptive pink (#FF4080)
+- Solarized: Adaptive red (#DC322F)
+- Arctic: Adaptive red (#EF4444)
+
+All colors now properly respond to theme changes and light/dark mode.
+
+### Notification List Enhancements
+
+Beyond planned features:
+- Swipe-to-mark-read gesture with blue checkmark button
+- Full-swipe support for quick dismissal
+- Read/unread visual distinction maintained
+
 ## Files Modified
 
 | File | Action |
 |---|---|
-| `ios/Claudiator/Views/NotificationListView.swift` | **create** |
-| `ios/Claudiator/Views/AllSessionsView.swift` | modify — bell icon in toolbar + session row highlight |
+| `ios/Claudiator/Views/NotificationListView.swift` | **create** — with swipe gestures |
+| `ios/Claudiator/Views/AllSessionsView.swift` | modify — bell icon + pulsing indicators + helpers |
 | `ios/Claudiator/Views/SessionDetailView.swift` | modify — markSessionRead in .task |
-| `ios/Claudiator/ClaudiatorApp.swift` | modify — UNUserNotificationCenterDelegate + permission request |
+| `ios/Claudiator/ClaudiatorApp.swift` | modify — UNUserNotificationCenterDelegate + permission |
+| `ios/Claudiator/Theme/AppTheme+Themes.swift` | modify — adaptive notification colors |

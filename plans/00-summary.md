@@ -105,11 +105,20 @@ Production-ready native iOS application:
 - **Appearance**: Dark mode, light mode, system automatic
 - **Security**: API key stored in Keychain, server URL in UserDefaults
 - **Platform Icons**: SVG-based device icons (Apple logo, Linux Tux, Windows logo)
-- **Notifications**: Direct APNs push notifications from server, AppDelegate-based token registration with sandbox detection, polling fallback via `notification_version` in ping
-  - Server generates notification records with UUIDs on notifiable events
-  - App detects changes via `notification_version` in ping response
-  - Local `UNNotificationRequest` fired per notification, UUID used as dedup key
-  - Bell icon with badge count, notification list sheet, session card highlighting
+- **Notifications**: Dual-path notification system with APNs push and polling fallback
+  - **APNs Push**: Direct push from server with custom payload (notification_id, session_id, device_id)
+  - **Deduplication**: 1-minute retention window for push-received IDs prevents duplicate banners
+  - **Immediate Updates**: Push triggers instant poll for real-time UI refresh (no 10s delay)
+  - **Background Handling**: `content-available` flag enables delegate calls when app backgrounded
+  - **Polling Fallback**: `notification_version` tracking via ping for reliable delivery
+  - **UI Indicators**:
+    - Bell icon with badge count in navigation bar
+    - Session cards pulse brightness (4-12%) when containing unread notifications
+    - Group containers pulse opacity (30-70%) when containing unread notifications
+    - Smooth 1.2s breathing animation cycle for attention
+  - **Notification List**: Full-screen sheet with swipe-to-mark-read gestures
+  - **Theme Integration**: Adaptive notification colors for all themes (light/dark aware)
+  - **Auto-dismiss**: Viewing a session automatically marks its notifications as read
 - **UI**: Native SwiftUI with iOS design patterns
 
 ### 🚧 In Progress / Planned

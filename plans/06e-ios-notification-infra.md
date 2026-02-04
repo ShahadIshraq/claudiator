@@ -1,8 +1,20 @@
-# Phase 4e — iOS: Notification Infrastructure
+# Phase 4e — iOS: Notification Infrastructure ✅
+
+**Status**: COMPLETED
 
 ## Overview
 
 Add the core notification infrastructure to the iOS app: data model, API methods, NotificationManager service, and VersionMonitor integration. This enables the polling-based notification path.
+
+## Completed Features
+
+✅ All planned features implemented
+✅ Additional enhancements added:
+- APNs push/polling deduplication with 1-minute retention
+- Immediate poll trigger when APNs push received
+- content-available flag for background notification handling
+- Made optional fields in AppNotification for server compatibility
+- Fixed URL construction bug (appendingPathComponent encoding issue)
 
 ## AppNotification Model
 
@@ -157,6 +169,31 @@ func start(apiClient: APIClient, notificationManager: NotificationManager) {
 - Pass into environment: `.environment(notificationManager)`
 - Update `versionMonitor.start()` call in MainTabView to include `notificationManager`
 
+## Additional Implementation Details
+
+### Deduplication System
+NotificationManager tracks push-received notification IDs to prevent duplicates:
+- `markReceivedViaPush(notificationId:)` - Called when APNs push arrives
+- `pushReceivedRetentionSeconds: 60` - 1-minute cleanup window
+- Automatic cleanup of expired entries via timestamps
+
+### Immediate Poll Trigger
+AppDelegate's `didReceiveRemoteNotification`:
+- Marks notification as received via push
+- Immediately triggers `fetchNewNotifications()` for instant UI update
+- No need to wait for 10-second polling interval
+
+### Server Payload Enhancement
+APNs payload includes custom fields for deduplication:
+```json
+{
+  "aps": { "alert": {...}, "content-available": 1 },
+  "notification_id": "uuid",
+  "session_id": "...",
+  "device_id": "..."
+}
+```
+
 ## Files Modified
 
 | File | Action |
@@ -165,4 +202,6 @@ func start(apiClient: APIClient, notificationManager: NotificationManager) {
 | `ios/Claudiator/Services/NotificationManager.swift` | **create** |
 | `ios/Claudiator/Services/APIClient.swift` | modify — ping return type + 2 methods |
 | `ios/Claudiator/Services/VersionMonitor.swift` | modify — track notificationVersion, accept notificationManager |
-| `ios/Claudiator/ClaudiatorApp.swift` | modify — register NotificationManager in environment |
+| `ios/Claudiator/ClaudiatorApp.swift` | modify — register NotificationManager in environment + APNs handling |
+| `server/src/apns.rs` | modify — add custom fields to push payload |
+| `server/src/handlers/events.rs` | modify — pass notification metadata to APNs |

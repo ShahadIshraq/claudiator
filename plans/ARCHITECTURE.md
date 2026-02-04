@@ -47,9 +47,11 @@
 4. **claudiator-hook** POSTs to the server at `POST /api/v1/events` with `Authorization: Bearer {api_key}`
 5. **claudiator-server** validates the API key, stores the event in SQLite (devices, sessions, events tables)
 6. **claudiator-server** generates a notification record (UUID) for Stop/permission_prompt/idle_prompt events, increments `notification_version`
-7. **claudiator-server** (if APNs is configured) dispatches push notification directly to all registered device tokens via HTTP/2 with ES256 JWT authentication to `api.push.apple.com` or `api.sandbox.push.apple.com`
-8. **claudiator-server** on APNs 410 Gone response, automatically removes the stale token from the `push_tokens` table
-9. **Mobile apps** also poll `/api/v1/ping` every 10s as fallback, detect `notification_version` change, fetch new notifications via `GET /api/v1/notifications`
+7. **claudiator-server** (if APNs is configured) dispatches push notification with custom payload (`notification_id`, `session_id`, `device_id`) and `content-available: 1` flag via HTTP/2 + ES256 JWT to `api.push.apple.com` or `api.sandbox.push.apple.com`
+8. **iOS app** receives APNs push in `didReceiveRemoteNotification`, marks notification_id as "received via push" with 1-minute retention window, then immediately triggers poll for instant UI update
+9. **iOS app** polling detects notification_id in push-received list, skips firing duplicate local notification banner (deduplication), but updates bell badge and session highlights
+10. **claudiator-server** on APNs 410 Gone response, automatically removes the stale token from the `push_tokens` table
+11. **Mobile apps** also poll `/api/v1/ping` every 10s as fallback, detect `notification_version` change, fetch new notifications via `GET /api/v1/notifications`
 
 ## Payload Shape
 
@@ -129,7 +131,10 @@ The server is deployed as a systemd service on Linux:
 - **Connection pooling** — r2d2 manages SQLite connections for multi-threaded Axum
 
 ### Notification Constraints
+- **Dual-path deduplication** — iOS tracks push-received notification IDs with 1-minute retention to prevent duplicate banners between APNs and polling paths
 - **UUID deduplication** — Same notification UUID used across polling and APNs push paths; iOS deduplicates by `UNNotificationRequest.identifier`
+- **Immediate poll trigger** — APNs push with `content-available: 1` invokes delegate that immediately triggers poll for instant UI updates (no 10s wait)
+- **Enhanced APNs payload** — Push includes custom fields (`notification_id`, `session_id`, `device_id`) for client-side deduplication tracking
 - **Polling fallback** — APNs direct push is the primary path; 10s ping polling serves as fallback when push fails or for devices without tokens
 - **Non-blocking generation** — Notification records created inside the event transaction; `notification_version` incremented after commit
 - **Direct APNs push** — Server sends push notifications directly via HTTP/2 with ES256 JWT authentication
