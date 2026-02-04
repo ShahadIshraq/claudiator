@@ -22,12 +22,14 @@ struct AllSessionsView: View {
                     }
                     .themedCard()
                 }
-                .themedPage()
+                .scrollContentBackground(.hidden)
                 .refreshable {
                     await viewModel.refresh(apiClient: apiClient)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(themeManager.current.pageBackground)
         .navigationTitle("Sessions")
         .navigationDestination(for: Session.self) { session in
             SessionDetailView(session: session)

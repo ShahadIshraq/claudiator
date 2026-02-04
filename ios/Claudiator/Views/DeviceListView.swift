@@ -25,12 +25,14 @@ struct DeviceListView: View {
                     }
                     .themedCard()
                 }
-                .themedPage()
+                .scrollContentBackground(.hidden)
                 .refreshable {
                     await viewModel.refresh(apiClient: apiClient)
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(themeManager.current.pageBackground)
         .navigationTitle("Devices")
         .navigationDestination(for: Device.self) { device in
             DeviceDetailView(device: device)
