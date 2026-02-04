@@ -13,17 +13,24 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // Handle APNs push notifications (for deduplication)
     func application(_ application: UIApplication,
                      didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        // Extract notification_id from push payload
+        // Extract notification_id from push payload and mark as received
         if let notificationId = userInfo["notification_id"] as? String {
-            print("[Push] Received APNs push for notification: \(notificationId)")
             notificationManager?.markReceivedViaPush(notificationId: notificationId)
         }
+
+        // Trigger immediate poll to update UI (bell icon, borders, notification list)
+        if let apiClient = apiClient, let notificationManager = notificationManager {
+            await notificationManager.fetchNewNotifications(apiClient: apiClient)
+        }
+
         return .newData
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        #if DEBUG
         print("[Push] Device token: \(token)")
+        #endif
 
         guard let apiClient else { return }
 
@@ -32,15 +39,21 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         Task {
             do {
                 try await apiClient.registerPushToken(platform: "ios", token: token, sandbox: sandbox)
+                #if DEBUG
                 print("[Push] Token registered (sandbox: \(sandbox))")
+                #endif
             } catch {
+                #if DEBUG
                 print("[Push] Failed to register token: \(error)")
+                #endif
             }
         }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        #if DEBUG
         print("[Push] Registration failed: \(error.localizedDescription)")
+        #endif
     }
 
     // Show notification banners even when app is in foreground

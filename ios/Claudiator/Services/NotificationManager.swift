@@ -20,7 +20,7 @@ class NotificationManager {
     private let pushReceivedKey = "pushReceivedNotificationIds"
     private let pushReceivedTimestampsKey = "pushReceivedTimestamps"
     private let maxNotifications = 100
-    private let pushReceivedRetentionSeconds: TimeInterval = 3600 // 1 hour
+    private let pushReceivedRetentionSeconds: TimeInterval = 60 // 1 minute
 
     init() {
         loadFromStorage()
@@ -106,8 +106,7 @@ class NotificationManager {
 
     private func fireLocalNotification(_ notif: AppNotification) async {
         let content = UNMutableNotificationContent()
-        // TODO: Remove [P] marker after testing polling vs push notifications
-        content.title = notif.title + " [P]"
+        content.title = notif.title
         content.body = notif.body
         content.sound = .default
         content.userInfo = [
@@ -117,9 +116,9 @@ class NotificationManager {
         ]
 
         let request = UNNotificationRequest(
-            identifier: notif.notificationId,  // iOS deduplicates by this
+            identifier: notif.notificationId,
             content: content,
-            trigger: nil  // Deliver immediately
+            trigger: nil
         )
 
         try? await UNUserNotificationCenter.current().add(request)
@@ -180,7 +179,7 @@ class NotificationManager {
 
     // Called when an APNs push notification is received
     func markReceivedViaPush(notificationId: String) {
-        cleanupOldPushReceivedIds() // Cleanup before adding
+        cleanupOldPushReceivedIds()
 
         var ids = Set(userDefaults.array(forKey: pushReceivedKey) as? [String] ?? [])
         ids.insert(notificationId)

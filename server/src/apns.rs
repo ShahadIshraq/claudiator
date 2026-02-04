@@ -104,6 +104,9 @@ impl ApnsClient {
         title: &str,
         body: &str,
         collapse_id: Option<&str>,
+        notification_id: &str,
+        session_id: &str,
+        device_id: &str,
         sandbox: bool,
     ) -> ApnsPushResult {
         let token = match self.get_or_refresh_token().await {
@@ -126,7 +129,11 @@ impl ApnsClient {
                     "body": body,
                 },
                 "sound": "default",
-            }
+                "content-available": 1,
+            },
+            "notification_id": notification_id,
+            "session_id": session_id,
+            "device_id": device_id,
         });
 
         let mut request = self

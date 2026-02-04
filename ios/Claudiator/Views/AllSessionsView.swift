@@ -8,6 +8,7 @@ struct AllSessionsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel = AllSessionsViewModel()
     @State private var showNotifications = false
+    @State private var notificationPulse: Bool = false
 
     private var useWideLayout: Bool {
         horizontalSizeClass == .regular && viewModel.isGroupedByDevice
@@ -25,6 +26,19 @@ struct AllSessionsView: View {
         viewModel.groupedSessions[deviceId]?.first?.platform ?? "unknown"
     }
 
+    private func deviceHasNotifications(deviceId: String) -> Bool {
+        guard let sessions = viewModel.groupedSessions[deviceId] else { return false }
+        return sessions.contains { notificationManager.sessionsWithNotifications.contains($0.sessionId) }
+    }
+
+    private func sessionCardBrightness(_ hasNotification: Bool) -> Double {
+        hasNotification ? (notificationPulse ? 0.12 : 0.04) : 0
+    }
+
+    private func groupContainerOpacity(_ hasNotifications: Bool) -> Double {
+        hasNotifications ? (notificationPulse ? 0.7 : 0.5) : 0.3
+    }
+
     var body: some View {
         Group {
             if viewModel.isLoading {
@@ -38,16 +52,16 @@ struct AllSessionsView: View {
             } else if !viewModel.isGroupedByDevice {
                 // Ungrouped flat list
                 List(viewModel.sessions) { session in
+                    let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
                     NavigationLink(value: session) {
                         AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
                     }
-                    .themedCard()
-                    .overlay {
-                        if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(themeManager.current.eventNotification, lineWidth: 2)
-                        }
-                    }
+                    .listRowBackground(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(themeManager.current.cardBackground)
+                            .brightness(sessionCardBrightness(hasNotification))
+                            .animation(.easeInOut(duration: 1.2), value: notificationPulse)
+                    )
                 }
                 .scrollContentBackground(.hidden)
             } else if !useWideLayout {
@@ -55,6 +69,7 @@ struct AllSessionsView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(sortedDeviceIds, id: \.self) { deviceId in
+                            let hasNotifications = deviceHasNotifications(deviceId: deviceId)
                             VStack(alignment: .leading, spacing: 0) {
                                 // Header
                                 DeviceGroupHeader(
@@ -80,6 +95,7 @@ struct AllSessionsView: View {
                                 if viewModel.expandedDevices.contains(deviceId) {
                                     VStack(spacing: 8) {
                                         ForEach(viewModel.groupedSessions[deviceId] ?? []) { session in
+                                            let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
                                             NavigationLink(value: session) {
                                                 AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
                                             }
@@ -89,6 +105,8 @@ struct AllSessionsView: View {
                                             .background(
                                                 RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                                                     .fill(themeManager.current.cardBackground)
+                                                    .brightness(sessionCardBrightness(hasNotification))
+                                                    .animation(.easeInOut(duration: 1.2), value: notificationPulse)
                                                     .overlay(
                                                         RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                                                             .strokeBorder(
@@ -97,12 +115,6 @@ struct AllSessionsView: View {
                                                             )
                                                     )
                                             )
-                                            .overlay {
-                                                if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
-                                                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                                                        .stroke(themeManager.current.eventNotification, lineWidth: 2)
-                                                }
-                                            }
                                         }
                                     }
                                     .padding(.horizontal, 12)
@@ -112,7 +124,8 @@ struct AllSessionsView: View {
                             }
                             .background(
                                 RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                                    .fill(themeManager.current.groupContainerBackground())
+                                    .fill(themeManager.current.cardBackground.opacity(groupContainerOpacity(hasNotifications)))
+                                    .animation(.easeInOut(duration: 1.2), value: notificationPulse)
                             )
                         }
                     }
@@ -134,7 +147,8 @@ struct AllSessionsView: View {
                                     withAnimation {
                                         viewModel.toggleDevice(deviceId)
                                     }
-                                }
+                                },
+                                notificationPulse: $notificationPulse
                             )
                         }
                     }
@@ -208,6 +222,14 @@ struct AllSessionsView: View {
         }
         .onChange(of: versionMonitor.dataVersion) { _, _ in
             Task { await viewModel.refresh(apiClient: apiClient) }
+        }
+        .onAppear {
+            Task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1.2))
+                    notificationPulse.toggle()
+                }
+            }
         }
         .sheet(isPresented: $showNotifications) {
             NotificationListView()
@@ -323,9 +345,22 @@ struct DeviceGroupCard: View {
     let sessions: [Session]
     let isExpanded: Bool
     let onToggle: () -> Void
+    @Binding var notificationPulse: Bool
 
     private var priorityStatusValue: String {
         priorityStatus(for: sessions)
+    }
+
+    private var hasNotifications: Bool {
+        sessions.contains { notificationManager.sessionsWithNotifications.contains($0.sessionId) }
+    }
+
+    private func sessionCardBrightness(_ hasNotification: Bool) -> Double {
+        hasNotification ? (notificationPulse ? 0.12 : 0.04) : 0
+    }
+
+    private func groupContainerOpacity(_ hasNotifications: Bool) -> Double {
+        hasNotifications ? (notificationPulse ? 0.7 : 0.5) : 0.3
     }
 
     var body: some View {
@@ -364,6 +399,7 @@ struct DeviceGroupCard: View {
             if isExpanded {
                 VStack(spacing: 8) {
                     ForEach(sessions) { session in
+                        let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
                         NavigationLink(value: session) {
                             AllSessionRow(
                                 session: session,
@@ -377,6 +413,8 @@ struct DeviceGroupCard: View {
                         .background(
                             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                                 .fill(themeManager.current.cardBackground)
+                                .brightness(sessionCardBrightness(hasNotification))
+                                .animation(.easeInOut(duration: 1.2), value: notificationPulse)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
                                         .strokeBorder(
@@ -385,12 +423,6 @@ struct DeviceGroupCard: View {
                                         )
                                 )
                         )
-                        .overlay {
-                            if notificationManager.sessionsWithNotifications.contains(session.sessionId) {
-                                RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                                    .stroke(themeManager.current.eventNotification, lineWidth: 2)
-                            }
-                        }
                     }
                 }
                 .padding(.horizontal, 12)
@@ -399,7 +431,8 @@ struct DeviceGroupCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .fill(themeManager.current.groupContainerBackground())
+                .fill(themeManager.current.cardBackground.opacity(groupContainerOpacity(hasNotifications)))
+                .animation(.easeInOut(duration: 1.2), value: notificationPulse)
         )
     }
 }

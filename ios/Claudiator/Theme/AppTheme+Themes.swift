@@ -20,7 +20,10 @@ extension AppTheme {
         eventSessionStart: .green,
         eventSessionEnd: .gray,
         eventStop: .orange,
-        eventNotification: .red,
+        eventNotification: adaptive(
+            light: UIColor.systemRed,
+            dark: UIColor(red: 1.0, green: 0.4, blue: 0.4, alpha: 1)
+        ),
         eventUserPromptSubmit: .blue,
         eventDefault: .secondary,
         serverConnected: .green,
@@ -59,7 +62,10 @@ extension AppTheme {
         eventSessionStart: Color(hex: 0x00FF99),
         eventSessionEnd: Color(hex: 0x666666),
         eventStop: Color(hex: 0xFFC200),
-        eventNotification: Color(hex: 0xFF4080),
+        eventNotification: adaptive(
+            light: UIColor(red: 1.0, green: 0.25, blue: 0.5, alpha: 1),
+            dark: UIColor(red: 1.0, green: 0.4, blue: 0.6, alpha: 1)
+        ),
         eventUserPromptSubmit: Color(hex: 0x00BFFF),
         eventDefault: Color(hex: 0x888888),
         serverConnected: Color(hex: 0x00FF99),
@@ -98,7 +104,10 @@ extension AppTheme {
         eventSessionStart: Color(hex: 0x859900),
         eventSessionEnd: Color(hex: 0x839496),
         eventStop: Color(hex: 0xCB4B16),
-        eventNotification: Color(hex: 0xDC322F),
+        eventNotification: adaptive(
+            light: UIColor(red: 0.86, green: 0.20, blue: 0.18, alpha: 1),
+            dark: UIColor(red: 0.95, green: 0.35, blue: 0.33, alpha: 1)
+        ),
         eventUserPromptSubmit: Color(hex: 0x268BD2),
         eventDefault: Color(hex: 0x93A1A1),
         serverConnected: Color(hex: 0x859900),
@@ -137,7 +146,10 @@ extension AppTheme {
         eventSessionStart: Color(hex: 0x2EB887),
         eventSessionEnd: Color(hex: 0x6B7280),
         eventStop: Color(hex: 0xF59E0B),
-        eventNotification: Color(hex: 0xEF4444),
+        eventNotification: adaptive(
+            light: UIColor(red: 0.94, green: 0.27, blue: 0.27, alpha: 1),
+            dark: UIColor(red: 1.0, green: 0.45, blue: 0.45, alpha: 1)
+        ),
         eventUserPromptSubmit: Color(hex: 0x3B82F6),
         eventDefault: Color(hex: 0x8B95A5),
         serverConnected: Color(hex: 0x2EB887),

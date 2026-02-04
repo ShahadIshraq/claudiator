@@ -167,6 +167,9 @@ pub async fn events_handler(
             let push_title = notif_title.clone();
             let push_body = notif_body.clone();
             let collapse_id = notification_id.clone();
+            let push_notification_id = notification_id.clone();
+            let push_session_id = payload.event.session_id.clone();
+            let push_device_id = payload.device.device_id.clone();
 
             tokio::spawn(async move {
                 let tokens = match push_pool.get() {
@@ -190,6 +193,9 @@ pub async fn events_handler(
                             &push_title,
                             &push_body,
                             Some(&collapse_id),
+                            &push_notification_id,
+                            &push_session_id,
+                            &push_device_id,
                             token_row.sandbox,
                         )
                         .await;
