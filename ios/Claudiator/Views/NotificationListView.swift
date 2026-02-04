@@ -19,6 +19,16 @@ struct NotificationListView: View {
                         ForEach(notificationManager.allNotifications) { notification in
                             NotificationRow(notification: notification)
                                 .themedCard()
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    if notificationManager.unreadNotifications.contains(where: { $0.notificationId == notification.notificationId }) {
+                                        Button {
+                                            notificationManager.markNotificationRead(notificationId: notification.notificationId)
+                                        } label: {
+                                            Label("Mark Read", systemImage: "checkmark")
+                                        }
+                                        .tint(.blue)
+                                    }
+                                }
                                 .onTapGesture {
                                     notificationManager.markNotificationRead(notificationId: notification.notificationId)
                                 }
