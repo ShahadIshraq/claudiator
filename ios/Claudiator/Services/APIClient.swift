@@ -69,15 +69,16 @@ class APIClient {
         return data
     }
 
-    func ping() async throws -> UInt64 {
+    func ping() async throws -> (dataVersion: UInt64, notificationVersion: UInt64) {
         let data = try await request("/api/v1/ping")
         struct PingResponse: Decodable {
             let status: String
             let serverVersion: String?
             let dataVersion: UInt64?
+            let notificationVersion: UInt64?
         }
         let response = try Self.decoder.decode(PingResponse.self, from: data)
-        return response.dataVersion ?? 0
+        return (response.dataVersion ?? 0, response.notificationVersion ?? 0)
     }
 
     func fetchDevices() async throws -> [Device] {
@@ -130,6 +131,22 @@ class APIClient {
         }
         let body = try JSONEncoder().encode(PushRegisterBody(platform: platform, pushToken: token, sandbox: sandbox))
         _ = try await request("/api/v1/push/register", method: "POST", body: body)
+    }
+
+    func fetchNotifications(since: String? = nil, limit: Int? = nil) async throws -> [AppNotification] {
+        var path = "/api/v1/notifications"
+        var params: [String] = []
+        if let since { params.append("since=\(since)") }
+        if let limit { params.append("limit=\(limit)") }
+        if !params.isEmpty { path += "?" + params.joined(separator: "&") }
+        let data = try await request(path)
+        struct Wrapper: Decodable { let notifications: [AppNotification] }
+        return try Self.decoder.decode(Wrapper.self, from: data).notifications
+    }
+
+    func acknowledgeNotifications(ids: [String]) async throws {
+        let body = try JSONEncoder().encode(["notification_ids": ids])
+        _ = try await request("/api/v1/notifications/ack", method: "POST", body: body)
     }
 
     func configure(url: String, apiKey: String) throws {

@@ -10,8 +10,8 @@ class VersionMonitor {
         guard task == nil else { return }
         task = Task {
             while !Task.isCancelled {
-                if let version = try? await apiClient.ping() {
-                    await MainActor.run { self.dataVersion = version }
+                if let (dataVersion, _) = try? await apiClient.ping() {
+                    await MainActor.run { self.dataVersion = dataVersion }
                 }
                 try? await Task.sleep(for: .seconds(10))
             }
