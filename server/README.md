@@ -107,7 +107,7 @@ SQLite with WAL mode enabled. The schema is created automatically on startup.
 ### Tables
 
 - **devices** — Device metadata and last-seen tracking
-- **sessions** — Session lifecycle (status, cwd, timestamps)
+- **sessions** — Session lifecycle (status, cwd, title, timestamps)
 - **events** — All hook events with full JSON storage
 - **push_tokens** — Mobile push notification tokens (APNs/FCM)
 
@@ -122,6 +122,10 @@ Status is derived from hook events:
 | `SessionEnd` | `ended` |
 | `Notification` (permission_prompt) | `waiting_for_permission` |
 | `Notification` (idle_prompt) | `idle` |
+
+### Session Title
+
+The first `UserPromptSubmit` event in a session sets the session title from the user's prompt text (truncated to 200 characters). Subsequent prompts do not overwrite the title.
 
 ## Deployment
 
