@@ -10,6 +10,7 @@ pub struct AppState {
     pub api_key: String,
     pub db_pool: DbPool,
     pub version: AtomicU64,
+    pub notification_version: AtomicU64,
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
@@ -35,6 +36,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route(
             "/api/v1/push/register",
             post(handlers::push::push_register_handler),
+        )
+        .route(
+            "/api/v1/notifications",
+            get(handlers::notifications::list_notifications_handler),
         )
         .with_state(state)
 }

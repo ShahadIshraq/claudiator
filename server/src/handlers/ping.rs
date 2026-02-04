@@ -13,6 +13,7 @@ pub async fn ping_handler(
     headers: HeaderMap,
 ) -> Result<Json<StatusOk>, AppError> {
     check_auth(&headers, &state.api_key)?;
-    let v = state.version.load(std::sync::atomic::Ordering::Relaxed);
-    Ok(Json(StatusOk::with_data_version(v)))
+    let data_v = state.version.load(std::sync::atomic::Ordering::Relaxed);
+    let notif_v = state.notification_version.load(std::sync::atomic::Ordering::Relaxed);
+    Ok(Json(StatusOk::with_versions(data_v, notif_v)))
 }

@@ -31,6 +31,7 @@ async fn main() {
         api_key: config.api_key.clone(),
         db_pool,
         version: AtomicU64::new(0),
+        notification_version: AtomicU64::new(0),
     });
 
     let app = router::build_router(state);
