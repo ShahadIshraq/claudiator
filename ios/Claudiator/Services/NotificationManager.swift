@@ -18,7 +18,9 @@ class NotificationManager {
     private let lastSeenKey = "lastSeenNotificationId"
     private let readIdsKey = "readNotificationIds"
     private let pushReceivedKey = "pushReceivedNotificationIds"
+    private let pushReceivedTimestampsKey = "pushReceivedTimestamps"
     private let maxNotifications = 100
+    private let pushReceivedRetentionSeconds: TimeInterval = 3600 // 1 hour
 
     init() {
         loadFromStorage()
@@ -140,6 +142,9 @@ class NotificationManager {
     }
 
     private func getPushReceivedIds() -> Set<String> {
+        // Clean up old entries (older than 1 hour)
+        cleanupOldPushReceivedIds()
+
         if let array = userDefaults.array(forKey: pushReceivedKey) as? [String] {
             return Set(array)
         }
@@ -150,10 +155,40 @@ class NotificationManager {
         userDefaults.set(Array(ids), forKey: pushReceivedKey)
     }
 
+    private func cleanupOldPushReceivedIds() {
+        guard var timestamps = userDefaults.dictionary(forKey: pushReceivedTimestampsKey) as? [String: TimeInterval] else {
+            return
+        }
+
+        let now = Date().timeIntervalSince1970
+        let cutoff = now - pushReceivedRetentionSeconds
+
+        // Remove IDs older than retention period
+        let idsToRemove = timestamps.filter { $0.value < cutoff }.map { $0.key }
+
+        if !idsToRemove.isEmpty {
+            var currentIds = Set(userDefaults.array(forKey: pushReceivedKey) as? [String] ?? [])
+            idsToRemove.forEach { id in
+                currentIds.remove(id)
+                timestamps.removeValue(forKey: id)
+            }
+
+            userDefaults.set(Array(currentIds), forKey: pushReceivedKey)
+            userDefaults.set(timestamps, forKey: pushReceivedTimestampsKey)
+        }
+    }
+
     // Called when an APNs push notification is received
     func markReceivedViaPush(notificationId: String) {
-        var ids = getPushReceivedIds()
+        cleanupOldPushReceivedIds() // Cleanup before adding
+
+        var ids = Set(userDefaults.array(forKey: pushReceivedKey) as? [String] ?? [])
         ids.insert(notificationId)
         savePushReceivedIds(ids)
+
+        // Store timestamp for cleanup
+        var timestamps = userDefaults.dictionary(forKey: pushReceivedTimestampsKey) as? [String: TimeInterval] ?? [:]
+        timestamps[notificationId] = Date().timeIntervalSince1970
+        userDefaults.set(timestamps, forKey: pushReceivedTimestampsKey)
     }
 }
