@@ -99,7 +99,11 @@ Production-ready native iOS application:
 - **Appearance**: Dark mode, light mode, system automatic
 - **Security**: API key stored in Keychain, server URL in UserDefaults
 - **Platform Icons**: SVG-based device icons (Apple logo, Linux Tux, Windows logo)
-- **Push Notifications**: Client-side token registration to server (dispatch pending server-side)
+- **Notifications**: Hybrid system — polling-based local notifications (free) + future APNs proxy (paid)
+  - Server generates notification records with UUIDs on notifiable events
+  - App detects changes via `notification_version` in ping response
+  - Local `UNNotificationRequest` fired per notification, UUID used as dedup key
+  - Bell icon with badge count, notification list sheet, session card highlighting
 - **UI**: Native SwiftUI with iOS design patterns
 
 ### 🚧 In Progress / Planned
@@ -136,10 +140,12 @@ Additional server functionality for mobile apps:
   - `POST /api/v1/push/register` endpoint for mobile push tokens
   - `push_tokens` table in database
   - Upsert semantics for token re-registration
-- **Push Notification Dispatch** (Planned):
-  - FCM integration for Android
-  - APNs integration for iOS
-  - Event-to-notification routing logic
+- **Notification System** (Planned):
+  - `notifications` table with UUID primary key (dedup key across all delivery paths)
+  - Notification generation on `Stop` and `Notification` events during event ingestion
+  - `notification_version` counter in ping response for efficient polling
+  - `GET /api/v1/notifications` and `POST /api/v1/notifications/ack` endpoints
+  - Future: APNs push proxy as paid service (self-hosted servers POST to proxy, proxy dispatches via APNs)
 - **Live Updates** (optional):
   - WebSocket or Server-Sent Events (SSE) for real-time updates
   - Alternative to polling for session status changes
@@ -236,27 +242,43 @@ Additional server functionality for mobile apps:
   - [x] Platform-specific device icons
   - [x] Pull-to-refresh and auto-refresh
 
-### Phase 2: Push Notifications
-- [ ] Server push notification support
-  - [ ] FCM integration for Android
-  - [ ] APNs integration for iOS
-  - [x] Device token registration endpoint
-  - [ ] Event-to-notification routing
-- [ ] Android push notifications
-  - [ ] FCM SDK integration
-  - [ ] Notification handling
-  - [ ] Token registration
-- [ ] iOS push notifications
-  - [ ] APNs certificate/key setup
-  - [ ] Notification handling
-  - [x] Token registration (client-side)
+### Phase 2: Hybrid Notifications
+- [ ] Server notification infrastructure
+  - [ ] `notifications` table with UUID primary key
+  - [ ] Notification generation on event ingestion (Stop, Notification events)
+  - [ ] `notification_version` atomic counter in AppState
+  - [ ] `notification_version` in ping response
+  - [ ] `GET /api/v1/notifications?since=<uuid>` endpoint
+  - [ ] `POST /api/v1/notifications/ack` endpoint
+  - [x] Device token registration endpoint (exists, for future APNs proxy)
+- [ ] iOS notification infrastructure
+  - [ ] `NotificationManager` service (fetch, dedup, local notification firing)
+  - [ ] `AppNotification` model
+  - [ ] `VersionMonitor` extended to track `notification_version`
+  - [ ] `APIClient` updated: ping returns tuple, new fetch/ack methods
+- [ ] iOS notification UI
+  - [ ] Bell icon with badge count in Sessions tab toolbar
+  - [ ] Notification list sheet view
+  - [ ] Session card highlight (colored left border for unread notifications)
+  - [ ] Clear highlight on session navigation
+  - [ ] Foreground notification banners via `UNUserNotificationCenterDelegate`
 
-### Phase 3: Live Updates (Optional)
+### Phase 3: APNs Push Proxy (Paid Tier)
+- [ ] Push proxy server (`push.claudiator.com`)
+  - [ ] Subscription validation
+  - [ ] APNs JWT signing (ES256 + .p8 key)
+  - [ ] HTTP/2 dispatch to APNs
+  - [ ] UUID as `apns-collapse-id` for deduplication
+- [ ] Self-hosted server integration
+  - [ ] POST notification to proxy on event ingestion
+  - [ ] Configuration for proxy URL and subscription token
+
+### Phase 4: Live Updates (Optional)
 - [ ] Server WebSocket/SSE support
 - [ ] Android real-time updates
 - [ ] iOS real-time updates
 
-### Phase 4: Polish & Release
+### Phase 5: Polish & Release
 - [ ] Testing across platforms
 - [ ] Documentation updates
 - [ ] App store submissions (iOS/Android)

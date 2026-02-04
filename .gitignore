@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
