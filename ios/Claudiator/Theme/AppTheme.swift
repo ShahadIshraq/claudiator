@@ -91,6 +91,10 @@ struct AppTheme: Identifiable, Equatable {
         eventNotification.opacity(0.15)
     }
 
+    func groupContainerBackground() -> Color {
+        cardBackground.opacity(0.3)
+    }
+
     // MARK: - Adaptive Color Helper
 
     static func adaptive(light: UIColor, dark: UIColor) -> Color {

@@ -120,7 +120,7 @@ struct AllSessionsView: View {
                             }
                             .background(
                                 RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                                    .fill(themeManager.current.cardBackground.opacity(0.3))
+                                    .fill(themeManager.current.groupContainerBackground())
                             )
                         }
                     }
@@ -388,7 +388,7 @@ struct DeviceGroupCard: View {
         }
         .background(
             RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .fill(themeManager.current.cardBackground.opacity(0.3))
+                .fill(themeManager.current.groupContainerBackground())
         )
     }
 }
