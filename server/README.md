@@ -4,7 +4,7 @@ A Rust HTTP server that ingests Claude Code hook events, stores them in SQLite, 
 
 ## Overview
 
-`claudiator-server` is the backend component of Claudiator. It receives events from `claudiator-hook` clients running on developer machines, persists them in a SQLite database, and exposes read endpoints for mobile apps or other consumers. It also supports push notification token registration for mobile devices.
+`claudiator-server` is the backend component of Claudiator. It receives events from `claudiator-hook` clients running on developer machines, persists them in a SQLite database, and exposes read endpoints for mobile apps or other consumers. It also supports push notification token registration and APNs push notification delivery for mobile devices.
 
 ## Directory Layout
 
@@ -19,10 +19,11 @@ server/
 │   ├── router.rs           — Route definitions and AppState
 │   ├── auth.rs             — Bearer token authentication
 │   ├── error.rs            — Error types and responses
+│   ├── apns.rs             — APNs client (JWT auth, HTTP/2 push delivery)
 │   ├── db/
 │   │   ├── mod.rs
 │   │   ├── pool.rs         — r2d2 connection pool setup
-│   │   ├── migrations.rs   — Schema creation (devices, sessions, events, push_tokens)
+│   │   ├── migrations.rs   — Schema creation (devices, sessions, events, push_tokens, notifications)
 │   │   └── queries.rs      — SQL query functions
 │   ├── models/
 │   │   ├── mod.rs
@@ -34,9 +35,11 @@ server/
 │       ├── events.rs        — POST /api/v1/events
 │       ├── devices.rs       — GET /api/v1/devices, GET /api/v1/devices/:id/sessions
 │       ├── sessions.rs      — GET /api/v1/sessions/:id/events
-│       └── push.rs          — POST /api/v1/push/register
+│       ├── push.rs          — POST /api/v1/push/register
+│       └── notifications.rs — GET /api/v1/notifications
 └── scripts/
-    └── install.sh           — Linux/systemd installer
+    ├── install.sh           — Linux/systemd installer
+    └── seed.sh              — Test data seeder
 ```
 
 ## Build
@@ -57,6 +60,9 @@ The binary will be available at `target/release/claudiator-server`.
 - **chrono** — Timestamp handling
 - **serde/serde_json** — Serialization
 - **tracing** — Structured logging
+- **uuid** — Notification ID generation
+- **jsonwebtoken** — APNs JWT ES256 signing
+- **reqwest** — APNs HTTP/2 client
 
 ## Running
 
@@ -82,8 +88,15 @@ claudiator-server
 | `--port` / `CLAUDIATOR_PORT` | `3000` | HTTP listen port |
 | `--bind` / `CLAUDIATOR_BIND` | `0.0.0.0` | Bind address |
 | `--db-path` / `CLAUDIATOR_DB_PATH` | `claudiator.db` | Path to SQLite database file |
+| `--apns-key-path` / `CLAUDIATOR_APNS_KEY_PATH` | — | Path to APNs .p8 authentication key |
+| `--apns-key-id` / `CLAUDIATOR_APNS_KEY_ID` | — | APNs Key ID (10-character string) |
+| `--apns-team-id` / `CLAUDIATOR_APNS_TEAM_ID` | — | Apple Developer Team ID |
+| `--apns-bundle-id` / `CLAUDIATOR_APNS_BUNDLE_ID` | — | iOS app bundle identifier |
+| `--apns-sandbox` / `CLAUDIATOR_APNS_SANDBOX` | `false` | Use APNs sandbox endpoint |
 
 The database file and WAL files are created automatically on first run.
+
+**Note:** APNs configuration is optional. Without it, the server operates normally but does not send push notifications.
 
 ## API Endpoints
 
@@ -91,12 +104,13 @@ All endpoints require `Authorization: Bearer <api_key>`.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/v1/ping` | Health check, returns server version |
+| `GET` | `/api/v1/ping` | Health check, returns server version, data_version, and notification_version |
 | `POST` | `/api/v1/events` | Ingest a hook event from a device |
 | `GET` | `/api/v1/devices` | List all devices with active session counts |
 | `GET` | `/api/v1/devices/:device_id/sessions` | List sessions for a device |
 | `GET` | `/api/v1/sessions/:session_id/events` | List events for a session |
 | `POST` | `/api/v1/push/register` | Register a mobile push notification token |
+| `GET` | `/api/v1/notifications` | List notifications (with optional `since` and `limit` params) |
 
 See [API.md](API.md) for full request/response schemas and query parameters.
 
@@ -109,7 +123,8 @@ SQLite with WAL mode enabled. The schema is created automatically on startup.
 - **devices** — Device metadata and last-seen tracking
 - **sessions** — Session lifecycle (status, cwd, title, timestamps)
 - **events** — All hook events with full JSON storage
-- **push_tokens** — Mobile push notification tokens (APNs/FCM)
+- **push_tokens** — Mobile push notification tokens (APNs/FCM) with sandbox tracking
+- **notifications** — Push notification records (UUID primary key, 24h TTL auto-cleanup)
 
 ### Session Status Values
 
@@ -187,6 +202,8 @@ sudo rm -rf /opt/claudiator
 CLAUDIATOR_API_KEY=test-key cargo run
 ```
 
+**Note:** To test push notifications locally, also set the `CLAUDIATOR_APNS_*` environment variables.
+
 ### Testing with curl
 
 ```bash
@@ -211,6 +228,19 @@ curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/devices
 
 # List events for a session
 curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/sessions/sess-001/events
+
+# List notifications
+curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications
+
+# List notifications since a specific ID
+curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?since=<uuid>&limit=10"
+```
+
+### Seed Data
+
+```bash
+# Seed test data (3 devices, 5 sessions, 15 events)
+./scripts/seed.sh
 ```
 
 ## License

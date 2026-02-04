@@ -11,15 +11,16 @@ Claudiator is a lightweight system that captures Claude Code hook events and for
 ## Components
 
 - **claudiator-hook** — A Rust CLI binary that runs as a Claude Code hook. It reads hook events from stdin and POSTs them to the Claudiator server.
-- **Claudiator Server** — Stores events, manages devices, and serves the API.
-- **Claudiator iOS App** — A SwiftUI app for monitoring sessions, viewing event timelines, and receiving push notifications. See [ios/README.md](ios/README.md).
+- **Claudiator Server** — Stores events, manages devices, serves the REST API, and sends push notifications directly to APNs.
+- **Claudiator iOS App** — A SwiftUI app for monitoring sessions, viewing event timelines, and receiving real-time push notifications via APNs. See [ios/README.md](ios/README.md).
 
 ## How It Works
 
 1. Claude Code fires hook events (SessionStart, SessionEnd, Stop, Notification, PromptSubmit)
 2. `claudiator-hook` reads the JSON event from stdin, wraps it with device info, and POSTs it to the server
 3. The server stores the event and makes it available to the mobile app
-4. You see all active sessions across devices, know which need attention (waiting for prompts, notifications), and orchestrate parallel agent work
+4. The server sends push notifications to your iOS device when sessions need attention (stopped, waiting for permission, idle)
+5. You see all active sessions across devices in the iOS app and orchestrate parallel agent work
 
 ## Architecture
 

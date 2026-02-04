@@ -4,7 +4,7 @@ A SwiftUI iOS app for monitoring Claude Code sessions across devices in real-tim
 
 ## Overview
 
-Claudiator is a pure SwiftUI mobile client that connects to a Claudiator server to display live session monitoring across all your development machines. It provides a device-centric view of active sessions, event timelines, and customizable themes with automatic refresh and push notification support.
+Claudiator is a pure SwiftUI mobile client that connects to a Claudiator server to display live session monitoring across all your development machines. It provides a device-centric view of active sessions, event timelines, and customizable themes with automatic refresh and direct APNs push notification support.
 
 The app requires iOS 17.0+ and has zero external dependencies, using only iOS SDK frameworks.
 
@@ -32,7 +32,8 @@ ios/
 │   ├── Services/
 │   │   ├── APIClient.swift            — REST API client (URLSession, async/await)
 │   │   ├── KeychainService.swift      — Secure credential storage
-│   │   └── NotificationService.swift  — APNs push notification registration
+│   │   ├── NotificationService.swift  — Push notification permission and remote notification registration
+│   │   └── VersionMonitor.swift       — Notification version tracking for polling fallback
 │   ├── Theme/
 │   │   ├── AppTheme.swift             — Theme protocol and color definitions
 │   │   ├── AppTheme+Themes.swift      — Theme variants (Standard, Neon Ops, Solarized, Arctic)
@@ -99,15 +100,16 @@ The app follows MVVM architecture with modern SwiftUI patterns:
 
 ### Environment Injection
 
-Core services are injected into the SwiftUI environment at the root:
+Core services are injected into the SwiftUI environment at the root using `@Observable`:
 
 ```swift
 ClaudiatorApp
-  .environmentObject(ThemeManager.shared)
-  .environmentObject(APIClient.shared)
+  .environment(apiClient)
+  .environment(themeManager)
+  .environment(versionMonitor)
 ```
 
-ViewModels are instantiated per-view and consume these services.
+ViewModels are instantiated per-view and consume these services. The app also uses an `AppDelegate` for push token handling via `UIApplicationDelegateAdaptor`.
 
 ## Features
 
@@ -138,7 +140,18 @@ All views refresh every 10 seconds to display live session updates without manua
 
 ### Push Notifications
 
-APNs push token registration is handled via the `NotificationService`. Tokens are registered with the Claudiator server on successful authorization.
+The app supports APNs push notifications for real-time alerts when sessions need attention.
+
+**How it works:**
+1. On app launch, `NotificationService.requestPermissionAndRegister()` requests notification permission
+2. If granted, the app calls `UIApplication.shared.registerForRemoteNotifications()`
+3. The `AppDelegate` receives the device token via `didRegisterForRemoteNotificationsWithDeviceToken`
+4. The token is sent to the Claudiator server via `POST /api/v1/push/register` with a `sandbox` flag
+5. The server sends push notifications directly to APNs when notifiable events occur (Stop, permission_prompt, idle_prompt)
+
+**Sandbox detection:** The app automatically detects whether it's running in sandbox (DEBUG/TestFlight) or production (App Store) mode and registers accordingly. The server routes push notifications to the correct APNs endpoint per token.
+
+**Fallback:** The app also polls the server via `GET /api/v1/ping` every 10 seconds, checking `notification_version` for changes.
 
 Requires the `aps-environment` entitlement (included in `Claudiator.entitlements`).
 
@@ -177,7 +190,8 @@ Authorization: Bearer <api_key>
 - `GET /api/v1/devices` — List all devices
 - `GET /api/v1/devices/:device_id/sessions` — Sessions for a device
 - `GET /api/v1/sessions/:session_id/events` — Events for a session
-- `POST /api/v1/push/register` — Register APNs token
+- `GET /api/v1/notifications?since={uuid}&limit={n}` — Fetch notifications
+- `POST /api/v1/push/register` — Register APNs token (includes `sandbox` boolean)
 
 See the [server API documentation](../server/API.md) for full request/response schemas.
 

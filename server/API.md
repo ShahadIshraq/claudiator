@@ -42,9 +42,20 @@ Health check and connectivity test.
 ```json
 {
   "status": "ok",
-  "server_version": "string"
+  "server_version": "string",
+  "data_version": 0,
+  "notification_version": 0
 }
 ```
+
+**Field Details**
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | Health check status |
+| `server_version` | string | Server version identifier |
+| `data_version` | number | Incremented on each event ingestion. Clients can poll this to detect new data. |
+| `notification_version` | number | Incremented when a new notification is created. Clients can poll this to detect new notifications. |
 
 ---
 
@@ -200,6 +211,23 @@ Sessions are ordered by `last_event` descending. Returns an empty array if the d
 
 ---
 
+### GET /api/v1/sessions
+
+List all sessions across all devices.
+
+**Query Parameters**
+
+| Parameter | Type   | Default | Description                                           |
+|-----------|--------|---------|-------------------------------------------------------|
+| `status`  | string | —       | Filter by session status |
+| `limit`   | int    | 50      | Maximum number of sessions to return                  |
+
+**Response: 200 OK**
+
+Same response shape as `GET /api/v1/devices/:device_id/sessions`.
+
+---
+
 ### GET /api/v1/sessions/:session_id/events
 
 List events for a specific session.
@@ -240,7 +268,8 @@ Register a mobile device's push notification token.
 ```json
 {
   "platform": "string",
-  "push_token": "string"
+  "push_token": "string",
+  "sandbox": false
 }
 ```
 
@@ -248,6 +277,7 @@ Register a mobile device's push notification token.
 |--------------|--------|----------|--------------------------------------|
 | `platform`   | string | yes      | `"ios"` or `"android"`               |
 | `push_token` | string | yes      | APNs or FCM device token             |
+| `sandbox`    | boolean | no      | Whether the token uses the APNs sandbox environment (default: false) |
 
 If the token already exists, it is updated (upsert). Tokens are associated with the API key used for authentication.
 
@@ -258,6 +288,49 @@ If the token already exists, it is updated (upsert). Tokens are associated with 
   "status": "ok"
 }
 ```
+
+---
+
+### GET /api/v1/notifications
+
+List notification records. Notifications are auto-cleaned after 24 hours.
+
+**Query Parameters**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `since` | string (UUID) | — | Return only notifications created after this notification ID |
+| `limit` | int | 50 | Maximum number of notifications to return (max 200) |
+
+**Response: 200 OK**
+
+```json
+{
+  "notifications": [
+    {
+      "id": "string (UUID)",
+      "event_id": 0,
+      "session_id": "string",
+      "device_id": "string",
+      "title": "string",
+      "body": "string",
+      "notification_type": "string",
+      "payload_json": "string | null",
+      "created_at": "string (RFC 3339)"
+    }
+  ]
+}
+```
+
+Notifications are ordered by `created_at` ascending. Use the `since` parameter with the last received notification `id` to poll for new notifications incrementally.
+
+**Notification Types**
+
+| notification_type | Triggered by | Title |
+|---|---|---|
+| `stop` | `Stop` hook event | "Session Stopped" |
+| `permission_prompt` | `Notification` event with `notification_type: "permission_prompt"` | "Permission Required" |
+| `idle_prompt` | `Notification` event with `notification_type: "idle_prompt"` | "Session Idle" |
 
 ## Error Responses
 
