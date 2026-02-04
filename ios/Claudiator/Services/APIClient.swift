@@ -46,7 +46,10 @@ class APIClient {
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard !baseURL.isEmpty, let key = apiKey else { throw APIError.notConfigured }
-        guard let url = URL(string: baseURL)?.appendingPathComponent(path) else { throw APIError.invalidURL }
+
+        // Construct URL by appending path as string (handles query parameters correctly)
+        let urlString = baseURL.hasSuffix("/") ? baseURL + path.dropFirst() : baseURL + path
+        guard let url = URL(string: urlString) else { throw APIError.invalidURL }
 
         var req = URLRequest(url: url)
         req.httpMethod = method
