@@ -10,7 +10,7 @@
 |  Fires hook      | stdin   |  Reads JSON event   |  HTTP   |  Stores events   |
 |  events on:      |-------->|  Loads config       |-------->|  Manages devices |
 |  - SessionStart  |  JSON   |  Builds payload     |  POST   |  Serves API      |
-|  - SessionEnd    |         |  POSTs to server    |         |                  |
+|  - SessionEnd    |         |  POSTs to server    |         |  Sends APNs push |
 |  - Stop          |         |                     |         |                  |
 |  - Notification  |         |  Always exits 0     |         |                  |
 |  - PromptSubmit  |         |  Errors -> log file |         |                  |
@@ -23,27 +23,20 @@
                              ├── claudiator-hook            ├── claudiator.db (SQLite)
                              └── error.log                  └── .env
                                                                       |
-                                                                      v
-                                                            +--------------------+
-                                                            |   Mobile Apps      |
-                                                            |                    |
-                                                            |  iOS (SwiftUI) ✅  |
-                                                            |  Android (Planned) |
-                                                            |                    |
-                                                            |  Live session      |
-                                                            |  status, themes,   |
-                                                            |  hybrid notifs     |
-                                                            +--------------------+
                                                                       |
-                                                            (future)  |  paid tier
-                                                                      v
-                                                            +--------------------+
-                                                            |  APNs Push Proxy   |
-                                                            | push.claudiator.com|
-                                                            |                    |
-                                                            |  JWT signing +     |
-                                                            |  APNs HTTP/2       |
-                                                            +--------------------+
+                                                   +------------------+------------------+
+                                                   |                                     |
+                                                   v                                     v
+                                         +--------------------+             +-------------------------+
+                                         |   Mobile Apps      |             |  APNs (Apple)           |
+                                         |                    |    push     |  api.push.apple.com     |
+                                         |  iOS (SwiftUI) ✅  |<------------|  api.sandbox.push.apple |
+                                         |  Android (Planned) |             |                         |
+                                         |                    |    poll     |  HTTP/2 + ES256 JWT     |
+                                         |  Live session      |  (fallback) |                         |
+                                         |  status, themes,   |             +-------------------------+
+                                         |  hybrid notifs     |
+                                         +--------------------+
 ```
 
 ## Data Flow
@@ -53,10 +46,10 @@
 3. **claudiator-hook** wraps the event in a payload with device info + timestamp
 4. **claudiator-hook** POSTs to the server at `POST /api/v1/events` with `Authorization: Bearer {api_key}`
 5. **claudiator-server** validates the API key, stores the event in SQLite (devices, sessions, events tables)
-6. **claudiator-server** generates a notification record (UUID) for Stop/Notification events, increments `notification_version`
-7. **Mobile apps** poll `/api/v1/ping` every 10s, detect `notification_version` change, fetch new notifications
-8. **Mobile apps** fire local `UNNotificationRequest` per notification (UUID as identifier for dedup)
-9. **Future**: Self-hosted servers POST notifications to APNs push proxy (paid), which dispatches via APNs using same UUID as `apns-collapse-id`
+6. **claudiator-server** generates a notification record (UUID) for Stop/permission_prompt/idle_prompt events, increments `notification_version`
+7. **claudiator-server** (if APNs is configured) dispatches push notification directly to all registered device tokens via HTTP/2 with ES256 JWT authentication to `api.push.apple.com` or `api.sandbox.push.apple.com`
+8. **claudiator-server** on APNs 410 Gone response, automatically removes the stale token from the `push_tokens` table
+9. **Mobile apps** also poll `/api/v1/ping` every 10s as fallback, detect `notification_version` change, fetch new notifications via `GET /api/v1/notifications`
 
 ## Payload Shape
 
@@ -88,8 +81,8 @@ Hook stdin (from Claude Code)        Outbound payload (to Server)
 - **devices** — device_id (PK), device_name, platform, first_seen, last_seen
 - **sessions** — session_id (PK), device_id (FK), started_at, last_event, status, cwd, title
 - **events** — id (PK), device_id (FK), session_id (FK), hook_event_name, timestamp, received_at, tool_name, notification_type, event_json
-- **push_tokens** — id (PK), platform, push_token (UNIQUE), created_at, updated_at
-- **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, acknowledged, created_at
+- **push_tokens** — id (PK), platform, push_token (UNIQUE), sandbox, created_at, updated_at
+- **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, created_at (24h TTL auto-cleanup)
 
 ### Server Configuration
 
@@ -98,6 +91,11 @@ Environment variables (stored in `/opt/claudiator/.env`):
 - `CLAUDIATOR_PORT` — HTTP listen port (default: 3000)
 - `CLAUDIATOR_BIND` — Bind address (default: 0.0.0.0)
 - `CLAUDIATOR_DB_PATH` — Path to SQLite database (default: /opt/claudiator/claudiator.db)
+- `CLAUDIATOR_APNS_KEY_PATH` — Path to .p8 key file (optional)
+- `CLAUDIATOR_APNS_KEY_ID` — APNs Key ID (optional)
+- `CLAUDIATOR_APNS_TEAM_ID` — Apple Team ID (optional)
+- `CLAUDIATOR_APNS_BUNDLE_ID` — App bundle ID (optional)
+- `CLAUDIATOR_APNS_SANDBOX` — Use sandbox APNs endpoint (default: false)
 
 ### Server Endpoints
 
@@ -107,8 +105,7 @@ Environment variables (stored in `/opt/claudiator/.env`):
 - `GET /api/v1/devices/:device_id/sessions` — List sessions for a device
 - `GET /api/v1/sessions/:session_id/events` — List events for a session
 - `GET /api/v1/notifications?since=<uuid>&limit=N` — List notifications after a given UUID
-- `POST /api/v1/notifications/ack` — Acknowledge notifications by ID
-- `POST /api/v1/push/register` — Register mobile push notification token (for future APNs proxy)
+- `POST /api/v1/push/register` — Register mobile push notification token with sandbox flag for APNs routing
 
 ### Deployment
 
@@ -132,12 +129,13 @@ The server is deployed as a systemd service on Linux:
 - **Connection pooling** — r2d2 manages SQLite connections for multi-threaded Axum
 
 ### Notification Constraints
-- **UUID deduplication** — Same notification UUID used across polling and future APNs paths; iOS deduplicates by `UNNotificationRequest.identifier`
-- **Polling-first** — Free tier relies on 10s ping polling; no APNs keys needed on self-hosted servers
+- **UUID deduplication** — Same notification UUID used across polling and APNs push paths; iOS deduplicates by `UNNotificationRequest.identifier`
+- **Polling fallback** — APNs direct push is the primary path; 10s ping polling serves as fallback when push fails or for devices without tokens
 - **Non-blocking generation** — Notification records created inside the event transaction; `notification_version` incremented after commit
-- **Future APNs proxy** — Paid service at `push.claudiator.com`; self-hosted servers POST notification payloads, proxy dispatches via APNs with same UUID as `apns-collapse-id`
+- **Direct APNs push** — Server sends push notifications directly via HTTP/2 with ES256 JWT authentication
+- **Per-token sandbox routing** — Each push token tracks whether it's sandbox or production for correct APNs endpoint routing
+- **24h TTL** — Expired notifications are auto-cleaned on each new notification insert
 
 ### Future Work
 - **Android app** — Native Android (Kotlin) client to consume the server API
-- **APNs push proxy** — Paid service for real-time push notification delivery
 - **Web dashboard** — optional browser-based UI for multi-device monitoring

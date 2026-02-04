@@ -42,20 +42,26 @@ Automated release pipeline:
 Production-ready Rust HTTP server:
 
 - Built with Axum framework
-- Endpoints: `GET /api/v1/ping`, `POST /api/v1/events`, `GET /api/v1/devices`, `GET /api/v1/devices/:id/sessions`, `GET /api/v1/sessions/:id/events`, `POST /api/v1/push/register`
+- Endpoints: `GET /api/v1/ping`, `POST /api/v1/events`, `GET /api/v1/devices`, `GET /api/v1/devices/:id/sessions`, `GET /api/v1/sessions/:id/events`, `POST /api/v1/push/register`, `GET /api/v1/notifications`
 - Bearer token authentication on all endpoints
 - SQLite database with r2d2 connection pooling (WAL mode enabled)
 - Database schema:
   - `devices` table: device metadata and last-seen tracking
   - `sessions` table: session lifecycle management
   - `events` table: all hook events with proper indexes
-  - `push_tokens` table: mobile push notification tokens
+  - `push_tokens` table: mobile push notification tokens, sandbox
+  - `notifications` table: UUID primary key, 24h TTL auto-cleanup
   - Foreign keys and indexes for query performance
 - Configuration via CLI args or environment variables:
   - `CLAUDIATOR_API_KEY`: Server authentication token
   - `CLAUDIATOR_PORT`: HTTP port (default: 3000)
   - `CLAUDIATOR_BIND`: Bind address (default: 0.0.0.0)
   - `CLAUDIATOR_DB_PATH`: SQLite database path
+  - `CLAUDIATOR_APNS_KEY_PATH`: Path to APNs .p8 key file
+  - `CLAUDIATOR_APNS_KEY_ID`: APNs key identifier
+  - `CLAUDIATOR_APNS_TEAM_ID`: Apple Developer Team ID
+  - `CLAUDIATOR_APNS_BUNDLE_ID`: iOS app bundle identifier
+  - `CLAUDIATOR_APNS_SANDBOX`: Set to "true" for sandbox APNs environment
 - Uses `rusqlite` with bundled SQLite (no system dependency required)
 
 #### Server Release CI/CD (`.github/workflows/server-release.yml`)
@@ -99,7 +105,7 @@ Production-ready native iOS application:
 - **Appearance**: Dark mode, light mode, system automatic
 - **Security**: API key stored in Keychain, server URL in UserDefaults
 - **Platform Icons**: SVG-based device icons (Apple logo, Linux Tux, Windows logo)
-- **Notifications**: Hybrid system — polling-based local notifications (free) + future APNs proxy (paid)
+- **Notifications**: Direct APNs push notifications from server, AppDelegate-based token registration with sandbox detection, polling fallback via `notification_version` in ping
   - Server generates notification records with UUIDs on notifiable events
   - App detects changes via `notification_version` in ping response
   - Local `UNNotificationRequest` fired per notification, UUID used as dedup key
@@ -138,14 +144,18 @@ Additional server functionality for mobile apps:
   - Truncated to 200 characters for display
 - **Push Token Registration** (✅ Complete):
   - `POST /api/v1/push/register` endpoint for mobile push tokens
-  - `push_tokens` table in database
+  - `push_tokens` table in database with `sandbox` column
   - Upsert semantics for token re-registration
-- **Notification System** (Planned):
-  - `notifications` table with UUID primary key (dedup key across all delivery paths)
-  - Notification generation on `Stop` and `Notification` events during event ingestion
-  - `notification_version` counter in ping response for efficient polling
-  - `GET /api/v1/notifications` and `POST /api/v1/notifications/ack` endpoints
-  - Future: APNs push proxy as paid service (self-hosted servers POST to proxy, proxy dispatches via APNs)
+- **Notification System** (✅ Complete):
+  - [x] `notifications` table with UUID primary key (24h TTL, auto-cleaned)
+  - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
+  - [x] `notification_version` atomic counter in AppState
+  - [x] `notification_version` in ping response
+  - [x] `GET /api/v1/notifications?since=<uuid>&limit=N` endpoint
+  - [x] No ack endpoint — read-only notifications, auto-cleaned after 24h
+  - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
+  - [x] Device token registration with sandbox flag
+  - [x] Install script APNs configuration prompts
 - **Live Updates** (optional):
   - WebSocket or Server-Sent Events (SSE) for real-time updates
   - Alternative to polling for session status changes
@@ -185,7 +195,7 @@ Additional server functionality for mobile apps:
 │ • Bearer auth   │
 │ • Event storage │
 └────────┬────────┘
-         │ Push notifications
+         │ APNs direct push
          ↓
 ┌─────────────────┐     ┌─────────────────┐
 │  Android App    │     │    iOS App      │
@@ -242,16 +252,22 @@ Additional server functionality for mobile apps:
   - [x] Platform-specific device icons
   - [x] Pull-to-refresh and auto-refresh
 
-### Phase 2: Hybrid Notifications
-- [ ] Server notification infrastructure
-  - [ ] `notifications` table with UUID primary key
-  - [ ] Notification generation on event ingestion (Stop, Notification events)
-  - [ ] `notification_version` atomic counter in AppState
-  - [ ] `notification_version` in ping response
-  - [ ] `GET /api/v1/notifications?since=<uuid>` endpoint
-  - [ ] `POST /api/v1/notifications/ack` endpoint
-  - [x] Device token registration endpoint (exists, for future APNs proxy)
+### Phase 2: Push Notifications
+- [x] Server notification infrastructure
+  - [x] `notifications` table with UUID primary key (24h TTL, auto-cleaned)
+  - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
+  - [x] `notification_version` atomic counter in AppState
+  - [x] `notification_version` in ping response
+  - [x] `GET /api/v1/notifications?since=<uuid>&limit=N` endpoint
+  - [x] No ack endpoint — read-only notifications, auto-cleaned after 24h
+  - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
+  - [x] Device token registration with sandbox flag
+  - [x] Install script APNs configuration prompts
 - [ ] iOS notification infrastructure
+  - [x] `NotificationService` with permission request and token registration
+  - [x] `AppDelegate` handles `didRegisterForRemoteNotificationsWithDeviceToken`
+  - [x] Auto-detects sandbox vs production environment
+  - [x] Registers token with server including sandbox flag
   - [ ] `NotificationManager` service (fetch, dedup, local notification firing)
   - [ ] `AppNotification` model
   - [ ] `VersionMonitor` extended to track `notification_version`
@@ -263,22 +279,18 @@ Additional server functionality for mobile apps:
   - [ ] Clear highlight on session navigation
   - [ ] Foreground notification banners via `UNUserNotificationCenterDelegate`
 
-### Phase 3: APNs Push Proxy (Paid Tier)
-- [ ] Push proxy server (`push.claudiator.com`)
-  - [ ] Subscription validation
-  - [ ] APNs JWT signing (ES256 + .p8 key)
-  - [ ] HTTP/2 dispatch to APNs
-  - [ ] UUID as `apns-collapse-id` for deduplication
-- [ ] Self-hosted server integration
-  - [ ] POST notification to proxy on event ingestion
-  - [ ] Configuration for proxy URL and subscription token
-
-### Phase 4: Live Updates (Optional)
+### Phase 3: Live Updates (Optional)
 - [ ] Server WebSocket/SSE support
 - [ ] Android real-time updates
 - [ ] iOS real-time updates
 
-### Phase 5: Polish & Release
+### Phase 4: Distribution & Polish
+- [ ] TestFlight beta distribution setup
+- [ ] App Store preparation and screenshots
+- [ ] User onboarding improvements
+- [ ] Documentation updates
+
+### Phase 5: Android Development
 - [ ] Testing across platforms
 - [ ] Documentation updates
 - [ ] App store submissions (iOS/Android)
