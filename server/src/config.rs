@@ -11,4 +11,14 @@ pub struct ServerConfig {
     pub api_key: String,
     #[arg(long, default_value = "0.0.0.0", env = "CLAUDIATOR_BIND")]
     pub bind: String,
+    #[arg(long, env = "CLAUDIATOR_APNS_KEY_PATH")]
+    pub apns_key_path: Option<String>,
+    #[arg(long, env = "CLAUDIATOR_APNS_KEY_ID")]
+    pub apns_key_id: Option<String>,
+    #[arg(long, env = "CLAUDIATOR_APNS_TEAM_ID")]
+    pub apns_team_id: Option<String>,
+    #[arg(long, env = "CLAUDIATOR_APNS_BUNDLE_ID")]
+    pub apns_bundle_id: Option<String>,
+    #[arg(long, default_value = "false", env = "CLAUDIATOR_APNS_SANDBOX")]
+    pub apns_sandbox: bool,
 }
