@@ -9,3 +9,4 @@
 # Environment files
 .env
 .env.local
+ios/.env

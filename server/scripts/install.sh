@@ -158,8 +158,8 @@ EOF
 
         read -p "APNs Key ID (10-character string): " -r APNS_KEY_ID
         read -p "APNs Team ID (10-character string): " -r APNS_TEAM_ID
-        read -p "APNs Bundle ID [com.example.claudiator]: " -r APNS_BUNDLE_ID
-        APNS_BUNDLE_ID=${APNS_BUNDLE_ID:-com.example.claudiator}
+        read -p "APNs Bundle ID [com.claudiator.app]: " -r APNS_BUNDLE_ID
+        APNS_BUNDLE_ID=${APNS_BUNDLE_ID:-com.claudiator.app}
 
         read -p "Use APNs sandbox environment? [y/N] " -r
         echo
