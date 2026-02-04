@@ -83,6 +83,24 @@ func statusDisplayLabel(_ status: String) -> String {
     }
 }
 
+/// Calculates the priority status for a collection of sessions
+/// Priority order: waiting_for_permission > waiting_for_input > active > idle > ended
+func priorityStatus(for sessions: [Session]) -> String {
+    if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
+        return "waiting_for_permission"
+    }
+    if sessions.contains(where: { $0.status == "waiting_for_input" }) {
+        return "waiting_for_input"
+    }
+    if sessions.contains(where: { $0.status == "active" }) {
+        return "active"
+    }
+    if sessions.contains(where: { $0.status == "idle" }) {
+        return "idle"
+    }
+    return "ended"
+}
+
 // MARK: - Themed Card ViewModifier
 
 struct ThemedCardModifier: ViewModifier {
