@@ -4,7 +4,9 @@ struct DeviceListView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
     @Environment(VersionMonitor.self) private var versionMonitor
+    @Environment(NotificationManager.self) private var notificationManager
     @State private var viewModel = DeviceListViewModel()
+    @State private var showNotifications = false
 
     var body: some View {
         Group {
@@ -37,6 +39,24 @@ struct DeviceListView: View {
         .navigationTitle("Devices")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showNotifications = true
+                } label: {
+                    Image(systemName: "bell")
+                        .overlay(alignment: .topTrailing) {
+                            if notificationManager.unreadCount > 0 {
+                                Text("\(notificationManager.unreadCount)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(3)
+                                    .background(themeManager.current.uiError)
+                                    .clipShape(Circle())
+                                    .offset(x: 6, y: -6)
+                            }
+                        }
+                }
+            }
             ToolbarItem(placement: .principal) {
                 Text("")
             }
@@ -53,6 +73,9 @@ struct DeviceListView: View {
         }
         .navigationDestination(for: Device.self) { device in
             DeviceDetailView(device: device)
+        }
+        .sheet(isPresented: $showNotifications) {
+            NotificationListView()
         }
         .task {
             await viewModel.refresh(apiClient: apiClient)
