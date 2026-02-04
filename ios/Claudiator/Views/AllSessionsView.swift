@@ -23,6 +23,25 @@ struct AllSessionsView: View {
         viewModel.groupedSessions[deviceId]?.first?.platform ?? "unknown"
     }
 
+    private func priorityStatus(for deviceId: String) -> String {
+        guard let sessions = viewModel.groupedSessions[deviceId] else { return "ended" }
+
+        // Priority order: waiting_for_permission > waiting_for_input > active > idle > ended
+        if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
+            return "waiting_for_permission"
+        }
+        if sessions.contains(where: { $0.status == "waiting_for_input" }) {
+            return "waiting_for_input"
+        }
+        if sessions.contains(where: { $0.status == "active" }) {
+            return "active"
+        }
+        if sessions.contains(where: { $0.status == "idle" }) {
+            return "idle"
+        }
+        return "ended"
+    }
+
     var body: some View {
         Group {
             if viewModel.isLoading {
@@ -65,6 +84,7 @@ struct AllSessionsView: View {
                                 platform: platform(for: deviceId),
                                 sessionCount: viewModel.groupedSessions[deviceId]?.count ?? 0,
                                 isExpanded: viewModel.expandedDevices.contains(deviceId),
+                                status: priorityStatus(for: deviceId),
                                 onTap: {
                                     withAnimation {
                                         if viewModel.expandedDevices.contains(deviceId) {
@@ -210,11 +230,16 @@ struct DeviceGroupHeader: View {
     let platform: String
     let sessionCount: Int
     let isExpanded: Bool
+    let status: String
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
+                Circle()
+                    .fill(themeManager.current.statusColor(for: status))
+                    .frame(width: 10, height: 10)
+
                 PlatformIcon(platform: platform, size: 20)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -246,6 +271,22 @@ struct DeviceGroupCard: View {
     let platform: String
     let sessions: [Session]
 
+    private var priorityStatus: String {
+        if sessions.contains(where: { $0.status == "waiting_for_permission" }) {
+            return "waiting_for_permission"
+        }
+        if sessions.contains(where: { $0.status == "waiting_for_input" }) {
+            return "waiting_for_input"
+        }
+        if sessions.contains(where: { $0.status == "active" }) {
+            return "active"
+        }
+        if sessions.contains(where: { $0.status == "idle" }) {
+            return "idle"
+        }
+        return "ended"
+    }
+
     var body: some View {
         NavigationLink(value: Device(
             deviceId: deviceId,
@@ -257,6 +298,10 @@ struct DeviceGroupCard: View {
         )) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
+                    Circle()
+                        .fill(themeManager.current.statusColor(for: priorityStatus))
+                        .frame(width: 10, height: 10)
+
                     PlatformIcon(platform: platform, size: 24)
 
                     VStack(alignment: .leading, spacing: 2) {
