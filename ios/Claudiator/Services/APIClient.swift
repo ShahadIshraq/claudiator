@@ -57,6 +57,8 @@ class APIClient {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await URLSession.shared.data(for: req)
+        } catch let urlError as URLError {
+            throw urlError
         } catch {
             throw APIError.networkError(error)
         }
@@ -80,6 +82,17 @@ class APIClient {
 
     func fetchSessions(deviceId: String, status: String? = nil, limit: Int? = nil) async throws -> [Session] {
         var path = "/api/v1/devices/\(deviceId)/sessions"
+        var params: [String] = []
+        if let status { params.append("status=\(status)") }
+        if let limit { params.append("limit=\(limit)") }
+        if !params.isEmpty { path += "?" + params.joined(separator: "&") }
+        let data = try await request(path)
+        struct Wrapper: Decodable { let sessions: [Session] }
+        return try decoder.decode(Wrapper.self, from: data).sessions
+    }
+
+    func fetchAllSessions(status: String? = nil, limit: Int? = nil) async throws -> [Session] {
+        var path = "/api/v1/sessions"
         var params: [String] = []
         if let status { params.append("status=\(status)") }
         if let limit { params.append("limit=\(limit)") }

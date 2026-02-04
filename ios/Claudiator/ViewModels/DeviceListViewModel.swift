@@ -21,24 +21,25 @@ class DeviceListViewModel {
     func refresh(apiClient: APIClient) async {
         if devices.isEmpty { isLoading = true }
         do {
-            let fetchedDevices = try await apiClient.fetchDevices()
+            async let fetchedDevices = apiClient.fetchDevices()
+            async let fetchedSessions = apiClient.fetchAllSessions()
+            let (devs, sessions) = try await (fetchedDevices, fetchedSessions)
+
             var counts: [String: SessionStatusCounts] = [:]
-            for device in fetchedDevices {
-                let sessions = try await apiClient.fetchSessions(deviceId: device.deviceId)
-                var c = SessionStatusCounts()
-                for s in sessions {
-                    switch s.status {
-                    case "active": c.active += 1
-                    case "waiting_for_input": c.waitingInput += 1
-                    case "waiting_for_permission": c.waitingPermission += 1
-                    case "idle": c.idle += 1
-                    case "ended": c.ended += 1
-                    default: break
-                    }
+            for s in sessions {
+                var c = counts[s.deviceId, default: SessionStatusCounts()]
+                switch s.status {
+                case "active": c.active += 1
+                case "waiting_for_input": c.waitingInput += 1
+                case "waiting_for_permission": c.waitingPermission += 1
+                case "idle": c.idle += 1
+                case "ended": c.ended += 1
+                default: break
                 }
-                counts[device.deviceId] = c
+                counts[s.deviceId] = c
             }
-            devices = fetchedDevices
+
+            devices = devs
             statusCounts = counts
             errorMessage = nil
         } catch {

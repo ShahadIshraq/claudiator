@@ -16,21 +16,28 @@ class AllSessionsViewModel {
     func refresh(apiClient: APIClient) async {
         if sessions.isEmpty { isLoading = true }
         do {
-            let devices = try await apiClient.fetchDevices()
-            var allSessions: [(session: Session, deviceName: String, platform: String)] = []
-            for device in devices {
-                let deviceSessions = try await apiClient.fetchSessions(deviceId: device.deviceId)
-                for s in deviceSessions {
-                    allSessions.append((session: s, deviceName: device.deviceName, platform: device.platform))
-                }
+            async let fetchedDevices = apiClient.fetchDevices()
+            async let fetchedSessions = apiClient.fetchAllSessions()
+            let (devices, allSessions) = try await (fetchedDevices, fetchedSessions)
+
+            let deviceMap = Dictionary(uniqueKeysWithValues: devices.map { ($0.deviceId, $0) })
+
+            var combined: [(session: Session, deviceName: String, platform: String)] = []
+            for s in allSessions {
+                let device = deviceMap[s.deviceId]
+                combined.append((
+                    session: s,
+                    deviceName: device?.deviceName ?? "Unknown",
+                    platform: device?.platform ?? "unknown"
+                ))
             }
-            // Sort by lastEvent descending
-            allSessions.sort { $0.session.lastEvent > $1.session.lastEvent }
+
+            combined.sort { $0.session.lastEvent > $1.session.lastEvent }
 
             if filter == .active {
-                sessions = allSessions.filter { $0.session.status != "ended" }
+                sessions = combined.filter { $0.session.status != "ended" }
             } else {
-                sessions = allSessions
+                sessions = combined
             }
             errorMessage = nil
         } catch {
