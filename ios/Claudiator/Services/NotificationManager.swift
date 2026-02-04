@@ -101,7 +101,8 @@ class NotificationManager {
 
     private func fireLocalNotification(_ notif: AppNotification) async {
         let content = UNMutableNotificationContent()
-        content.title = notif.title
+        // TODO: Remove [P] marker after testing polling vs push notifications
+        content.title = notif.title + " [P]"
         content.body = notif.body
         content.sound = .default
         content.userInfo = [
