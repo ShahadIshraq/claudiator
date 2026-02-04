@@ -297,14 +297,14 @@ struct DeviceGroupCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header - tappable to expand/collapse
+            // Header - plain style like narrow layout
             Button(action: onToggle) {
                 HStack(spacing: 12) {
                     Circle()
                         .fill(themeManager.current.statusColor(for: priorityStatus))
                         .frame(width: 10, height: 10)
 
-                    PlatformIcon(platform: platform, size: 24)
+                    PlatformIcon(platform: platform, size: 20)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(deviceName)
@@ -321,16 +321,13 @@ struct DeviceGroupCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .padding(12)
+                .padding(.vertical, 8)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
-            // Sessions - only shown when expanded
+            // Sessions - individual cards when expanded
             if isExpanded {
-                Divider()
-                    .padding(.horizontal, 12)
-
                 VStack(spacing: 8) {
                     ForEach(sessions) { session in
                         NavigationLink(value: session) {
@@ -339,30 +336,24 @@ struct DeviceGroupCard: View {
                                 deviceName: deviceName,
                                 platform: platform
                             )
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
                         }
                         .buttonStyle(.plain)
-
-                        if session.id != sessions.last?.id {
-                            Divider()
-                                .padding(.horizontal, 12)
-                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                .fill(themeManager.current.cardBackground)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
+                                        .strokeBorder(
+                                            themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
+                                            lineWidth: AppTheme.cardBorderWidth
+                                        )
+                                )
+                        )
                     }
                 }
-                .padding(.bottom, 8)
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                .fill(themeManager.current.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.cardCornerRadius)
-                        .strokeBorder(
-                            themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity),
-                            lineWidth: AppTheme.cardBorderWidth
-                        )
-                )
-        )
     }
 }
