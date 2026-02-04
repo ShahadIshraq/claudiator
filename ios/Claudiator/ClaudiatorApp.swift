@@ -1,7 +1,48 @@
 import SwiftUI
 
+class AppDelegate: NSObject, UIApplicationDelegate {
+    var apiClient: APIClient?
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        print("[Push] Device token: \(token)")
+
+        guard let apiClient else { return }
+
+        let sandbox = Self.isSandboxEnvironment()
+
+        Task {
+            do {
+                try await apiClient.registerPushToken(platform: "ios", token: token, sandbox: sandbox)
+                print("[Push] Token registered (sandbox: \(sandbox))")
+            } catch {
+                print("[Push] Failed to register token: \(error)")
+            }
+        }
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[Push] Registration failed: \(error.localizedDescription)")
+    }
+
+    private static func isSandboxEnvironment() -> Bool {
+        #if DEBUG
+        return true
+        #else
+        // Check embedded provisioning profile for aps-environment
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let content = String(data: data, encoding: .ascii) else {
+            return false
+        }
+        return !content.contains("<string>production</string>")
+        #endif
+    }
+}
+
 @main
 struct ClaudiatorApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var apiClient = APIClient()
     @State private var themeManager = ThemeManager()
     @State private var versionMonitor = VersionMonitor()
@@ -13,6 +54,9 @@ struct ClaudiatorApp: App {
                 .environment(themeManager)
                 .environment(versionMonitor)
                 .preferredColorScheme(themeManager.appearance.colorScheme)
+                .onAppear {
+                    appDelegate.apiClient = apiClient
+                }
         }
     }
 }
@@ -139,6 +183,9 @@ struct MainTabView: View {
         .ignoresSafeArea(.keyboard)
         .onAppear {
             versionMonitor.start(apiClient: apiClient)
+            Task {
+                _ = await NotificationService.requestPermissionAndRegister()
+            }
         }
     }
 }

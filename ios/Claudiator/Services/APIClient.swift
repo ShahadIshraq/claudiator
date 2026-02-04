@@ -116,8 +116,19 @@ class APIClient {
         return try Self.decoder.decode(Wrapper.self, from: data).events
     }
 
-    func registerPushToken(platform: String, token: String) async throws {
-        let body = try JSONEncoder().encode(["platform": platform, "push_token": token])
+    func registerPushToken(platform: String, token: String, sandbox: Bool) async throws {
+        struct PushRegisterBody: Encodable {
+            let platform: String
+            let pushToken: String
+            let sandbox: Bool
+
+            enum CodingKeys: String, CodingKey {
+                case platform
+                case pushToken = "push_token"
+                case sandbox
+            }
+        }
+        let body = try JSONEncoder().encode(PushRegisterBody(platform: platform, pushToken: token, sandbox: sandbox))
         _ = try await request("/api/v1/push/register", method: "POST", body: body)
     }
 

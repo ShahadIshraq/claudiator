@@ -1,11 +1,18 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 enum NotificationService {
-    static func requestPermission() async -> Bool {
+    static func requestPermissionAndRegister() async -> Bool {
         do {
-            return try await UNUserNotificationCenter.current()
+            let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .sound, .badge])
+            if granted {
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+            return granted
         } catch {
             return false
         }
