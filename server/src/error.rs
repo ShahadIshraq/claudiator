@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 
 #[derive(Debug)]
-pub(crate) enum AppError {
+pub enum AppError {
     Unauthorized,
     BadRequest(String),
     Internal(String),

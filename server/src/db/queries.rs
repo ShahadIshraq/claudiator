@@ -5,7 +5,7 @@ use crate::models::response::{
     DeviceResponse, EventResponse, NotificationResponse, SessionResponse,
 };
 
-pub(crate) fn upsert_device(
+pub fn upsert_device(
     conn: &Connection,
     device_id: &str,
     device_name: &str,
@@ -24,7 +24,7 @@ pub(crate) fn upsert_device(
     Ok(())
 }
 
-pub(crate) fn upsert_session(
+pub fn upsert_session(
     conn: &Connection,
     session_id: &str,
     device_id: &str,
@@ -60,7 +60,7 @@ pub(crate) fn upsert_session(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn insert_event(
+pub fn insert_event(
     conn: &Connection,
     device_id: &str,
     session_id: &str,
@@ -89,7 +89,7 @@ pub(crate) fn insert_event(
     Ok(conn.last_insert_rowid())
 }
 
-pub(crate) fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> {
+pub fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> {
     let mut stmt = conn
         .prepare(
             "SELECT d.device_id, d.device_name, d.platform, d.first_seen, d.last_seen,
@@ -117,7 +117,7 @@ pub(crate) fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, App
     Ok(devices)
 }
 
-pub(crate) fn list_sessions(
+pub fn list_sessions(
     conn: &Connection,
     device_id: &str,
     status: Option<&str>,
@@ -177,7 +177,7 @@ pub(crate) fn list_sessions(
     Ok(sessions)
 }
 
-pub(crate) fn list_all_sessions(
+pub fn list_all_sessions(
     conn: &Connection,
     status: Option<&str>,
     limit: i64,
@@ -231,7 +231,7 @@ pub(crate) fn list_all_sessions(
     Ok(sessions)
 }
 
-pub(crate) fn list_events(
+pub fn list_events(
     conn: &Connection,
     session_id: &str,
     limit: i64,
@@ -265,7 +265,7 @@ pub(crate) fn list_events(
     Ok(events)
 }
 
-pub(crate) fn upsert_push_token(
+pub fn upsert_push_token(
     conn: &Connection,
     platform: &str,
     push_token: &str,
@@ -286,7 +286,7 @@ pub(crate) fn upsert_push_token(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn insert_notification(
+pub fn insert_notification(
     conn: &Connection,
     id: &str,
     event_id: i64,
@@ -307,7 +307,7 @@ pub(crate) fn insert_notification(
     Ok(())
 }
 
-pub(crate) fn list_notifications(
+pub fn list_notifications(
     conn: &Connection,
     since_id: Option<&str>,
     limit: i64,
@@ -357,7 +357,7 @@ pub(crate) fn list_notifications(
     Ok(notifications)
 }
 
-pub(crate) fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError> {
+pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError> {
     let cutoff = chrono::Utc::now()
         .checked_sub_signed(chrono::Duration::hours(24))
         .ok_or_else(|| AppError::Internal("Time calculation overflow".to_string()))?
@@ -375,13 +375,13 @@ pub(crate) fn delete_expired_notifications(conn: &Connection) -> Result<usize, A
     Ok(count)
 }
 
-pub(crate) struct PushTokenRow {
+pub struct PushTokenRow {
     pub push_token: String,
     pub platform: String,
     pub sandbox: bool,
 }
 
-pub(crate) fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError> {
+pub fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError> {
     let mut stmt = conn
         .prepare("SELECT push_token, platform, sandbox FROM push_tokens")
         .map_err(|e| AppError::Internal(format!("Failed to prepare push tokens query: {e}")))?;
@@ -402,7 +402,7 @@ pub(crate) fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, A
     Ok(tokens)
 }
 
-pub(crate) fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppError> {
+pub fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppError> {
     conn.execute(
         "DELETE FROM push_tokens WHERE push_token = ?1",
         rusqlite::params![push_token],

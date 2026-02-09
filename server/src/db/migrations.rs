@@ -1,6 +1,6 @@
 use crate::db::pool::DbPool;
 
-pub(crate) fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
     let conn = pool.get()?;
 
     conn.execute_batch(

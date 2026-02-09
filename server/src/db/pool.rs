@@ -2,7 +2,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 
-pub(crate) type DbPool = Pool<SqliteConnectionManager>;
+pub type DbPool = Pool<SqliteConnectionManager>;
 
 fn setup_connection(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
@@ -13,7 +13,7 @@ fn setup_connection(conn: &Connection) -> rusqlite::Result<()> {
     )
 }
 
-pub(crate) fn create_pool(db_path: &str) -> Result<DbPool, Box<dyn std::error::Error>> {
+pub fn create_pool(db_path: &str) -> Result<DbPool, Box<dyn std::error::Error>> {
     let manager = SqliteConnectionManager::file(db_path);
     let pool = Pool::builder()
         .max_size(4)
