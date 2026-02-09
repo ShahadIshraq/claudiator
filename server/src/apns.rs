@@ -15,7 +15,7 @@ struct CachedToken {
 }
 
 #[derive(Debug)]
-pub(crate) enum ApnsPushResult {
+pub enum ApnsPushResult {
     Success,
     Gone,
     Retry,
@@ -34,6 +34,7 @@ pub struct ApnsClient {
 }
 
 impl ApnsClient {
+    #[allow(dead_code)]
     pub(crate) fn new(
         key_path: &str,
         key_id: String,

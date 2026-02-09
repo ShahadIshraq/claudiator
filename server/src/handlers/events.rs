@@ -206,7 +206,7 @@ pub async fn events_handler(
                 }
                 session_id_str[..boundary].to_string()
             } else {
-                session_id_str.to_string()
+                session_id_str.clone()
             };
 
             let push_notification_id = notification_id;
