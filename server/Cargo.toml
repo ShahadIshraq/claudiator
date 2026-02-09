@@ -19,3 +19,17 @@ tower-http = { version = "0.5", features = ["trace"] }
 uuid = { version = "1", features = ["v4"] }
 jsonwebtoken = "9"
 reqwest = { version = "0.12", features = ["json", "http2"] }
+
+[lints.rust]
+missing_docs = "warn"
+unreachable_pub = "warn"
+unsafe_code = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
