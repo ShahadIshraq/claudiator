@@ -110,7 +110,8 @@ All endpoints require `Authorization: Bearer <api_key>`.
 | `GET` | `/api/v1/devices/:device_id/sessions` | List sessions for a device |
 | `GET` | `/api/v1/sessions/:session_id/events` | List events for a session |
 | `POST` | `/api/v1/push/register` | Register a mobile push notification token |
-| `GET` | `/api/v1/notifications` | List notifications (with optional `since` and `limit` params) |
+| `GET` | `/api/v1/notifications` | List notifications (with optional `after` and `limit` params) |
+| `POST` | `/api/v1/notifications/:id/ack` | Mark notification as acknowledged |
 
 See [API.md](API.md) for full request/response schemas and query parameters.
 
@@ -124,7 +125,8 @@ SQLite with WAL mode enabled. The schema is created automatically on startup.
 - **sessions** — Session lifecycle (status, cwd, title, timestamps)
 - **events** — All hook events with full JSON storage
 - **push_tokens** — Mobile push notification tokens (APNs/FCM) with sandbox tracking
-- **notifications** — Push notification records (UUID primary key, 24h TTL auto-cleanup)
+- **notifications** — Push notification records (UUID primary key, 24h TTL auto-cleanup, acknowledged boolean column)
+- **notification_metadata** — Tracking table for notification acknowledgment timestamps and metadata
 
 ### Session Status Values
 
@@ -232,8 +234,11 @@ curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/session
 # List notifications
 curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications
 
-# List notifications since a specific ID
-curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?since=<uuid>&limit=10"
+# List notifications after a specific ID
+curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?after=<uuid>&limit=10"
+
+# Acknowledge a notification
+curl -s -X POST -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications/<uuid>/ack
 ```
 
 ### Seed Data

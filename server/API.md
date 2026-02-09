@@ -299,7 +299,7 @@ List notification records. Notifications are auto-cleaned after 24 hours.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `since` | string (UUID) | — | Return only notifications created after this notification ID |
+| `after` | string (UUID) | — | Return only notifications created after this notification ID |
 | `limit` | int | 50 | Maximum number of notifications to return (max 200) |
 
 **Response: 200 OK**
@@ -316,13 +316,14 @@ List notification records. Notifications are auto-cleaned after 24 hours.
       "body": "string",
       "notification_type": "string",
       "payload_json": "string | null",
-      "created_at": "string (RFC 3339)"
+      "created_at": "string (RFC 3339)",
+      "acknowledged": false
     }
   ]
 }
 ```
 
-Notifications are ordered by `created_at` ascending. Use the `since` parameter with the last received notification `id` to poll for new notifications incrementally.
+Notifications are ordered by `created_at` ascending. Use the `after` parameter with the last received notification `id` to poll for new notifications incrementally.
 
 **Notification Types**
 
@@ -331,6 +332,20 @@ Notifications are ordered by `created_at` ascending. Use the `since` parameter w
 | `stop` | `Stop` hook event | "Session Stopped" |
 | `permission_prompt` | `Notification` event with `notification_type: "permission_prompt"` | "Permission Required" |
 | `idle_prompt` | `Notification` event with `notification_type: "idle_prompt"` | "Session Idle" |
+
+---
+
+### POST /api/v1/notifications/:id/ack
+
+Mark a notification as acknowledged.
+
+**Response: 200 OK**
+
+```json
+{
+  "status": "ok"
+}
+```
 
 ## Error Responses
 
@@ -363,6 +378,15 @@ curl -X POST https://your-server.com/api/v1/events \
     "timestamp": "2025-01-15T10:30:00.123Z"
   }'
 ```
+
+# List notifications
+curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications
+
+# List notifications after a specific ID
+curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?after=<uuid>&limit=10"
+
+# Acknowledge a notification
+curl -s -X POST -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications/<uuid>/ack
 
 ## Timeouts
 

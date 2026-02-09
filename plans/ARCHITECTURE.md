@@ -48,7 +48,7 @@
 5. **claudiator-server** validates the API key, stores the event in SQLite (devices, sessions, events tables)
 6. **claudiator-server** generates a notification record (UUID) for Stop/permission_prompt/idle_prompt events, increments `notification_version`
 7. **claudiator-server** (if APNs is configured) dispatches push notification with custom payload (`notification_id`, `session_id`, `device_id`) and `content-available: 1` flag via HTTP/2 + ES256 JWT to `api.push.apple.com` or `api.sandbox.push.apple.com`
-8. **iOS app** receives APNs push in `didReceiveRemoteNotification`, marks notification_id as "received via push" with 1-minute retention window, then immediately triggers poll for instant UI update
+8. **iOS app** receives APNs push in `didReceiveRemoteNotification`, marks notification_id as "received via push" with 10-minute retention window, then immediately triggers poll for instant UI update
 9. **iOS app** polling detects notification_id in push-received list, skips firing duplicate local notification banner (deduplication), but updates bell badge and session highlights
 10. **claudiator-server** on APNs 410 Gone response, automatically removes the stale token from the `push_tokens` table
 11. **Mobile apps** also poll `/api/v1/ping` every 10s as fallback, detect `notification_version` change, fetch new notifications via `GET /api/v1/notifications`
@@ -84,7 +84,8 @@ Hook stdin (from Claude Code)        Outbound payload (to Server)
 - **sessions** — session_id (PK), device_id (FK), started_at, last_event, status, cwd, title
 - **events** — id (PK), device_id (FK), session_id (FK), hook_event_name, timestamp, received_at, tool_name, notification_type, event_json
 - **push_tokens** — id (PK), platform, push_token (UNIQUE), sandbox, created_at, updated_at
-- **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, created_at (24h TTL auto-cleanup)
+- **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, acknowledged (BOOLEAN), created_at (24h TTL auto-cleanup)
+- **notification_metadata** — notification_id (FK), key (TEXT), value (TEXT), unique constraint on (notification_id, key)
 
 ### Server Configuration
 
@@ -106,7 +107,8 @@ Environment variables (stored in `/opt/claudiator/.env`):
 - `GET /api/v1/devices` — List all devices with active session counts
 - `GET /api/v1/devices/:device_id/sessions` — List sessions for a device
 - `GET /api/v1/sessions/:session_id/events` — List events for a session
-- `GET /api/v1/notifications?since=<uuid>&limit=N` — List notifications after a given UUID
+- `GET /api/v1/notifications?after=<uuid>&limit=N` — List notifications after a given UUID
+- `POST /api/v1/notifications/:id/ack` — Mark notification as acknowledged
 - `POST /api/v1/push/register` — Register mobile push notification token with sandbox flag for APNs routing
 
 ### Deployment
@@ -131,7 +133,7 @@ The server is deployed as a systemd service on Linux:
 - **Connection pooling** — r2d2 manages SQLite connections for multi-threaded Axum
 
 ### Notification Constraints
-- **Dual-path deduplication** — iOS tracks push-received notification IDs with 1-minute retention to prevent duplicate banners between APNs and polling paths
+- **Dual-path deduplication** — iOS tracks push-received notification IDs with 10-minute retention to prevent duplicate banners between APNs and polling paths
 - **UUID deduplication** — Same notification UUID used across polling and APNs push paths; iOS deduplicates by `UNNotificationRequest.identifier`
 - **Immediate poll trigger** — APNs push with `content-available: 1` invokes delegate that immediately triggers poll for instant UI updates (no 10s wait)
 - **Enhanced APNs payload** — Push includes custom fields (`notification_id`, `session_id`, `device_id`) for client-side deduplication tracking

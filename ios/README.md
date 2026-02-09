@@ -153,6 +153,8 @@ The app supports APNs push notifications for real-time alerts when sessions need
 
 **Fallback:** The app also polls the server via `GET /api/v1/ping` every 10 seconds, checking `notification_version` for changes.
 
+**Deduplication:** The app tracks notification IDs received via push in a 10-minute retention window to prevent duplicate banners between APNs and polling paths. Both paths use the same notification UUID.
+
 Requires the `aps-environment` entitlement (included in `Claudiator.entitlements`).
 
 ### Tab Navigation
@@ -190,7 +192,8 @@ Authorization: Bearer <api_key>
 - `GET /api/v1/devices` — List all devices
 - `GET /api/v1/devices/:device_id/sessions` — Sessions for a device
 - `GET /api/v1/sessions/:session_id/events` — Events for a session
-- `GET /api/v1/notifications?since={uuid}&limit={n}` — Fetch notifications
+- `GET /api/v1/notifications?after={uuid}&limit={n}` — Fetch notifications
+- `POST /api/v1/notifications/:id/ack` — Mark notification as acknowledged
 - `POST /api/v1/push/register` — Register APNs token (includes `sandbox` boolean)
 
 See the [server API documentation](../server/API.md) for full request/response schemas.

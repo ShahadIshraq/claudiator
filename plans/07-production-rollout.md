@@ -11,8 +11,8 @@ The server has all required notification infrastructure:
 - ✅ Notification generation on `Stop` and `Notification` events
 - ✅ `notification_version` counter in AppState
 - ✅ `GET /api/v1/ping` returns both `dataVersion` and `notificationVersion`
-- ✅ `GET /api/v1/notifications?since=<uuid>&limit=<n>` endpoint
-- ✅ `POST /api/v1/notifications/ack` endpoint
+- ✅ `GET /api/v1/notifications?after=<uuid>&limit=<n>` endpoint
+- ✅ `POST /api/v1/notifications/:id/ack` endpoint
 - ✅ `POST /api/v1/push/register` endpoint
 - ✅ APNs client module (`server/src/apns.rs`) with JWT signing
 - ✅ APNs push dispatch in background after notification creation

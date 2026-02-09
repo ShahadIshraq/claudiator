@@ -160,8 +160,10 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?since=<uuid>&limit=N` endpoint
-  - [x] No ack endpoint — read-only notifications, auto-cleaned after 24h
+  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (changed from `since` to `after`)
+  - [x] `POST /api/v1/notifications/:id/ack` endpoint for marking notifications as acknowledged
+  - [x] `acknowledged` boolean column in notifications table
+  - [x] `notification_metadata` table for tracking acknowledgment timestamps
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
@@ -267,26 +269,29 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?since=<uuid>&limit=N` endpoint
-  - [x] No ack endpoint — read-only notifications, auto-cleaned after 24h
+  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (changed from `since` to `after`)
+  - [x] `POST /api/v1/notifications/:id/ack` endpoint for marking notifications as acknowledged
+  - [x] `acknowledged` boolean column in notifications table
+  - [x] `notification_metadata` table for tracking acknowledgment timestamps
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
-- [ ] iOS notification infrastructure
+- [x] iOS notification infrastructure
   - [x] `NotificationService` with permission request and token registration
-  - [x] `AppDelegate` handles `didRegisterForRemoteNotificationsWithDeviceToken`
+  - [x] `AppDelegate` handles `didReceiveRemoteNotificationsWithDeviceToken`
   - [x] Auto-detects sandbox vs production environment
   - [x] Registers token with server including sandbox flag
-  - [ ] `NotificationManager` service (fetch, dedup, local notification firing)
-  - [ ] `AppNotification` model
-  - [ ] `VersionMonitor` extended to track `notification_version`
-  - [ ] `APIClient` updated: ping returns tuple, new fetch/ack methods
-- [ ] iOS notification UI
-  - [ ] Bell icon with badge count in Sessions tab toolbar
-  - [ ] Notification list sheet view
-  - [ ] Session card highlight (colored left border for unread notifications)
-  - [ ] Clear highlight on session navigation
-  - [ ] Foreground notification banners via `UNUserNotificationCenterDelegate`
+  - [x] `NotificationManager` service (fetch, dedup, local notification firing, 10-minute push deduplication window)
+  - [x] `AppNotification` model with acknowledged field
+  - [x] `VersionMonitor` extended to track `notification_version`
+  - [x] `APIClient` updated: ping returns tuple, new fetch/ack methods
+- [x] iOS notification UI
+  - [x] Bell icon with badge count in navigation toolbar
+  - [x] Notification list sheet view with swipe-to-acknowledge gesture
+  - [x] Session card highlight (brightness pulse for sessions with unread notifications)
+  - [x] Group container highlight (opacity pulse for groups with unread notifications)
+  - [x] Clear highlight on session navigation (auto-acknowledge)
+  - [x] Foreground notification banners via `UNUserNotificationCenterDelegate`
 
 ### Phase 3: Live Updates (Optional)
 - [ ] Server WebSocket/SSE support
