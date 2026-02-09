@@ -44,9 +44,7 @@ impl ApnsClient {
         let key_data = std::fs::read(key_path)?;
         let signing_key = EncodingKey::from_ec_pem(&key_data)?;
 
-        let http_client = reqwest::Client::builder()
-            .http2_prior_knowledge()
-            .build()?;
+        let http_client = reqwest::Client::builder().http2_prior_knowledge().build()?;
 
         Ok(ApnsClient {
             key_id,
@@ -59,7 +57,9 @@ impl ApnsClient {
         })
     }
 
-    async fn get_or_refresh_token(&self) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    async fn get_or_refresh_token(
+        &self,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()

@@ -1,7 +1,9 @@
 use rusqlite::Connection;
 
 use crate::error::AppError;
-use crate::models::response::{DeviceResponse, EventResponse, NotificationResponse, SessionResponse};
+use crate::models::response::{
+    DeviceResponse, EventResponse, NotificationResponse, SessionResponse,
+};
 
 pub fn upsert_device(
     conn: &Connection,
@@ -366,7 +368,9 @@ pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError
             "DELETE FROM notifications WHERE created_at < ?1",
             rusqlite::params![cutoff],
         )
-        .map_err(|e| AppError::Internal(format!("Failed to delete expired notifications: {}", e)))?;
+        .map_err(|e| {
+            AppError::Internal(format!("Failed to delete expired notifications: {}", e))
+        })?;
 
     Ok(count)
 }

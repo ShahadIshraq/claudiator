@@ -7,8 +7,8 @@ mod handlers;
 mod models;
 mod router;
 
-use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use clap::Parser;
 
@@ -23,8 +23,7 @@ async fn main() {
     let config = ServerConfig::parse();
 
     // Initialize database
-    let db_pool = pool::create_pool(&config.db_path)
-        .expect("Failed to create database pool");
+    let db_pool = pool::create_pool(&config.db_path).expect("Failed to create database pool");
 
     db::migrations::run(&db_pool).expect("Failed to run database migrations");
 
@@ -35,13 +34,22 @@ async fn main() {
         &config.apns_team_id,
         &config.apns_bundle_id,
     ) {
-        match apns::ApnsClient::new(key_path, key_id.clone(), team_id.clone(), bundle_id.clone(), config.apns_sandbox) {
+        match apns::ApnsClient::new(
+            key_path,
+            key_id.clone(),
+            team_id.clone(),
+            bundle_id.clone(),
+            config.apns_sandbox,
+        ) {
             Ok(client) => {
                 tracing::info!("APNs client initialized (sandbox: {})", config.apns_sandbox);
                 Some(Arc::new(client))
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize APNs client: {}. Push notifications disabled.", e);
+                tracing::warn!(
+                    "Failed to initialize APNs client: {}. Push notifications disabled.",
+                    e
+                );
                 None
             }
         }

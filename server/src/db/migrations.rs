@@ -76,7 +76,10 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Add sandbox column to push_tokens (idempotent)
-    let _ = conn.execute("ALTER TABLE push_tokens ADD COLUMN sandbox INTEGER NOT NULL DEFAULT 0", []);
+    let _ = conn.execute(
+        "ALTER TABLE push_tokens ADD COLUMN sandbox INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
 
     tracing::info!("Database migrations complete");
     Ok(())

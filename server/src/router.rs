@@ -1,7 +1,7 @@
-use axum::Router;
 use axum::routing::{get, post};
-use std::sync::Arc;
+use axum::Router;
 use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 
 use crate::apns::ApnsClient;
 use crate::db::pool::DbPool;

@@ -1,7 +1,11 @@
 use clap::Parser;
 
 #[derive(Debug, Parser)]
-#[command(name = "claudiator-server", version, about = "Claudiator event ingestion server")]
+#[command(
+    name = "claudiator-server",
+    version,
+    about = "Claudiator event ingestion server"
+)]
 pub struct ServerConfig {
     #[arg(long, default_value = "3000", env = "CLAUDIATOR_PORT")]
     pub port: u16,

@@ -31,7 +31,9 @@ pub async fn events_handler(
 
     // Validate timestamp is valid RFC3339
     if chrono::DateTime::parse_from_rfc3339(&payload.timestamp).is_err() {
-        return Err(AppError::BadRequest("timestamp must be valid RFC 3339".into()));
+        return Err(AppError::BadRequest(
+            "timestamp must be valid RFC 3339".into(),
+        ));
     }
 
     let received_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
@@ -112,7 +114,9 @@ pub async fn events_handler(
         Ok(event_id) => {
             conn.execute_batch("COMMIT")
                 .map_err(|e| AppError::Internal(format!("Transaction commit failed: {}", e)))?;
-            state.version.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            state
+                .version
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             event_id
         }
         Err(e) => {
@@ -142,7 +146,9 @@ pub async fn events_handler(
             &received_at,
         );
 
-        state.notification_version.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        state
+            .notification_version
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
         // Async cleanup of expired notifications
         let cleanup_pool = state.db_pool.clone();
@@ -202,10 +208,16 @@ pub async fn events_handler(
 
                     match result {
                         crate::apns::ApnsPushResult::Success => {
-                            tracing::debug!("Push sent to token {}", &token_row.push_token[..8.min(token_row.push_token.len())]);
+                            tracing::debug!(
+                                "Push sent to token {}",
+                                &token_row.push_token[..8.min(token_row.push_token.len())]
+                            );
                         }
                         crate::apns::ApnsPushResult::Gone => {
-                            tracing::info!("Push token gone, removing: {}", &token_row.push_token[..8.min(token_row.push_token.len())]);
+                            tracing::info!(
+                                "Push token gone, removing: {}",
+                                &token_row.push_token[..8.min(token_row.push_token.len())]
+                            );
                             if let Ok(c) = push_pool.get() {
                                 let _ = queries::delete_push_token(&c, &token_row.push_token);
                             }
@@ -263,12 +275,16 @@ fn should_notify(
         "Notification" => match notification_type {
             Some("permission_prompt") => Some((
                 "Permission Required".to_string(),
-                message.unwrap_or("A session needs permission to continue").to_string(),
+                message
+                    .unwrap_or("A session needs permission to continue")
+                    .to_string(),
                 "permission_prompt".to_string(),
             )),
             Some("idle_prompt") => Some((
                 "Session Idle".to_string(),
-                message.unwrap_or("A session is waiting for input").to_string(),
+                message
+                    .unwrap_or("A session is waiting for input")
+                    .to_string(),
                 "idle_prompt".to_string(),
             )),
             _ => None,
