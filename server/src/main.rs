@@ -1,3 +1,6 @@
+#![allow(missing_docs)]
+#![allow(clippy::expect_used)]
+
 mod apns;
 mod auth;
 mod config;
@@ -26,6 +29,24 @@ async fn main() {
     let db_pool = pool::create_pool(&config.db_path).expect("Failed to create database pool");
 
     db::migrations::run(&db_pool).expect("Failed to run database migrations");
+
+    // Load version counters from metadata table
+    let (data_version, notification_version) = {
+        let conn = db_pool.get().expect("Failed to get db connection");
+        let data_v = db::queries::get_metadata(&conn, "data_version")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        let notif_v = db::queries::get_metadata(&conn, "notification_version")
+            .ok()
+            .flatten()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+        (data_v, notif_v)
+    };
+
+    tracing::info!("Loaded data_version: {}, notification_version: {}", data_version, notification_version);
 
     // Build APNs client if configured
     let apns_client = if let (Some(key_path), Some(key_id), Some(team_id), Some(bundle_id)) = (
@@ -61,8 +82,9 @@ async fn main() {
     let state = Arc::new(AppState {
         api_key: config.api_key.clone(),
         db_pool,
-        version: AtomicU64::new(0),
-        notification_version: AtomicU64::new(0),
+        version: AtomicU64::new(data_version),
+        notification_version: AtomicU64::new(notification_version),
+        last_cleanup: AtomicU64::new(0),
         apns_client,
     });
 

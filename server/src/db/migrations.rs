@@ -81,6 +81,20 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
         [],
     );
 
+    // Add metadata table for version persistence (idempotent)
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS metadata (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );",
+    )?;
+
+    // Add acknowledged column to notifications (idempotent)
+    let _ = conn.execute(
+        "ALTER TABLE notifications ADD COLUMN acknowledged INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

@@ -6,16 +6,17 @@ use std::sync::Arc;
 use crate::auth::check_auth;
 use crate::db::queries;
 use crate::error::AppError;
-use crate::models::response::NotificationListResponse;
+use crate::models::request::AckRequest;
+use crate::models::response::{NotificationListResponse, StatusOk};
 use crate::router::AppState;
 
 #[derive(serde::Deserialize)]
-pub(crate) struct NotificationQuery {
-    pub since: Option<String>,
+pub struct NotificationQuery {
+    pub after: Option<String>,
     pub limit: Option<i64>,
 }
 
-pub(crate) async fn list_notifications_handler(
+pub async fn list_notifications_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Query(query): Query<NotificationQuery>,
@@ -29,7 +30,24 @@ pub(crate) async fn list_notifications_handler(
         .get()
         .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
-    let notifications = queries::list_notifications(&conn, query.since.as_deref(), limit)?;
+    let notifications = queries::list_notifications(&conn, query.after.as_deref(), limit)?;
 
     Ok(Json(NotificationListResponse { notifications }))
+}
+
+pub async fn acknowledge_notifications_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<AckRequest>,
+) -> Result<Json<StatusOk>, AppError> {
+    check_auth(&headers, &state.api_key)?;
+
+    let conn = state
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
+
+    queries::acknowledge_notifications(&conn, &payload.ids)?;
+
+    Ok(Json(StatusOk::ok()))
 }

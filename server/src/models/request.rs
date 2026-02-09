@@ -3,21 +3,21 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct EventPayload {
+pub struct EventPayload {
     pub device: DeviceInfo,
     pub event: EventData,
     pub timestamp: String,
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct DeviceInfo {
+pub struct DeviceInfo {
     pub device_id: String,
     pub device_name: String,
     pub platform: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct EventData {
+pub struct EventData {
     pub session_id: String,
     pub hook_event_name: String,
 
@@ -58,14 +58,20 @@ pub(crate) struct EventData {
 }
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct PushRegisterRequest {
+pub struct PushRegisterRequest {
     pub platform: String,
     pub push_token: String,
     #[serde(default)]
     pub sandbox: Option<bool>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AckRequest {
+    pub ids: Vec<String>,
+}
+
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

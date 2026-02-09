@@ -21,6 +21,7 @@ impl StatusOk {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) const fn with_version() -> Self {
         Self {
             status: "ok",
@@ -30,6 +31,7 @@ impl StatusOk {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) const fn with_data_version(v: u64) -> Self {
         Self {
             status: "ok",
@@ -112,6 +114,7 @@ pub struct NotificationResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payload_json: Option<String>,
     pub created_at: String,
+    pub acknowledged: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -120,6 +123,7 @@ pub struct NotificationListResponse {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

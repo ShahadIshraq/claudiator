@@ -11,7 +11,9 @@ use crate::models::request::EventPayload;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
 
-pub(crate) async fn events_handler(
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::cognitive_complexity)]
+pub async fn events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<EventPayload>,
@@ -112,11 +114,12 @@ pub(crate) async fn events_handler(
 
     let event_id = match result {
         Ok(event_id) => {
+            // Persist data version bump
+            let new_version = state.version.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            queries::set_metadata(&conn, "data_version", &new_version.to_string())?;
+
             conn.execute_batch("COMMIT")
                 .map_err(|e| AppError::Internal(format!("Transaction commit failed: {e}")))?;
-            state
-                .version
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             event_id
         }
         Err(e) => {
@@ -146,25 +149,32 @@ pub(crate) async fn events_handler(
             &received_at,
         );
 
-        state
+        // Persist notification version bump
+        let new_notif_version = state
             .notification_version
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        let _ = queries::set_metadata(&conn, "notification_version", &new_notif_version.to_string());
 
-        // Async cleanup of expired notifications
-        let cleanup_pool = state.db_pool.clone();
-        tokio::spawn(async move {
-            if let Ok(cleanup_conn) = cleanup_pool.get() {
-                match queries::delete_expired_notifications(&cleanup_conn) {
-                    Ok(count) if count > 0 => {
-                        tracing::debug!("Cleaned up {} expired notifications", count);
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to clean expired notifications: {:?}", e);
-                    }
-                    _ => {}
+        // Synchronous cleanup with time guard (max once per 5 minutes)
+        #[allow(clippy::cast_sign_loss)]
+        let now_secs = Utc::now().timestamp() as u64;
+        let last_cleanup = state.last_cleanup.load(std::sync::atomic::Ordering::Relaxed);
+        let five_minutes_secs = 5 * 60;
+
+        if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
+            match queries::delete_expired_notifications(&conn) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} expired notifications", count);
+                    state.last_cleanup.store(now_secs, std::sync::atomic::Ordering::Relaxed);
+                }
+                Ok(_) => {
+                    state.last_cleanup.store(now_secs, std::sync::atomic::Ordering::Relaxed);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean expired notifications: {:?}", e);
                 }
             }
-        });
+        }
 
         // APNs push dispatch
         if let Some(ref apns_client) = state.apns_client {
@@ -172,7 +182,19 @@ pub(crate) async fn events_handler(
             let push_pool = state.db_pool.clone();
             let push_title = notif_title;
             let push_body = notif_body;
-            let collapse_id = notification_id.clone();
+
+            // Use session_id as collapse_id with 64-byte truncation guard
+            let session_id_str = &payload.event.session_id;
+            let collapse_id = if session_id_str.len() > 64 {
+                let mut boundary = 64;
+                while boundary > 0 && !session_id_str.is_char_boundary(boundary) {
+                    boundary -= 1;
+                }
+                session_id_str[..boundary].to_string()
+            } else {
+                session_id_str.to_string()
+            };
+
             let push_notification_id = notification_id;
             let push_session_id = payload.event.session_id.clone();
             let push_device_id = payload.device.device_id.clone();

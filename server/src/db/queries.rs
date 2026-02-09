@@ -1,3 +1,5 @@
+#![allow(clippy::option_if_let_else)]
+
 use rusqlite::Connection;
 
 use crate::error::AppError;
@@ -309,20 +311,20 @@ pub fn insert_notification(
 
 pub fn list_notifications(
     conn: &Connection,
-    since_id: Option<&str>,
+    after_timestamp: Option<&str>,
     limit: i64,
 ) -> Result<Vec<NotificationResponse>, AppError> {
-    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match since_id {
-        Some(id) => (
-            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at
+    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match after_timestamp {
+        Some(ts) => (
+            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at, acknowledged
              FROM notifications
-             WHERE created_at > (SELECT created_at FROM notifications WHERE id = ?1)
+             WHERE created_at > ?1
              ORDER BY created_at ASC
              LIMIT ?2".to_string(),
-            vec![Box::new(id.to_string()), Box::new(limit)],
+            vec![Box::new(ts.to_string()), Box::new(limit)],
         ),
         None => (
-            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at
+            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at, acknowledged
              FROM notifications
              ORDER BY created_at ASC
              LIMIT ?1".to_string(),
@@ -338,6 +340,7 @@ pub fn list_notifications(
 
     let notifications = stmt
         .query_map(params_refs.as_slice(), |row| {
+            let acknowledged_int: i32 = row.get(9)?;
             Ok(NotificationResponse {
                 id: row.get(0)?,
                 event_id: row.get(1)?,
@@ -348,6 +351,7 @@ pub fn list_notifications(
                 notification_type: row.get(6)?,
                 payload_json: row.get(7)?,
                 created_at: row.get(8)?,
+                acknowledged: acknowledged_int != 0,
             })
         })
         .map_err(|e| AppError::Internal(format!("Failed to query notifications: {e}")))?
@@ -377,6 +381,7 @@ pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError
 
 pub struct PushTokenRow {
     pub push_token: String,
+    #[allow(dead_code)]
     pub platform: String,
     pub sandbox: bool,
 }
@@ -408,5 +413,53 @@ pub fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppE
         rusqlite::params![push_token],
     )
     .map_err(|e| AppError::Internal(format!("Failed to delete push token: {e}")))?;
+    Ok(())
+}
+
+pub fn get_metadata(conn: &Connection, key: &str) -> Result<Option<String>, AppError> {
+    let mut stmt = conn
+        .prepare("SELECT value FROM metadata WHERE key = ?1")
+        .map_err(|e| AppError::Internal(format!("Failed to prepare metadata query: {e}")))?;
+
+    let mut rows = stmt
+        .query(rusqlite::params![key])
+        .map_err(|e| AppError::Internal(format!("Failed to query metadata: {e}")))?;
+
+    if let Some(row) = rows
+        .next()
+        .map_err(|e| AppError::Internal(format!("Failed to fetch metadata row: {e}")))?
+    {
+        let value: String = row
+            .get(0)
+            .map_err(|e| AppError::Internal(format!("Failed to get metadata value: {e}")))?;
+        Ok(Some(value))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn set_metadata(conn: &Connection, key: &str, value: &str) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO metadata (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        rusqlite::params![key, value],
+    )
+    .map_err(|e| AppError::Internal(format!("Failed to set metadata: {e}")))?;
+    Ok(())
+}
+
+pub fn acknowledge_notifications(conn: &Connection, ids: &[String]) -> Result<(), AppError> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!("UPDATE notifications SET acknowledged = 1 WHERE id IN ({placeholders})");
+
+    let params: Vec<&dyn rusqlite::types::ToSql> = ids.iter().map(|id| id as &dyn rusqlite::types::ToSql).collect();
+
+    conn.execute(&sql, params.as_slice())
+        .map_err(|e| AppError::Internal(format!("Failed to acknowledge notifications: {e}")))?;
+
     Ok(())
 }
