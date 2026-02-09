@@ -3,12 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		077F55705435862A9D96271B /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA2349E52FA004421D9903E /* DeviceListView.swift */; };
 		089E8EE343EC881AA26836EE /* AppTheme+Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8859CCC46CD74710BAE87C93 /* AppTheme+Themes.swift */; };
+		08D752D083F443D374FA3CFA /* ViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5309F42CF996CC904BCD8D /* ViewModelTests.swift */; };
 		0F72D3779BCF8339354836FD /* EventListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FBAE6F68B4F3E42FBB4A0AB /* EventListViewModel.swift */; };
 		141DCDA8F400ECAA0A66DF79 /* DeviceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3ABD644D529F92C0CC2D31 /* DeviceDetailView.swift */; };
 		1877AD1D518E72E9D89BF2D6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7EAD4C0052956689AC888B /* APIClient.swift */; };
@@ -16,6 +17,7 @@
 		3E7D3CC4C7E4C7C203FC5B83 /* AppNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4545D1CD72862AB65D364FAC /* AppNotification.swift */; };
 		4179907D27458F74DBF285FD /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AAF855F4092FF49D97095A /* NotificationService.swift */; };
 		4F13D2374561A5E0A9CF2DFF /* SessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */; };
+		51D7A41B347135171944DD27 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3F4D5A912F0EA0FBCB4D97 /* ThemeTests.swift */; };
 		5C6A86C452DD67D69C23359B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B3C77036CB46B0AE26A346 /* ThemeManager.swift */; };
 		5F4F446C18C04F2AC21415FD /* SessionListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BCFCA556B42F8815C64824C /* SessionListViewModel.swift */; };
 		6186F613DD2D63EE7F844752 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1D242197C2DF3D58182B00 /* Extensions.swift */; };
@@ -24,9 +26,13 @@
 		6939F0730D0608AC8EC09E0B /* AllSessionsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 728C111D63CF0C7931892291 /* AllSessionsViewModel.swift */; };
 		6C55763F5D3976D08672E38A /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D2C344A561EA3126452D67 /* AppTheme.swift */; };
 		6F697551013FB3D9C01750B1 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9F97CDEFF639BF40655B06 /* NotificationManager.swift */; };
+		774542BCCCAB29D8F5064BCD /* NotificationManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3C05D1BFD1685B773C2391 /* NotificationManagerTests.swift */; };
 		7E3F68E2C352B3412784C689 /* DeviceListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F7CF7EDD2ECF8E4C1E18F97 /* DeviceListViewModel.swift */; };
+		87F83820A2A645E4495E2D20 /* HelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55361C12AC7C03738DCA3149 /* HelperTests.swift */; };
 		8FA725AB1CB53A0EAD468D2B /* AllSessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */; };
+		97C2672B9D84FE1D9207DD35 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */; };
 		9AC90BCF10C5CB88CD6EF362 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD09398533E36AEBEF7166B /* KeychainService.swift */; };
+		9C28FF9C05029088BE553A13 /* SetupViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40676B3D536F650FAEF2AD7 /* SetupViewModelTests.swift */; };
 		A1C53FBC2B4DC5C27EE7A9DE /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */; };
 		A35EE0647C8E3F95726BD67A /* VersionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8040BE8BC24416A1A9EBE88A /* VersionMonitor.swift */; };
 		B56E028DF73F878B4B86DCD3 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB82A2D03E889685C1EA5B8 /* Session.swift */; };
@@ -39,11 +45,23 @@
 		F9F1E3165BB0B983B19229B3 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E5FF85AD6F155325855323A /* Helpers.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B82A7190BC4121B00F5AC81F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9AA071EBE58DE82C08786E34 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF0211D26E1EEA37D9F56DE0;
+			remoteInfo = Claudiator;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		02AAF855F4092FF49D97095A /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		05E87DBA8F704370D7C0EE66 /* NotificationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationListView.swift; sourceTree = "<group>"; };
 		080C4E27028D30E30E085841 /* EventRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventRow.swift; sourceTree = "<group>"; };
+		0B4E2DF2A14674B13E015E0B /* ClaudiatorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudiatorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C577B05DFC6D9AAC81B3D7E /* Claudiator.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Claudiator.entitlements; sourceTree = "<group>"; };
+		0F3F4D5A912F0EA0FBCB4D97 /* ThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTests.swift; sourceTree = "<group>"; };
 		0F7EAD4C0052956689AC888B /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		1D3ABD644D529F92C0CC2D31 /* DeviceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDetailView.swift; sourceTree = "<group>"; };
 		1DD09398533E36AEBEF7166B /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
@@ -55,6 +73,7 @@
 		4863EF8C465F443F02129640 /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
 		50B3C77036CB46B0AE26A346 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		53A4352B3D899318EEC3C837 /* Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
+		55361C12AC7C03738DCA3149 /* HelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperTests.swift; sourceTree = "<group>"; };
 		5BCFCA556B42F8815C64824C /* SessionListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionListViewModel.swift; sourceTree = "<group>"; };
 		5E668CF9AFD8F468650F9FE0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllSessionsView.swift; sourceTree = "<group>"; };
@@ -70,9 +89,13 @@
 		997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRow.swift; sourceTree = "<group>"; };
 		A1F7E01CBCC958502E20846A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
-		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
+		EE3C05D1BFD1685B773C2391 /* NotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManagerTests.swift; sourceTree = "<group>"; };
 		EFA2349E52FA004421D9903E /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
+		F40676B3D536F650FAEF2AD7 /* SetupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViewModelTests.swift; sourceTree = "<group>"; };
 		F7654B1BBD5CF0A7CF6A6922 /* SetupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViewModel.swift; sourceTree = "<group>"; };
+		FD5309F42CF996CC904BCD8D /* ViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -80,22 +103,36 @@
 			isa = PBXGroup;
 			children = (
 				BA0EF4E03506658D16D945AB /* Claudiator.app */,
+				0B4E2DF2A14674B13E015E0B /* ClaudiatorTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		230F218D8536A91CDEAE2C08 /* ClaudiatorTests */ = {
+			isa = PBXGroup;
+			children = (
+				55361C12AC7C03738DCA3149 /* HelperTests.swift */,
+				D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */,
+				EE3C05D1BFD1685B773C2391 /* NotificationManagerTests.swift */,
+				F40676B3D536F650FAEF2AD7 /* SetupViewModelTests.swift */,
+				0F3F4D5A912F0EA0FBCB4D97 /* ThemeTests.swift */,
+				FD5309F42CF996CC904BCD8D /* ViewModelTests.swift */,
+			);
+			path = ClaudiatorTests;
 			sourceTree = "<group>";
 		};
 		42F50AC6D34ADE3823F1CB86 /* Claudiator */ = {
 			isa = PBXGroup;
 			children = (
-				5E668CF9AFD8F468650F9FE0 /* Assets.xcassets */,
-				0C577B05DFC6D9AAC81B3D7E /* Claudiator.entitlements */,
-				96515A62435FB0E5C5B72CF1 /* ClaudiatorApp.swift */,
-				A1F7E01CBCC958502E20846A /* Info.plist */,
 				E5609AE37A048168FCD39BC3 /* Models */,
 				EA669EE884F94C41B94FC88B /* Services */,
 				A74E08F158AED55C7340F702 /* Theme */,
 				8E91DD49987031B35EF403CF /* ViewModels */,
 				86FFA5613632EE997ACE38D3 /* Views */,
+				5E668CF9AFD8F468650F9FE0 /* Assets.xcassets */,
+				0C577B05DFC6D9AAC81B3D7E /* Claudiator.entitlements */,
+				96515A62435FB0E5C5B72CF1 /* ClaudiatorApp.swift */,
+				A1F7E01CBCC958502E20846A /* Info.plist */,
 			);
 			path = Claudiator;
 			sourceTree = "<group>";
@@ -143,6 +180,7 @@
 			isa = PBXGroup;
 			children = (
 				42F50AC6D34ADE3823F1CB86 /* Claudiator */,
+				230F218D8536A91CDEAE2C08 /* ClaudiatorTests */,
 				071C37F0C1CEC5FF85EF0003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -174,10 +212,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6BD326FF29E36E800ECB19C2 /* ClaudiatorTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7FE86E588C70EAA515BB75C0 /* Build configuration list for PBXNativeTarget "ClaudiatorTests" */;
+			buildPhases = (
+				A7182CBAAFB14B450B85054B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EF11A2C4F8A8D6617F3ED07B /* PBXTargetDependency */,
+			);
+			name = ClaudiatorTests;
+			packageProductDependencies = (
+			);
+			productName = ClaudiatorTests;
+			productReference = 0B4E2DF2A14674B13E015E0B /* ClaudiatorTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		BF0211D26E1EEA37D9F56DE0 /* Claudiator */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 45F38B8EA124191FF9C78016 /* Build configuration list for PBXNativeTarget "Claudiator" */;
 			buildPhases = (
+				1D8D84932A1832C6BF0A7342 /* SwiftLint */,
 				404E69F12E6E9E65010C39BE /* Sources */,
 				3E1E9C829FAD86358DCBF1EC /* Resources */,
 			);
@@ -199,7 +256,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					BF0211D26E1EEA37D9F56DE0 = {
 						ProvisioningStyle = Automatic;
@@ -216,11 +273,11 @@
 			);
 			mainGroup = B95F982188FE10D4D22125FC;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				BF0211D26E1EEA37D9F56DE0 /* Claudiator */,
+				6BD326FF29E36E800ECB19C2 /* ClaudiatorTests */,
 			);
 		};
 /* End PBXProject section */
@@ -235,6 +292,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1D8D84932A1832C6BF0A7342 /* SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.swiftlint.yml",
+				"$(SRCROOT)/Claudiator",
+			);
+			name = SwiftLint;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Change to source directory\ncd \"${SRCROOT}\"\n\n# Check for swiftlint in common locations\nif command -v swiftlint >/dev/null 2>&1; then\n  swiftlint --config \".swiftlint.yml\"\nelif [ -f /opt/homebrew/bin/swiftlint ]; then\n  /opt/homebrew/bin/swiftlint --config \".swiftlint.yml\"\nelif [ -f /usr/local/bin/swiftlint ]; then\n  /usr/local/bin/swiftlint --config \".swiftlint.yml\"\nelse\n  echo \"warning: SwiftLint not installed\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		404E69F12E6E9E65010C39BE /* Sources */ = {
@@ -273,9 +355,47 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A7182CBAAFB14B450B85054B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87F83820A2A645E4495E2D20 /* HelperTests.swift in Sources */,
+				97C2672B9D84FE1D9207DD35 /* ModelDecodingTests.swift in Sources */,
+				774542BCCCAB29D8F5064BCD /* NotificationManagerTests.swift in Sources */,
+				9C28FF9C05029088BE553A13 /* SetupViewModelTests.swift in Sources */,
+				51D7A41B347135171944DD27 /* ThemeTests.swift in Sources */,
+				08D752D083F443D374FA3CFA /* ViewModelTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		EF11A2C4F8A8D6617F3ED07B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF0211D26E1EEA37D9F56DE0 /* Claudiator */;
+			targetProxy = B82A7190BC4121B00F5AC81F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		088644BEF92B548F10188B5E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudiator.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Claudiator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Claudiator";
+			};
+			name = Release;
+		};
 		5CD4E872740184C82F6E6231 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -284,6 +404,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -336,8 +457,10 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -348,9 +471,13 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -363,6 +490,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -375,6 +503,23 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E3BD0B4EBAACE36091AA1326 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.claudiator.app.tests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Claudiator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Claudiator";
 			};
 			name = Debug;
 		};
@@ -415,6 +560,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -434,9 +580,12 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -458,6 +607,15 @@
 			buildConfigurations = (
 				BE8812D4B6374C3F86A714D8 /* Debug */,
 				5CD4E872740184C82F6E6231 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7FE86E588C70EAA515BB75C0 /* Build configuration list for PBXNativeTarget "ClaudiatorTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E3BD0B4EBAACE36091AA1326 /* Debug */,
+				088644BEF92B548F10188B5E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
