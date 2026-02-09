@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-pub struct StatusOk {
+pub(crate) struct StatusOk {
     pub status: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub server_version: Option<&'static str>,
@@ -12,8 +12,8 @@ pub struct StatusOk {
 }
 
 impl StatusOk {
-    pub fn ok() -> Self {
-        StatusOk {
+    pub(crate) const fn ok() -> Self {
+        Self {
             status: "ok",
             server_version: None,
             data_version: None,
@@ -21,8 +21,8 @@ impl StatusOk {
         }
     }
 
-    pub fn with_version() -> Self {
-        StatusOk {
+    pub(crate) const fn with_version() -> Self {
+        Self {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
             data_version: None,
@@ -30,8 +30,8 @@ impl StatusOk {
         }
     }
 
-    pub fn with_data_version(v: u64) -> Self {
-        StatusOk {
+    pub(crate) const fn with_data_version(v: u64) -> Self {
+        Self {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
             data_version: Some(v),
@@ -39,8 +39,8 @@ impl StatusOk {
         }
     }
 
-    pub fn with_versions(data_v: u64, notif_v: u64) -> Self {
-        StatusOk {
+    pub(crate) const fn with_versions(data_v: u64, notif_v: u64) -> Self {
+        Self {
             status: "ok",
             server_version: Some(env!("CARGO_PKG_VERSION")),
             data_version: Some(data_v),
@@ -50,7 +50,7 @@ impl StatusOk {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeviceResponse {
+pub(crate) struct DeviceResponse {
     pub device_id: String,
     pub device_name: String,
     pub platform: String,
@@ -60,12 +60,12 @@ pub struct DeviceResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeviceListResponse {
+pub(crate) struct DeviceListResponse {
     pub devices: Vec<DeviceResponse>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct SessionResponse {
+pub(crate) struct SessionResponse {
     pub session_id: String,
     pub device_id: String,
     pub started_at: String,
@@ -81,12 +81,12 @@ pub struct SessionResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SessionListResponse {
+pub(crate) struct SessionListResponse {
     pub sessions: Vec<SessionResponse>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct EventResponse {
+pub(crate) struct EventResponse {
     pub id: i64,
     pub hook_event_name: String,
     pub timestamp: String,
@@ -96,12 +96,12 @@ pub struct EventResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct EventListResponse {
+pub(crate) struct EventListResponse {
     pub events: Vec<EventResponse>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct NotificationResponse {
+pub(crate) struct NotificationResponse {
     pub id: String,
     pub event_id: i64,
     pub session_id: String,
@@ -115,6 +115,6 @@ pub struct NotificationResponse {
 }
 
 #[derive(Debug, Serialize)]
-pub struct NotificationListResponse {
+pub(crate) struct NotificationListResponse {
     pub notifications: Vec<NotificationResponse>,
 }

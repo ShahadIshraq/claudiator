@@ -15,7 +15,7 @@ struct CachedToken {
 }
 
 #[derive(Debug)]
-pub enum ApnsPushResult {
+pub(crate) enum ApnsPushResult {
     Success,
     Gone,
     Retry,
@@ -23,7 +23,7 @@ pub enum ApnsPushResult {
     OtherError(String),
 }
 
-pub struct ApnsClient {
+pub(crate) struct ApnsClient {
     key_id: String,
     team_id: String,
     bundle_id: String,
@@ -34,7 +34,7 @@ pub struct ApnsClient {
 }
 
 impl ApnsClient {
-    pub fn new(
+    pub(crate) fn new(
         key_path: &str,
         key_id: String,
         team_id: String,
@@ -46,7 +46,7 @@ impl ApnsClient {
 
         let http_client = reqwest::Client::builder().http2_prior_knowledge().build()?;
 
-        Ok(ApnsClient {
+        Ok(Self {
             key_id,
             team_id,
             bundle_id,
@@ -62,7 +62,7 @@ impl ApnsClient {
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .map_err(|e| format!("System time error: {e}"))?
             .as_secs();
 
         // Check cached token (valid for 50 minutes)
@@ -98,7 +98,7 @@ impl ApnsClient {
         Ok(token)
     }
 
-    pub async fn send_push(
+    pub(crate) async fn send_push(
         &self,
         device_token: &str,
         title: &str,
@@ -111,7 +111,7 @@ impl ApnsClient {
     ) -> ApnsPushResult {
         let token = match self.get_or_refresh_token().await {
             Ok(t) => t,
-            Err(e) => return ApnsPushResult::OtherError(format!("Token generation failed: {}", e)),
+            Err(e) => return ApnsPushResult::OtherError(format!("Token generation failed: {e}")),
         };
 
         let host = if sandbox || self.default_sandbox {
@@ -120,7 +120,7 @@ impl ApnsClient {
             "https://api.push.apple.com"
         };
 
-        let url = format!("{}/3/device/{}", host, device_token);
+        let url = format!("{host}/3/device/{device_token}");
 
         let payload = serde_json::json!({
             "aps": {
@@ -139,7 +139,7 @@ impl ApnsClient {
         let mut request = self
             .http_client
             .post(&url)
-            .header("authorization", format!("bearer {}", token))
+            .header("authorization", format!("bearer {token}"))
             .header("apns-topic", &self.bundle_id)
             .header("apns-push-type", "alert")
             .header("apns-priority", "10")
@@ -159,11 +159,11 @@ impl ApnsClient {
                     429 | 503 => ApnsPushResult::Retry,
                     _ => {
                         let body_text = response.text().await.unwrap_or_default();
-                        ApnsPushResult::OtherError(format!("HTTP {}: {}", status, body_text))
+                        ApnsPushResult::OtherError(format!("HTTP {status}: {body_text}"))
                     }
                 }
             }
-            Err(e) => ApnsPushResult::OtherError(format!("Request failed: {}", e)),
+            Err(e) => ApnsPushResult::OtherError(format!("Request failed: {e}")),
         }
     }
 }

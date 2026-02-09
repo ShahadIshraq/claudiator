@@ -10,7 +10,7 @@ use crate::error::AppError;
 use crate::models::response::{DeviceListResponse, SessionListResponse};
 use crate::router::AppState;
 
-pub async fn list_devices_handler(
+pub(crate) async fn list_devices_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Json<DeviceListResponse>, AppError> {
@@ -19,7 +19,7 @@ pub async fn list_devices_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     let devices = queries::list_devices(&conn)?;
 
@@ -27,12 +27,12 @@ pub async fn list_devices_handler(
 }
 
 #[derive(Deserialize)]
-pub struct SessionQueryParams {
+pub(crate) struct SessionQueryParams {
     pub status: Option<String>,
     pub limit: Option<i64>,
 }
 
-pub async fn list_device_sessions_handler(
+pub(crate) async fn list_device_sessions_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(device_id): Path<String>,
@@ -45,7 +45,7 @@ pub async fn list_device_sessions_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     let sessions = queries::list_sessions(&conn, &device_id, params.status.as_deref(), limit)?;
 

@@ -8,7 +8,7 @@ use crate::error::AppError;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
 
-pub async fn ping_handler(
+pub(crate) async fn ping_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Json<StatusOk>, AppError> {

@@ -1,3 +1,3 @@
-pub mod migrations;
-pub mod pool;
-pub mod queries;
+pub(crate) mod migrations;
+pub(crate) mod pool;
+pub(crate) mod queries;

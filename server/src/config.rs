@@ -6,7 +6,7 @@ use clap::Parser;
     version,
     about = "Claudiator event ingestion server"
 )]
-pub struct ServerConfig {
+pub(crate) struct ServerConfig {
     #[arg(long, default_value = "3000", env = "CLAUDIATOR_PORT")]
     pub port: u16,
     #[arg(long, default_value = "claudiator.db", env = "CLAUDIATOR_DB_PATH")]

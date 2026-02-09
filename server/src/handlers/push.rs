@@ -11,7 +11,7 @@ use crate::models::request::PushRegisterRequest;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
 
-pub async fn push_register_handler(
+pub(crate) async fn push_register_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<PushRegisterRequest>,
@@ -31,7 +31,7 @@ pub async fn push_register_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     queries::upsert_push_token(&conn, &payload.platform, &payload.push_token, &now, sandbox)?;
 

@@ -11,7 +11,7 @@ use crate::models::request::EventPayload;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
 
-pub async fn events_handler(
+pub(crate) async fn events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<EventPayload>,
@@ -64,17 +64,17 @@ pub async fn events_handler(
 
     // Serialize the full event as JSON for storage
     let event_json = serde_json::to_string(&payload.event)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize event: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to serialize event: {e}")))?;
 
     // Get a connection from the pool
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     // Execute all inserts in a transaction
     conn.execute_batch("BEGIN")
-        .map_err(|e| AppError::Internal(format!("Transaction begin failed: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Transaction begin failed: {e}")))?;
 
     let result = (|| {
         queries::upsert_device(
@@ -113,7 +113,7 @@ pub async fn events_handler(
     let event_id = match result {
         Ok(event_id) => {
             conn.execute_batch("COMMIT")
-                .map_err(|e| AppError::Internal(format!("Transaction commit failed: {}", e)))?;
+                .map_err(|e| AppError::Internal(format!("Transaction commit failed: {e}")))?;
             state
                 .version
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -170,10 +170,10 @@ pub async fn events_handler(
         if let Some(ref apns_client) = state.apns_client {
             let apns = apns_client.clone();
             let push_pool = state.db_pool.clone();
-            let push_title = notif_title.clone();
-            let push_body = notif_body.clone();
+            let push_title = notif_title;
+            let push_body = notif_body;
             let collapse_id = notification_id.clone();
-            let push_notification_id = notification_id.clone();
+            let push_notification_id = notification_id;
             let push_session_id = payload.event.session_id.clone();
             let push_device_id = payload.device.device_id.clone();
 

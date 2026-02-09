@@ -10,12 +10,12 @@ use crate::models::response::NotificationListResponse;
 use crate::router::AppState;
 
 #[derive(serde::Deserialize)]
-pub struct NotificationQuery {
+pub(crate) struct NotificationQuery {
     pub since: Option<String>,
     pub limit: Option<i64>,
 }
 
-pub async fn list_notifications_handler(
+pub(crate) async fn list_notifications_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Query(query): Query<NotificationQuery>,
@@ -27,7 +27,7 @@ pub async fn list_notifications_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     let notifications = queries::list_notifications(&conn, query.since.as_deref(), limit)?;
 

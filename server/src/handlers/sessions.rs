@@ -11,11 +11,11 @@ use crate::models::response::{EventListResponse, SessionListResponse};
 use crate::router::AppState;
 
 #[derive(Deserialize)]
-pub struct EventQueryParams {
+pub(crate) struct EventQueryParams {
     pub limit: Option<i64>,
 }
 
-pub async fn list_session_events_handler(
+pub(crate) async fn list_session_events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(session_id): Path<String>,
@@ -28,14 +28,14 @@ pub async fn list_session_events_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     let events = queries::list_events(&conn, &session_id, limit)?;
 
     Ok(Json(EventListResponse { events }))
 }
 
-pub async fn list_all_sessions_handler(
+pub(crate) async fn list_all_sessions_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Query(params): Query<super::devices::SessionQueryParams>,
@@ -47,7 +47,7 @@ pub async fn list_all_sessions_handler(
     let conn = state
         .db_pool
         .get()
-        .map_err(|e| AppError::Internal(format!("Database pool error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
     let sessions = queries::list_all_sessions(&conn, params.status.as_deref(), limit)?;
 

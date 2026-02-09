@@ -5,7 +5,7 @@ use crate::models::response::{
     DeviceResponse, EventResponse, NotificationResponse, SessionResponse,
 };
 
-pub fn upsert_device(
+pub(crate) fn upsert_device(
     conn: &Connection,
     device_id: &str,
     device_name: &str,
@@ -20,11 +20,11 @@ pub fn upsert_device(
             last_seen = excluded.last_seen",
         rusqlite::params![device_id, device_name, platform, now],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to upsert device: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to upsert device: {e}")))?;
     Ok(())
 }
 
-pub fn upsert_session(
+pub(crate) fn upsert_session(
     conn: &Connection,
     session_id: &str,
     device_id: &str,
@@ -45,7 +45,7 @@ pub fn upsert_session(
             title = COALESCE(sessions.title, excluded.title)",
         rusqlite::params![session_id, device_id, now, initial_status, cwd, title],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to upsert session: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to upsert session: {e}")))?;
 
     // If we derived a status, update it separately (only when status is Some)
     if let Some(s) = status {
@@ -53,14 +53,14 @@ pub fn upsert_session(
             "UPDATE sessions SET status = ?1 WHERE session_id = ?2",
             rusqlite::params![s, session_id],
         )
-        .map_err(|e| AppError::Internal(format!("Failed to update session status: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to update session status: {e}")))?;
     }
 
     Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn insert_event(
+pub(crate) fn insert_event(
     conn: &Connection,
     device_id: &str,
     session_id: &str,
@@ -85,11 +85,11 @@ pub fn insert_event(
             event_json,
         ],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to insert event: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to insert event: {e}")))?;
     Ok(conn.last_insert_rowid())
 }
 
-pub fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> {
+pub(crate) fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> {
     let mut stmt = conn
         .prepare(
             "SELECT d.device_id, d.device_name, d.platform, d.first_seen, d.last_seen,
@@ -97,7 +97,7 @@ pub fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> 
              FROM devices d
              ORDER BY d.last_seen DESC",
         )
-        .map_err(|e| AppError::Internal(format!("Failed to prepare devices query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare devices query: {e}")))?;
 
     let devices = stmt
         .query_map([], |row| {
@@ -110,14 +110,14 @@ pub fn list_devices(conn: &Connection) -> Result<Vec<DeviceResponse>, AppError> 
                 active_sessions: row.get(5)?,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query devices: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query devices: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect devices: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect devices: {e}")))?;
 
     Ok(devices)
 }
 
-pub fn list_sessions(
+pub(crate) fn list_sessions(
     conn: &Connection,
     device_id: &str,
     status: Option<&str>,
@@ -152,9 +152,9 @@ pub fn list_sessions(
 
     let mut stmt = conn
         .prepare(&sql)
-        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -170,14 +170,14 @@ pub fn list_sessions(
                 platform: row.get(8)?,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {e}")))?;
 
     Ok(sessions)
 }
 
-pub fn list_all_sessions(
+pub(crate) fn list_all_sessions(
     conn: &Connection,
     status: Option<&str>,
     limit: i64,
@@ -206,9 +206,9 @@ pub fn list_all_sessions(
 
     let mut stmt = conn
         .prepare(&sql)
-        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -224,14 +224,14 @@ pub fn list_all_sessions(
                 platform: row.get(8)?,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {e}")))?;
 
     Ok(sessions)
 }
 
-pub fn list_events(
+pub(crate) fn list_events(
     conn: &Connection,
     session_id: &str,
     limit: i64,
@@ -245,7 +245,7 @@ pub fn list_events(
              ORDER BY e.timestamp DESC
              LIMIT ?2",
         )
-        .map_err(|e| AppError::Internal(format!("Failed to prepare events query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare events query: {e}")))?;
 
     let events = stmt
         .query_map(rusqlite::params![session_id, limit], |row| {
@@ -258,14 +258,14 @@ pub fn list_events(
                 message: row.get(5)?,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query events: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query events: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect events: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect events: {e}")))?;
 
     Ok(events)
 }
 
-pub fn upsert_push_token(
+pub(crate) fn upsert_push_token(
     conn: &Connection,
     platform: &str,
     push_token: &str,
@@ -279,14 +279,14 @@ pub fn upsert_push_token(
             platform = excluded.platform,
             updated_at = excluded.updated_at,
             sandbox = excluded.sandbox",
-        rusqlite::params![platform, push_token, now, sandbox as i32],
+        rusqlite::params![platform, push_token, now, i32::from(sandbox)],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to upsert push token: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to upsert push token: {e}")))?;
     Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn insert_notification(
+pub(crate) fn insert_notification(
     conn: &Connection,
     id: &str,
     event_id: i64,
@@ -303,11 +303,11 @@ pub fn insert_notification(
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         rusqlite::params![id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to insert notification: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to insert notification: {e}")))?;
     Ok(())
 }
 
-pub fn list_notifications(
+pub(crate) fn list_notifications(
     conn: &Connection,
     since_id: Option<&str>,
     limit: i64,
@@ -332,9 +332,9 @@ pub fn list_notifications(
 
     let mut stmt = conn
         .prepare(&sql)
-        .map_err(|e| AppError::Internal(format!("Failed to prepare notifications query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare notifications query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let notifications = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -350,17 +350,17 @@ pub fn list_notifications(
                 created_at: row.get(8)?,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query notifications: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query notifications: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect notifications: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect notifications: {e}")))?;
 
     Ok(notifications)
 }
 
-pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError> {
+pub(crate) fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError> {
     let cutoff = chrono::Utc::now()
         .checked_sub_signed(chrono::Duration::hours(24))
-        .unwrap()
+        .ok_or_else(|| AppError::Internal("Time calculation overflow".to_string()))?
         .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
 
     let count = conn
@@ -369,22 +369,22 @@ pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError
             rusqlite::params![cutoff],
         )
         .map_err(|e| {
-            AppError::Internal(format!("Failed to delete expired notifications: {}", e))
+            AppError::Internal(format!("Failed to delete expired notifications: {e}"))
         })?;
 
     Ok(count)
 }
 
-pub struct PushTokenRow {
+pub(crate) struct PushTokenRow {
     pub push_token: String,
     pub platform: String,
     pub sandbox: bool,
 }
 
-pub fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError> {
+pub(crate) fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError> {
     let mut stmt = conn
         .prepare("SELECT push_token, platform, sandbox FROM push_tokens")
-        .map_err(|e| AppError::Internal(format!("Failed to prepare push tokens query: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to prepare push tokens query: {e}")))?;
 
     let tokens = stmt
         .query_map([], |row| {
@@ -395,18 +395,18 @@ pub fn list_push_tokens(conn: &Connection) -> Result<Vec<PushTokenRow>, AppError
                 sandbox: sandbox_int != 0,
             })
         })
-        .map_err(|e| AppError::Internal(format!("Failed to query push tokens: {}", e)))?
+        .map_err(|e| AppError::Internal(format!("Failed to query push tokens: {e}")))?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| AppError::Internal(format!("Failed to collect push tokens: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to collect push tokens: {e}")))?;
 
     Ok(tokens)
 }
 
-pub fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppError> {
+pub(crate) fn delete_push_token(conn: &Connection, push_token: &str) -> Result<(), AppError> {
     conn.execute(
         "DELETE FROM push_tokens WHERE push_token = ?1",
         rusqlite::params![push_token],
     )
-    .map_err(|e| AppError::Internal(format!("Failed to delete push token: {}", e)))?;
+    .map_err(|e| AppError::Internal(format!("Failed to delete push token: {e}")))?;
     Ok(())
 }

@@ -1,6 +1,6 @@
-pub mod devices;
-pub mod events;
-pub mod notifications;
-pub mod ping;
-pub mod push;
-pub mod sessions;
+pub(crate) mod devices;
+pub(crate) mod events;
+pub(crate) mod notifications;
+pub(crate) mod ping;
+pub(crate) mod push;
+pub(crate) mod sessions;
