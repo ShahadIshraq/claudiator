@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NotificationListView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(APIClient.self) private var apiClient
     @Environment(NotificationManager.self) private var notificationManager
     @Environment(ThemeManager.self) private var themeManager
 
@@ -22,7 +23,9 @@ struct NotificationListView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     if notificationManager.unreadNotifications.contains(where: { $0.notificationId == notification.notificationId }) {
                                         Button {
-                                            notificationManager.markNotificationRead(notificationId: notification.notificationId)
+                                            Task {
+                                                await notificationManager.markNotificationRead(notificationId: notification.notificationId, apiClient: apiClient)
+                                            }
                                         } label: {
                                             Label("Mark Read", systemImage: "checkmark")
                                         }
@@ -30,7 +33,9 @@ struct NotificationListView: View {
                                     }
                                 }
                                 .onTapGesture {
-                                    notificationManager.markNotificationRead(notificationId: notification.notificationId)
+                                    Task {
+                                        await notificationManager.markNotificationRead(notificationId: notification.notificationId, apiClient: apiClient)
+                                    }
                                 }
                         }
                     }
@@ -66,13 +71,13 @@ struct NotificationRow: View {
     private var iconName: String {
         switch notification.notificationType {
         case "permission_prompt":
-            return "lock.shield"
+            "lock.shield"
         case "idle_prompt":
-            return "moon.zzz"
+            "moon.zzz"
         case "stop":
-            return "hand.raised"
+            "hand.raised"
         default:
-            return "bell"
+            "bell"
         }
     }
 

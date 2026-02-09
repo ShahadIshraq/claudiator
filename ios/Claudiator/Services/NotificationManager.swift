@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 
+@MainActor
 @Observable
 class NotificationManager {
     var unreadNotifications: [AppNotification] = []
@@ -11,16 +12,17 @@ class NotificationManager {
     }
 
     var sessionsWithNotifications: Set<String> {
-        Set(unreadNotifications.map { $0.sessionId })
+        Set(unreadNotifications.map(\.sessionId))
     }
 
     private let userDefaults = UserDefaults.standard
-    private let lastSeenKey = "lastSeenNotificationId"
+    private let lastSeenKey = "lastSeenTimestamp"
     private let readIdsKey = "readNotificationIds"
     private let pushReceivedKey = "pushReceivedNotificationIds"
     private let pushReceivedTimestampsKey = "pushReceivedTimestamps"
     private let maxNotifications = 100
-    private let pushReceivedRetentionSeconds: TimeInterval = 60 // 1 minute
+    private let maxReadIds = 500
+    private let pushReceivedRetentionSeconds: TimeInterval = 600 // 10 minutes
 
     init() {
         loadFromStorage()
@@ -31,18 +33,26 @@ class NotificationManager {
     func fetchNewNotifications(apiClient: APIClient) async {
         do {
             let lastSeen = userDefaults.string(forKey: lastSeenKey)
-            let notifications = try await apiClient.fetchNotifications(since: lastSeen, limit: nil)
+            let notifications = try await apiClient.fetchNotifications(after: lastSeen, limit: nil)
 
             guard !notifications.isEmpty else { return }
 
-            // Update last seen ID to the most recent notification
-            if let mostRecent = notifications.first {
-                userDefaults.set(mostRecent.notificationId, forKey: lastSeenKey)
+            // Update last seen timestamp to the most recent notification's timestamp
+            // Notifications are returned in ascending order, so .last is the newest
+            if let mostRecent = notifications.last {
+                userDefaults.set(mostRecent.createdAt, forKey: lastSeenKey)
             }
 
             // Get current read notification IDs and push-received IDs
-            let readIds = getReadNotificationIds()
+            var readIds = getReadNotificationIds()
             let pushReceivedIds = getPushReceivedIds()
+
+            // Seed read state from server's acknowledged field
+            let serverAcknowledgedIds = notifications.filter { $0.acknowledged == true }.map(\.notificationId)
+            readIds.formUnion(serverAcknowledgedIds)
+            if !serverAcknowledgedIds.isEmpty {
+                saveReadNotificationIds(readIds)
+            }
 
             // Fire local notification ONLY for the most recent unread notification
             // SKIP if it was already received via APNs push (deduplication)
@@ -53,29 +63,27 @@ class NotificationManager {
             }
 
             // Update internal state
-            await MainActor.run {
-                // Add new notifications to all notifications
-                let newNotifications = notifications.filter { notif in
-                    !allNotifications.contains(where: { $0.notificationId == notif.notificationId })
-                }
-                allNotifications.insert(contentsOf: newNotifications, at: 0)
-
-                // Cap at 100 entries
-                if allNotifications.count > maxNotifications {
-                    allNotifications = Array(allNotifications.prefix(maxNotifications))
-                }
-
-                // Update unread notifications
-                unreadNotifications = allNotifications.filter { !readIds.contains($0.notificationId) }
+            // Add new notifications to all notifications
+            let newNotifications = notifications.filter { notif in
+                !allNotifications.contains(where: { $0.notificationId == notif.notificationId })
             }
+            allNotifications.insert(contentsOf: newNotifications, at: 0)
+
+            // Cap at 100 entries
+            if allNotifications.count > maxNotifications {
+                allNotifications = Array(allNotifications.prefix(maxNotifications))
+            }
+
+            // Update unread notifications
+            unreadNotifications = allNotifications.filter { !readIds.contains($0.notificationId) }
         } catch {
             print("Error fetching notifications: \(error)")
         }
     }
 
-    func markSessionRead(sessionId: String) {
+    func markSessionRead(sessionId: String, apiClient: APIClient) async {
         let notificationsToMark = unreadNotifications.filter { $0.sessionId == sessionId }
-        let idsToMark = notificationsToMark.map { $0.notificationId }
+        let idsToMark = notificationsToMark.map(\.notificationId)
 
         guard !idsToMark.isEmpty else { return }
 
@@ -86,9 +94,12 @@ class NotificationManager {
 
         // Update unread notifications
         unreadNotifications.removeAll { $0.sessionId == sessionId }
+
+        // Acknowledge on server
+        try? await apiClient.acknowledgeNotifications(ids: idsToMark)
     }
 
-    func markNotificationRead(notificationId: String) {
+    func markNotificationRead(notificationId: String, apiClient: APIClient) async {
         guard unreadNotifications.contains(where: { $0.notificationId == notificationId }) else {
             return
         }
@@ -100,6 +111,9 @@ class NotificationManager {
 
         // Update unread notifications
         unreadNotifications.removeAll { $0.notificationId == notificationId }
+
+        // Acknowledge on server
+        try? await apiClient.acknowledgeNotifications(ids: [notificationId])
     }
 
     // MARK: - Private Methods
@@ -112,7 +126,7 @@ class NotificationManager {
         content.userInfo = [
             "notification_id": notif.notificationId,
             "session_id": notif.sessionId,
-            "device_id": notif.deviceId,
+            "device_id": notif.deviceId
         ]
 
         let request = UNNotificationRequest(
@@ -137,7 +151,13 @@ class NotificationManager {
     }
 
     private func saveReadNotificationIds(_ ids: Set<String>) {
-        userDefaults.set(Array(ids), forKey: readIdsKey)
+        var trimmedIds = ids
+        // Trim to maxReadIds if exceeds the cap
+        if trimmedIds.count > maxReadIds {
+            // Keep the most recent maxReadIds entries
+            trimmedIds = Set(Array(trimmedIds.sorted().suffix(maxReadIds)))
+        }
+        userDefaults.set(Array(trimmedIds), forKey: readIdsKey)
     }
 
     private func getPushReceivedIds() -> Set<String> {
@@ -163,11 +183,11 @@ class NotificationManager {
         let cutoff = now - pushReceivedRetentionSeconds
 
         // Remove IDs older than retention period
-        let idsToRemove = timestamps.filter { $0.value < cutoff }.map { $0.key }
+        let idsToRemove = timestamps.filter { $0.value < cutoff }.map(\.key)
 
         if !idsToRemove.isEmpty {
             var currentIds = Set(userDefaults.array(forKey: pushReceivedKey) as? [String] ?? [])
-            idsToRemove.forEach { id in
+            for id in idsToRemove {
                 currentIds.remove(id)
                 timestamps.removeValue(forKey: id)
             }
@@ -177,7 +197,7 @@ class NotificationManager {
         }
     }
 
-    // Called when an APNs push notification is received
+    /// Called when an APNs push notification is received
     func markReceivedViaPush(notificationId: String) {
         cleanupOldPushReceivedIds()
 

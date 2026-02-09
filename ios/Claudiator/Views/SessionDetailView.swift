@@ -156,7 +156,7 @@ struct SessionDetailView: View {
 
             // Events section
             Section("Events (\(viewModel.events.count))") {
-                if viewModel.isLoading && viewModel.events.isEmpty {
+                if viewModel.isLoading, viewModel.events.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else if viewModel.events.isEmpty {
@@ -177,7 +177,7 @@ struct SessionDetailView: View {
             await viewModel.refresh(apiClient: apiClient, sessionId: session.sessionId)
         }
         .task {
-            notificationManager.markSessionRead(sessionId: session.sessionId)
+            await notificationManager.markSessionRead(sessionId: session.sessionId, apiClient: apiClient)
             if device == nil {
                 if let devices = try? await apiClient.fetchDevices() {
                     device = devices.first { $0.deviceId == session.deviceId }

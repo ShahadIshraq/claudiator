@@ -11,21 +11,23 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notConfigured: return "Server not configured"
-        case .invalidURL: return "Invalid server URL"
-        case .unauthorized: return "Invalid API key"
-        case .serverError(let code): return "Server error (\(code))"
-        case .networkError(let error): return error.localizedDescription
-        case .decodingError(let error): return "Data error: \(error.localizedDescription)"
+        case .notConfigured: "Server not configured"
+        case .invalidURL: "Invalid server URL"
+        case .unauthorized: "Invalid API key"
+        case let .serverError(code): "Server error (\(code))"
+        case let .networkError(error): error.localizedDescription
+        case let .decodingError(error): "Data error: \(error.localizedDescription)"
         }
     }
 }
 
+@MainActor
 @Observable
 class APIClient {
     var baseURL: String {
         didSet { UserDefaults.standard.set(baseURL, forKey: "server_url") }
     }
+
     var isConfigured: Bool {
         !baseURL.isEmpty && (try? KeychainService.load(key: "api_key")) != nil
     }
@@ -68,7 +70,7 @@ class APIClient {
 
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError(URLError(.badServerResponse)) }
         if http.statusCode == 401 { throw APIError.unauthorized }
-        guard (200...299).contains(http.statusCode) else { throw APIError.serverError(http.statusCode) }
+        guard (200 ... 299).contains(http.statusCode) else { throw APIError.serverError(http.statusCode) }
         return data
     }
 
@@ -136,10 +138,10 @@ class APIClient {
         _ = try await request("/api/v1/push/register", method: "POST", body: body)
     }
 
-    func fetchNotifications(since: String? = nil, limit: Int? = nil) async throws -> [AppNotification] {
+    func fetchNotifications(after: String? = nil, limit: Int? = nil) async throws -> [AppNotification] {
         var path = "/api/v1/notifications"
         var params: [String] = []
-        if let since { params.append("since=\(since)") }
+        if let after { params.append("after=\(after)") }
         if let limit { params.append("limit=\(limit)") }
         if !params.isEmpty { path += "?" + params.joined(separator: "&") }
         let data = try await request(path)
