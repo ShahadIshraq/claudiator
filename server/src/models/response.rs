@@ -118,3 +118,27 @@ pub(crate) struct NotificationResponse {
 pub(crate) struct NotificationListResponse {
     pub notifications: Vec<NotificationResponse>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_ok_serialization() {
+        let status = StatusOk::ok();
+        let json = serde_json::to_value(status).unwrap();
+        assert_eq!(json["status"], "ok");
+        assert!(json["server_version"].is_null());
+        assert!(json["data_version"].is_null());
+    }
+
+    #[test]
+    fn test_status_ok_with_versions() {
+        let status = StatusOk::with_versions(42, 100);
+        let json = serde_json::to_value(status).unwrap();
+        assert_eq!(json["status"], "ok");
+        assert!(json["server_version"].is_string());
+        assert_eq!(json["data_version"], 42);
+        assert_eq!(json["notification_version"], 100);
+    }
+}

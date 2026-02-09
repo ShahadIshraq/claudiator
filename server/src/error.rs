@@ -38,3 +38,50 @@ impl IntoResponse for AppError {
             .into_response()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_unauthorized_error() {
+        let error = AppError::Unauthorized;
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["error"], "unauthorized");
+        assert_eq!(json["message"], "Invalid or missing API key");
+    }
+
+    #[tokio::test]
+    async fn test_bad_request_error() {
+        let error = AppError::BadRequest("Invalid input".to_string());
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["error"], "bad_request");
+        assert_eq!(json["message"], "Invalid input");
+    }
+
+    #[tokio::test]
+    async fn test_internal_error() {
+        let error = AppError::Internal("Database error".to_string());
+        let response = error.into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(json["error"], "internal_error");
+        assert_eq!(json["message"], "Internal server error");
+    }
+}
