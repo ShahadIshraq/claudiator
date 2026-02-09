@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::EventError;
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::struct_field_names)]
 pub struct HookEvent {
     pub session_id: String,
     pub hook_event_name: String,
@@ -47,13 +48,13 @@ pub struct HookEvent {
 }
 
 impl HookEvent {
-    pub fn from_stdin() -> Result<HookEvent, EventError> {
+    pub fn from_stdin() -> Result<Self, EventError> {
         let stdin = io::stdin();
         let reader = stdin.lock();
         Self::from_reader(reader)
     }
 
-    pub fn from_reader<R: io::Read>(reader: R) -> Result<HookEvent, EventError> {
+    pub fn from_reader<R: io::Read>(reader: R) -> Result<Self, EventError> {
         serde_json::from_reader(reader).map_err(EventError::ParseFailed)
     }
 }
@@ -82,7 +83,9 @@ mod tests {
             "subagent_type": "coder"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes()).unwrap();
+        let event = HookEvent::from_reader(json.as_bytes());
+        assert!(event.is_ok());
+        let Ok(event) = event else { return };
 
         assert_eq!(event.session_id, "sess-123");
         assert_eq!(event.hook_event_name, "notification");
@@ -114,7 +117,9 @@ mod tests {
             "another_unknown": 42
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes()).unwrap();
+        let event = HookEvent::from_reader(json.as_bytes());
+        assert!(event.is_ok());
+        let Ok(event) = event else { return };
 
         assert_eq!(event.session_id, "sess-123");
         assert_eq!(event.hook_event_name, "custom");
@@ -136,7 +141,9 @@ mod tests {
             "hook_event_name": "minimal"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes()).unwrap();
+        let event = HookEvent::from_reader(json.as_bytes());
+        assert!(event.is_ok());
+        let Ok(event) = event else { return };
 
         assert_eq!(event.session_id, "sess-123");
         assert_eq!(event.hook_event_name, "minimal");

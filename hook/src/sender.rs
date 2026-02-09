@@ -16,14 +16,13 @@ pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendErr
     let body = serde_json::to_string(payload).map_err(SendError::Serialize)?;
     let url = build_events_url(&config.server_url);
 
+    let api_key = &config.api_key;
+    let version = env!("CARGO_PKG_VERSION");
     let response = ureq::post(&url)
         .timeout(Duration::from_secs(3))
         .set("Content-Type", "application/json")
-        .set("Authorization", &format!("Bearer {}", config.api_key))
-        .set(
-            "User-Agent",
-            &format!("claudiator-hook/{}", env!("CARGO_PKG_VERSION")),
-        )
+        .set("Authorization", &format!("Bearer {api_key}"))
+        .set("User-Agent", &format!("claudiator-hook/{version}"))
         .send_string(&body);
 
     match response {
@@ -51,13 +50,12 @@ pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendErr
 pub fn test_connection(config: &Config) -> Result<String, SendError> {
     let url = build_ping_url(&config.server_url);
 
+    let api_key = &config.api_key;
+    let version = env!("CARGO_PKG_VERSION");
     let response = ureq::get(&url)
         .timeout(Duration::from_secs(3))
-        .set("Authorization", &format!("Bearer {}", config.api_key))
-        .set(
-            "User-Agent",
-            &format!("claudiator-hook/{}", env!("CARGO_PKG_VERSION")),
-        )
+        .set("Authorization", &format!("Bearer {api_key}"))
+        .set("User-Agent", &format!("claudiator-hook/{version}"))
         .call();
 
     match response {

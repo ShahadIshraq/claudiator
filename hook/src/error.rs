@@ -11,12 +11,12 @@ pub enum ConfigError {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::NoHomeDir => write!(f, "Could not determine home directory"),
-            ConfigError::ReadFailed(path, err) => {
-                write!(f, "Failed to read config file {}: {}", path.display(), err)
+            Self::NoHomeDir => write!(f, "Could not determine home directory"),
+            Self::ReadFailed(path, err) => {
+                write!(f, "Failed to read config file {}: {err}", path.display())
             }
-            ConfigError::ParseFailed(path, err) => {
-                write!(f, "Failed to parse config file {}: {}", path.display(), err)
+            Self::ParseFailed(path, err) => {
+                write!(f, "Failed to parse config file {}: {err}", path.display())
             }
         }
     }
@@ -30,7 +30,7 @@ pub enum EventError {
 impl std::fmt::Display for EventError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EventError::ParseFailed(err) => write!(f, "Failed to parse event: {}", err),
+            Self::ParseFailed(err) => write!(f, "Failed to parse event: {err}"),
         }
     }
 }
@@ -45,10 +45,10 @@ pub enum SendError {
 impl std::fmt::Display for SendError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SendError::Serialize(err) => write!(f, "Failed to serialize event: {}", err),
-            SendError::Network(msg) => write!(f, "Network error: {}", msg),
-            SendError::ServerError(code, msg) => {
-                write!(f, "Server error {}: {}", code, msg)
+            Self::Serialize(err) => write!(f, "Failed to serialize event: {err}"),
+            Self::Network(msg) => write!(f, "Network error: {msg}"),
+            Self::ServerError(code, msg) => {
+                write!(f, "Server error {code}: {msg}")
             }
         }
     }
@@ -69,7 +69,7 @@ mod tests {
     fn test_config_error_read_failed() {
         let path = PathBuf::from("/fake/path");
         let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
-        let err = ConfigError::ReadFailed(path.clone(), io_err);
+        let err = ConfigError::ReadFailed(path, io_err);
         let msg = err.to_string();
         assert!(msg.starts_with("Failed to read config file /fake/path:"));
         assert!(msg.contains("file not found"));
@@ -78,35 +78,37 @@ mod tests {
     #[test]
     fn test_config_error_parse_failed() {
         let path = PathBuf::from("/fake/config.toml");
-        let toml_err = toml::from_str::<toml::Value>("invalid toml {{{").unwrap_err();
-        let err = ConfigError::ParseFailed(path.clone(), toml_err);
-        let msg = err.to_string();
-        assert!(msg.starts_with("Failed to parse config file /fake/config.toml:"));
+        let toml_result = toml::from_str::<toml::Value>("invalid toml {{{");
+        assert!(toml_result.is_err());
+        if let Err(toml_err) = toml_result {
+            let err = ConfigError::ParseFailed(path, toml_err);
+            let msg = err.to_string();
+            assert!(msg.starts_with("Failed to parse config file /fake/config.toml:"));
+        }
     }
 
     #[test]
     fn test_event_error_parse_failed() {
-        let json_err = serde_json::from_str::<serde_json::Value>("invalid json {").unwrap_err();
-        let err = EventError::ParseFailed(json_err);
-        let msg = err.to_string();
-        assert!(msg.starts_with("Failed to parse event:"));
+        let json_result = serde_json::from_str::<serde_json::Value>("invalid json {");
+        assert!(json_result.is_err());
+        if let Err(json_err) = json_result {
+            let err = EventError::ParseFailed(json_err);
+            let msg = err.to_string();
+            assert!(msg.starts_with("Failed to parse event:"));
+        }
     }
 
     #[test]
     fn test_send_error_serialize() {
-        use std::collections::HashMap;
-
-        // Create a Map and then corrupt it to produce a serialization error
-        // by attempting to serialize a recursive structure
-        let mut map = HashMap::new();
-        map.insert("key", "value");
-
         // For testing Display, we can just create the error directly
         // using a parse error as a stand-in
-        let json_err = serde_json::from_str::<serde_json::Value>("").unwrap_err();
-        let err = SendError::Serialize(json_err);
-        let msg = err.to_string();
-        assert!(msg.starts_with("Failed to serialize event:"));
+        let json_result = serde_json::from_str::<serde_json::Value>("");
+        assert!(json_result.is_err());
+        if let Err(json_err) = json_result {
+            let err = SendError::Serialize(json_err);
+            let msg = err.to_string();
+            assert!(msg.starts_with("Failed to serialize event:"));
+        }
     }
 
     #[test]

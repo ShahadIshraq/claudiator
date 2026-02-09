@@ -19,7 +19,7 @@ pub struct EventPayload {
 }
 
 impl EventPayload {
-    pub fn new(config: &Config, event: HookEvent) -> EventPayload {
+    pub fn new(config: &Config, event: HookEvent) -> Self {
         let device = DeviceInfo {
             device_id: config.device_id.clone(),
             device_name: config.device_name.clone(),
@@ -28,7 +28,7 @@ impl EventPayload {
 
         let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
 
-        EventPayload {
+        Self {
             device,
             event,
             timestamp,

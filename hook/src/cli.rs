@@ -26,23 +26,26 @@ mod tests {
     fn test_parse_send_command() {
         let cli = Cli::try_parse_from(["claudiator-hook", "send"]);
         assert!(cli.is_ok());
-        let cli = cli.unwrap();
-        assert!(matches!(cli.command, Commands::Send));
+        if let Ok(cli) = cli {
+            assert!(matches!(cli.command, Commands::Send));
+        }
     }
 
     #[test]
     fn test_parse_test_command() {
         let cli = Cli::try_parse_from(["claudiator-hook", "test"]);
         assert!(cli.is_ok());
-        let cli = cli.unwrap();
-        assert!(matches!(cli.command, Commands::Test));
+        if let Ok(cli) = cli {
+            assert!(matches!(cli.command, Commands::Test));
+        }
     }
 
     #[test]
     fn test_parse_version_command() {
         let cli = Cli::try_parse_from(["claudiator-hook", "version"]);
         assert!(cli.is_ok());
-        let cli = cli.unwrap();
-        assert!(matches!(cli.command, Commands::Version));
+        if let Ok(cli) = cli {
+            assert!(matches!(cli.command, Commands::Version));
+        }
     }
 }

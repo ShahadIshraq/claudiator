@@ -1,3 +1,12 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![warn(clippy::cargo)]
+#![allow(clippy::cargo_common_metadata)]
+#![allow(clippy::multiple_crate_versions)]
+
 mod cli;
 mod config;
 mod error;
@@ -29,7 +38,7 @@ fn cmd_send() {
     let config = match Config::load() {
         Ok(c) => c,
         Err(e) => {
-            log_error(&format!("Config error: {}", e));
+            log_error(&format!("Config error: {e}"));
             return;
         }
     };
@@ -37,7 +46,7 @@ fn cmd_send() {
     let event = match HookEvent::from_stdin() {
         Ok(e) => e,
         Err(e) => {
-            log_error(&format!("Event parse error: {}", e));
+            log_error(&format!("Event parse error: {e}"));
             return;
         }
     };
@@ -45,7 +54,7 @@ fn cmd_send() {
     let payload = EventPayload::new(&config, event);
 
     if let Err(e) = send_event(&config, &payload) {
-        log_error(&format!("Send error: {}", e));
+        log_error(&format!("Send error: {e}"));
     }
 }
 
@@ -53,7 +62,7 @@ fn cmd_test() {
     let config = match Config::load() {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Failed to load config: {}", e);
+            eprintln!("Failed to load config: {e}");
             std::process::exit(1);
         }
     };
@@ -63,10 +72,10 @@ fn cmd_test() {
     match test_connection(&config) {
         Ok(body) => {
             println!("Connection successful!");
-            println!("Server response: {}", body);
+            println!("Server response: {body}");
         }
         Err(e) => {
-            eprintln!("Connection failed: {}", e);
+            eprintln!("Connection failed: {e}");
             std::process::exit(1);
         }
     }

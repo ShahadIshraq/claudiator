@@ -2,6 +2,9 @@
 name = "claudiator-hook"
 version = "0.1.0"
 edition = "2021"
+description = "CLI hook that forwards Claude Code session events to a Claudiator server"
+license = "MIT"
+repository = "https://github.com/shahadishraq/claudiator"
 
 [[bin]]
 name = "claudiator-hook"
