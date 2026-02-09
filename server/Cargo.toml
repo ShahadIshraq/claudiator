@@ -20,6 +20,11 @@ uuid = { version = "1", features = ["v4"] }
 jsonwebtoken = "9"
 reqwest = { version = "0.12", features = ["json", "http2"] }
 
+[dev-dependencies]
+axum-test = "16"
+tokio-test = "0.4"
+tempfile = "3"
+
 [lints.rust]
 missing_docs = "warn"
 unreachable_pub = "warn"
