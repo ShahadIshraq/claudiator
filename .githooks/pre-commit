@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running pre-commit checks..."
+echo ""
+
+# Hook checks
+if [ -d "hook" ]; then
+    echo "Running pre-commit checks on hook/..."
+
+    (cd hook && cargo fmt --check) || {
+        echo "Formatting check failed. Run 'cargo fmt' in hook/"
+        exit 1
+    }
+
+    (cd hook && cargo clippy --all-targets -- -D warnings) || {
+        echo "Clippy check failed."
+        exit 1
+    }
+
+    (cd hook && cargo test --quiet) || {
+        echo "Tests failed."
+        exit 1
+    }
+
+    echo "✓ Hook checks passed"
+    echo ""
+fi
+
+# Server checks
+if [ -d "server" ]; then
+    echo "Running pre-commit checks on server/..."
+
+    (cd server && cargo fmt --check) || {
+        echo "Formatting check failed. Run 'cargo fmt' in server/"
+        exit 1
+    }
+
+    (cd server && cargo clippy --all-targets -- -D warnings) || {
+        echo "Clippy check failed."
+        exit 1
+    }
+
+    (cd server && cargo test --quiet) || {
+        echo "Tests failed."
+        exit 1
+    }
+
+    echo "✓ Server checks passed"
+    echo ""
+fi
+
+# iOS checks (placeholder for future implementation)
+# if [ -d "ios" ]; then
+#     echo "Running pre-commit checks on iOS/..."
+#     # SwiftFormat and SwiftLint checks will be added here
+#     echo "✓ iOS checks passed"
+#     echo ""
+# fi
+
+echo "All pre-commit checks passed."
