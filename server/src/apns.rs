@@ -23,7 +23,7 @@ pub(crate) enum ApnsPushResult {
     OtherError(String),
 }
 
-pub(crate) struct ApnsClient {
+pub struct ApnsClient {
     key_id: String,
     team_id: String,
     bundle_id: String,

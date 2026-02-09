@@ -7,7 +7,7 @@ use crate::apns::ApnsClient;
 use crate::db::pool::DbPool;
 use crate::handlers;
 
-pub(crate) struct AppState {
+pub struct AppState {
     pub api_key: String,
     pub db_pool: DbPool,
     pub version: AtomicU64,
@@ -15,7 +15,7 @@ pub(crate) struct AppState {
     pub apns_client: Option<Arc<ApnsClient>>,
 }
 
-pub(crate) fn build_router(state: Arc<AppState>) -> Router {
+pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/api/v1/ping", get(handlers::ping::ping_handler))
         .route("/api/v1/events", post(handlers::events::events_handler))
