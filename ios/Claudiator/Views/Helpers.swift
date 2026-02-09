@@ -4,10 +4,10 @@ import SwiftUI
 /// Returns the asset catalog image name for a platform string
 func platformImageName(_ platform: String) -> String {
     switch platform.lowercased() {
-    case "mac", "macos", "darwin": return "AppleLogo"
-    case "linux": return "LinuxLogo"
-    case "windows": return "WindowsLogo"
-    default: return "WindowsLogo"
+    case "mac", "macos", "darwin": "AppleLogo"
+    case "linux": "LinuxLogo"
+    case "windows": "WindowsLogo"
+    default: "WindowsLogo"
     }
 }
 
@@ -30,6 +30,7 @@ struct PlatformIcon: View {
     }
 }
 
+@MainActor
 private enum FormatterCache {
     static let iso8601: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -50,9 +51,10 @@ private enum FormatterCache {
     }()
 }
 
+@MainActor
 func relativeTime(_ isoString: String) -> String {
     guard let date = FormatterCache.iso8601.date(from: isoString)
-            ?? FormatterCache.iso8601NoFractional.date(from: isoString) else {
+        ?? FormatterCache.iso8601NoFractional.date(from: isoString) else {
         return isoString
     }
     return FormatterCache.relative.localizedString(for: date, relativeTo: Date())
@@ -74,12 +76,12 @@ func cwdShortDisplay(_ cwd: String) -> String {
 /// Formats a status string for display (e.g. "waiting_for_input" -> "Waiting For Input")
 func statusDisplayLabel(_ status: String) -> String {
     switch status {
-    case "active": return "Active"
-    case "waiting_for_input": return "Waiting for Input"
-    case "waiting_for_permission": return "Waiting for Permission"
-    case "idle": return "Idle"
-    case "ended": return "Ended"
-    default: return status.replacingOccurrences(of: "_", with: " ").capitalized
+    case "active": "Active"
+    case "waiting_for_input": "Waiting for Input"
+    case "waiting_for_permission": "Waiting for Permission"
+    case "idle": "Idle"
+    case "ended": "Ended"
+    default: status.replacingOccurrences(of: "_", with: " ").capitalized
     }
 }
 
@@ -99,6 +101,50 @@ func priorityStatus(for sessions: [Session]) -> String {
         return "idle"
     }
     return "ended"
+}
+
+// MARK: - Themed Segmented Picker
+
+struct ThemedSegmentedPicker<Option: Hashable & CaseIterable & RawRepresentable>: View where Option.RawValue == String,
+    Option.AllCases: RandomAccessCollection {
+    @Environment(ThemeManager.self) private var themeManager
+    @Binding var selection: Option
+    let options: Option.AllCases
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(options), id: \.rawValue) { option in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selection = option
+                    }
+                } label: {
+                    Text(option.rawValue)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(selection == option ? themeManager.current.cardBackground : .clear)
+                                .shadow(color: selection == option ? .black.opacity(0.06) : .clear, radius: 2, y: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(
+            Capsule()
+                .fill(themeManager.current.cardBackground.opacity(0.5))
+                .overlay(
+                    Capsule()
+                        .strokeBorder(themeManager.current.cardBorder.opacity(AppTheme.cardBorderOpacity), lineWidth: AppTheme.cardBorderWidth)
+                )
+        )
+        .frame(maxWidth: 200)
+        .frame(maxWidth: .infinity)
+    }
 }
 
 // MARK: - Themed Card ViewModifier
