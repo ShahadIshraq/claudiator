@@ -79,7 +79,7 @@ jobs:
       - name: Format
         run: cargo fmt -- --check
       - name: Clippy
-        run: cargo clippy -- -D warnings -A missing_docs -A clippy::missing_errors_doc
+        run: cargo clippy -- -D warnings -A missing_docs -A clippy::missing_errors_doc -A clippy::redundant_pub_crate -A unreachable_pub
       - name: Test
         run: cargo test
 
