@@ -1,3 +1,7 @@
+#![allow(clippy::unwrap_used)]
+#![allow(unused_variables)]
+#![allow(missing_docs)]
+
 use claudiator_server::db::{migrations, pool, queries};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -319,8 +323,8 @@ fn test_notification_lifecycle() {
     )
     .unwrap();
 
-    // List since first
-    let notifs = queries::list_notifications(&conn, Some("notif-1"), 10).unwrap();
+    // List notifications after the first notification's timestamp
+    let notifs = queries::list_notifications(&conn, Some(&now), 10).unwrap();
     assert_eq!(notifs.len(), 1);
     assert_eq!(notifs[0].id, "notif-2");
 }
@@ -387,4 +391,314 @@ fn test_delete_expired_notifications() {
     let notifs = queries::list_notifications(&conn, None, 10).unwrap();
     assert_eq!(notifs.len(), 1);
     assert_eq!(notifs[0].id, "new-notif");
+}
+
+#[test]
+fn test_metadata_operations() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Get non-existent key
+    let value = queries::get_metadata(&conn, "test-key").unwrap();
+    assert!(value.is_none());
+
+    // Set a value
+    queries::set_metadata(&conn, "test-key", "test-value").unwrap();
+
+    // Get the value
+    let value = queries::get_metadata(&conn, "test-key").unwrap();
+    assert_eq!(value, Some("test-value".to_string()));
+
+    // Update the value
+    queries::set_metadata(&conn, "test-key", "updated-value").unwrap();
+
+    // Verify update
+    let value = queries::get_metadata(&conn, "test-key").unwrap();
+    assert_eq!(value, Some("updated-value".to_string()));
+}
+
+#[test]
+fn test_metadata_multiple_keys() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Set multiple keys
+    queries::set_metadata(&conn, "key1", "value1").unwrap();
+    queries::set_metadata(&conn, "key2", "value2").unwrap();
+    queries::set_metadata(&conn, "key3", "value3").unwrap();
+
+    // Verify all keys
+    assert_eq!(queries::get_metadata(&conn, "key1").unwrap(), Some("value1".to_string()));
+    assert_eq!(queries::get_metadata(&conn, "key2").unwrap(), Some("value2".to_string()));
+    assert_eq!(queries::get_metadata(&conn, "key3").unwrap(), Some("value3".to_string()));
+}
+
+#[test]
+fn test_acknowledge_notifications_basic() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Setup
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, None, None, None).unwrap();
+    let event_id = queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &now,
+        &now,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Insert notifications
+    queries::insert_notification(
+        &conn,
+        "notif-1",
+        event_id,
+        "session-1",
+        "device-1",
+        "Title 1",
+        "Body",
+        "info",
+        None,
+        &now,
+    )
+    .unwrap();
+
+    queries::insert_notification(
+        &conn,
+        "notif-2",
+        event_id,
+        "session-1",
+        "device-1",
+        "Title 2",
+        "Body",
+        "info",
+        None,
+        &now,
+    )
+    .unwrap();
+
+    // Acknowledge one notification
+    queries::acknowledge_notifications(&conn, &["notif-1".to_string()]).unwrap();
+
+    // Verify acknowledged status
+    let notifs = queries::list_notifications(&conn, None, 10).unwrap();
+    let notif1 = notifs.iter().find(|n| n.id == "notif-1").unwrap();
+    let notif2 = notifs.iter().find(|n| n.id == "notif-2").unwrap();
+
+    assert!(notif1.acknowledged);
+    assert!(!notif2.acknowledged);
+}
+
+#[test]
+fn test_acknowledge_notifications_multiple() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Setup
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, None, None, None).unwrap();
+    let event_id = queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &now,
+        &now,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Insert notifications
+    for i in 1..=5 {
+        queries::insert_notification(
+            &conn,
+            &format!("notif-{i}"),
+            event_id,
+            "session-1",
+            "device-1",
+            "Title",
+            "Body",
+            "info",
+            None,
+            &now,
+        )
+        .unwrap();
+    }
+
+    // Acknowledge multiple notifications
+    queries::acknowledge_notifications(
+        &conn,
+        &["notif-1".to_string(), "notif-2".to_string(), "notif-3".to_string()],
+    )
+    .unwrap();
+
+    // Verify
+    let notifs = queries::list_notifications(&conn, None, 10).unwrap();
+    let acked_count = notifs.iter().filter(|n| n.acknowledged).count();
+    assert_eq!(acked_count, 3);
+}
+
+#[test]
+fn test_acknowledge_notifications_empty() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Should not error on empty array
+    queries::acknowledge_notifications(&conn, &[]).unwrap();
+}
+
+#[test]
+fn test_acknowledge_notifications_nonexistent() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Should not error on non-existent IDs
+    queries::acknowledge_notifications(&conn, &["nonexistent".to_string()]).unwrap();
+}
+
+#[test]
+fn test_list_notifications_with_after_timestamp() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Setup
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, None, None, None).unwrap();
+    let event_id = queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &now,
+        &now,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Insert notification with specific timestamp
+    let timestamp1 = "2024-01-01T10:00:00Z";
+    queries::insert_notification(
+        &conn,
+        "notif-1",
+        event_id,
+        "session-1",
+        "device-1",
+        "First",
+        "Body",
+        "info",
+        None,
+        timestamp1,
+    )
+    .unwrap();
+
+    // Insert second notification with later timestamp
+    let timestamp2 = "2024-01-01T11:00:00Z";
+    queries::insert_notification(
+        &conn,
+        "notif-2",
+        event_id,
+        "session-1",
+        "device-1",
+        "Second",
+        "Body",
+        "info",
+        None,
+        timestamp2,
+    )
+    .unwrap();
+
+    // List all notifications
+    let all_notifs = queries::list_notifications(&conn, None, 10).unwrap();
+    assert_eq!(all_notifs.len(), 2);
+
+    // List notifications after first timestamp
+    let notifs = queries::list_notifications(&conn, Some(timestamp1), 10).unwrap();
+    assert_eq!(notifs.len(), 1);
+    assert_eq!(notifs[0].id, "notif-2");
+}
+
+#[test]
+fn test_timestamp_pagination_ordering() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Setup
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, None, None, None).unwrap();
+    let event_id = queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &now,
+        &now,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Insert notifications with ascending timestamps
+    queries::insert_notification(
+        &conn,
+        "notif-1",
+        event_id,
+        "session-1",
+        "device-1",
+        "First",
+        "Body",
+        "info",
+        None,
+        "2024-01-01T10:00:00Z",
+    )
+    .unwrap();
+
+    queries::insert_notification(
+        &conn,
+        "notif-2",
+        event_id,
+        "session-1",
+        "device-1",
+        "Second",
+        "Body",
+        "info",
+        None,
+        "2024-01-01T11:00:00Z",
+    )
+    .unwrap();
+
+    queries::insert_notification(
+        &conn,
+        "notif-3",
+        event_id,
+        "session-1",
+        "device-1",
+        "Third",
+        "Body",
+        "info",
+        None,
+        "2024-01-01T12:00:00Z",
+    )
+    .unwrap();
+
+    // List all - should be in ascending order by timestamp
+    let notifs = queries::list_notifications(&conn, None, 10).unwrap();
+    assert_eq!(notifs.len(), 3);
+    assert_eq!(notifs[0].id, "notif-1");
+    assert_eq!(notifs[1].id, "notif-2");
+    assert_eq!(notifs[2].id, "notif-3");
 }

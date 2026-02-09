@@ -5,6 +5,17 @@ options:
     iOS: "18.0"
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
+  groupSortPosition: top
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_STRICT_CONCURRENCY: complete
+    RUN_CLANG_STATIC_ANALYZER: YES
+  configs:
+    Release:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+      GCC_TREAT_WARNINGS_AS_ERRORS: YES
 
 targets:
   Claudiator:
@@ -31,3 +42,54 @@ targets:
       path: Claudiator/Claudiator.entitlements
       properties:
         aps-environment: development
+    preBuildScripts:
+      - script: |
+          # Check for swiftlint in common locations
+          if command -v swiftlint >/dev/null 2>&1; then
+            swiftlint --config "${SRCROOT}/.swiftlint.yml"
+          elif [ -f /opt/homebrew/bin/swiftlint ]; then
+            /opt/homebrew/bin/swiftlint --config "${SRCROOT}/.swiftlint.yml"
+          elif [ -f /usr/local/bin/swiftlint ]; then
+            /usr/local/bin/swiftlint --config "${SRCROOT}/.swiftlint.yml"
+          else
+            echo "warning: SwiftLint not installed"
+          fi
+        name: SwiftLint
+        basedOnDependencyAnalysis: false
+
+  ClaudiatorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: ClaudiatorTests
+    dependencies:
+      - target: Claudiator
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.claudiator.app.tests
+        SWIFT_VERSION: "5.9"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Claudiator.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Claudiator"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Claudiator:
+    build:
+      targets:
+        Claudiator: all
+        ClaudiatorTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets:
+        - Claudiator
+      targets:
+        - ClaudiatorTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

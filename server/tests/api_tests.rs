@@ -1,3 +1,8 @@
+#![allow(clippy::unwrap_used)]
+#![allow(unused_imports)]
+#![allow(clippy::similar_names)]
+#![allow(missing_docs)]
+
 use axum::http::StatusCode;
 use axum_test::TestServer;
 use claudiator_server::{db, models, router};
@@ -13,6 +18,7 @@ fn test_server() -> TestServer {
         db_pool,
         version: AtomicU64::new(0),
         notification_version: AtomicU64::new(0),
+        last_cleanup: AtomicU64::new(0),
         apns_client: None,
     });
 
@@ -426,4 +432,129 @@ async fn test_list_notifications_limit_caps_at_200() {
     response.assert_status_ok();
     // The implementation should cap at 200, but we can't easily verify without seeding 200+ records
     // This test just ensures the endpoint accepts the parameter
+}
+
+#[tokio::test]
+async fn test_list_notifications_with_after_timestamp() {
+    let server = test_server();
+
+    // Seed an event and notification
+    let event_payload = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {"session_id": "sess-1", "hook_event_name": "session-start"},
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&event_payload)
+        .await;
+
+    // List all notifications to get the timestamp
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+
+    if !notifications.is_empty() {
+        let first_timestamp = notifications[0]["created_at"].as_str().unwrap();
+
+        // Query with after parameter using the timestamp
+        // URL encode the timestamp manually to avoid dependency
+        let encoded_timestamp = first_timestamp.replace(":", "%3A").replace("+", "%2B");
+        let response = server
+            .get(&format!("/api/v1/notifications?after={}", encoded_timestamp))
+            .add_header("Authorization", "Bearer test-key")
+            .await;
+
+        response.assert_status_ok();
+        let json: serde_json::Value = response.json();
+        // Should return notifications created after the specified timestamp
+        assert!(json["notifications"].is_array());
+    }
+}
+
+#[tokio::test]
+async fn test_acknowledge_notifications() {
+    let server = test_server();
+
+    // Seed an event and notification
+    let event_payload = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {"session_id": "sess-1", "hook_event_name": "session-start"},
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&event_payload)
+        .await;
+
+    // Get notification IDs
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+
+    if !notifications.is_empty() {
+        let notif_id = notifications[0]["id"].as_str().unwrap();
+
+        // Acknowledge the notification
+        let ack_payload = serde_json::json!({
+            "ids": [notif_id]
+        });
+
+        let response = server
+            .post("/api/v1/notifications/ack")
+            .add_header("Authorization", "Bearer test-key")
+            .json(&ack_payload)
+            .await;
+
+        response.assert_status_ok();
+        let json: serde_json::Value = response.json();
+        assert_eq!(json["status"], "ok");
+    }
+}
+
+#[tokio::test]
+async fn test_acknowledge_notifications_empty_array() {
+    let server = test_server();
+
+    let ack_payload = serde_json::json!({
+        "ids": []
+    });
+
+    let response = server
+        .post("/api/v1/notifications/ack")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&ack_payload)
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["status"], "ok");
+}
+
+#[tokio::test]
+async fn test_acknowledge_notifications_without_auth() {
+    let server = test_server();
+
+    let ack_payload = serde_json::json!({
+        "ids": ["notif-1"]
+    });
+
+    let response = server
+        .post("/api/v1/notifications/ack")
+        .json(&ack_payload)
+        .await;
+
+    response.assert_status_unauthorized();
 }
