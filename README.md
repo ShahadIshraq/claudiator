@@ -51,6 +51,44 @@ See [server/README.md](server/README.md) for the server API, deployment, and con
 
 See [ios/README.md](ios/README.md) for the iOS app build instructions and architecture.
 
+## Development
+
+### Pre-commit Hooks
+
+This repository includes pre-commit hooks to ensure code quality across all components. To enable them:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The pre-commit hook automatically runs the following checks:
+
+**Hook (Rust):**
+- Format check: `cargo fmt --check`
+- Linting: `cargo clippy --all-targets -- -D warnings`
+- Tests: `cargo test --quiet`
+
+**Server (Rust):**
+- Format check: `cargo fmt --check`
+- Linting: `cargo clippy --all-targets -- -D warnings`
+- Tests: `cargo test --quiet`
+
+**iOS (Swift):**
+- SwiftFormat and SwiftLint checks (when implemented)
+
+All checks must pass before you can commit. If formatting fails, run `cargo fmt` in the respective directory to fix it automatically.
+
+### Dependency Auditing
+
+Both the hook and server use `cargo-deny` for dependency auditing. Configurations are in `hook/deny.toml` and `server/deny.toml`.
+
+To audit dependencies:
+```bash
+cargo install cargo-deny
+cargo deny --manifest-path hook/Cargo.toml check
+cargo deny --manifest-path server/Cargo.toml check
+```
+
 ## License
 
 MIT
