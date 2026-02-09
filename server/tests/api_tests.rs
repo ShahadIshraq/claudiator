@@ -467,7 +467,10 @@ async fn test_list_notifications_with_after_timestamp() {
         // URL encode the timestamp manually to avoid dependency
         let encoded_timestamp = first_timestamp.replace(":", "%3A").replace("+", "%2B");
         let response = server
-            .get(&format!("/api/v1/notifications?after={}", encoded_timestamp))
+            .get(&format!(
+                "/api/v1/notifications?after={}",
+                encoded_timestamp
+            ))
             .add_header("Authorization", "Bearer test-key")
             .await;
 

@@ -156,7 +156,8 @@ pub fn list_sessions(
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+        params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -210,7 +211,8 @@ pub fn list_all_sessions(
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+        params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -336,7 +338,8 @@ pub fn list_notifications(
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare notifications query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+        params.iter().map(std::convert::AsRef::as_ref).collect();
 
     let notifications = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -372,9 +375,7 @@ pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError
             "DELETE FROM notifications WHERE created_at < ?1",
             rusqlite::params![cutoff],
         )
-        .map_err(|e| {
-            AppError::Internal(format!("Failed to delete expired notifications: {e}"))
-        })?;
+        .map_err(|e| AppError::Internal(format!("Failed to delete expired notifications: {e}")))?;
 
     Ok(count)
 }
@@ -456,7 +457,10 @@ pub fn acknowledge_notifications(conn: &Connection, ids: &[String]) -> Result<()
     let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let sql = format!("UPDATE notifications SET acknowledged = 1 WHERE id IN ({placeholders})");
 
-    let params: Vec<&dyn rusqlite::types::ToSql> = ids.iter().map(|id| id as &dyn rusqlite::types::ToSql).collect();
+    let params: Vec<&dyn rusqlite::types::ToSql> = ids
+        .iter()
+        .map(|id| id as &dyn rusqlite::types::ToSql)
+        .collect();
 
     conn.execute(&sql, params.as_slice())
         .map_err(|e| AppError::Internal(format!("Failed to acknowledge notifications: {e}")))?;

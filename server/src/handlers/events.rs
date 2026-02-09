@@ -115,7 +115,10 @@ pub async fn events_handler(
     let event_id = match result {
         Ok(event_id) => {
             // Persist data version bump
-            let new_version = state.version.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            let new_version = state
+                .version
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                + 1;
             queries::set_metadata(&conn, "data_version", &new_version.to_string())?;
 
             conn.execute_batch("COMMIT")
@@ -152,23 +155,34 @@ pub async fn events_handler(
         // Persist notification version bump
         let new_notif_version = state
             .notification_version
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-        let _ = queries::set_metadata(&conn, "notification_version", &new_notif_version.to_string());
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
+        let _ = queries::set_metadata(
+            &conn,
+            "notification_version",
+            &new_notif_version.to_string(),
+        );
 
         // Synchronous cleanup with time guard (max once per 5 minutes)
         #[allow(clippy::cast_sign_loss)]
         let now_secs = Utc::now().timestamp() as u64;
-        let last_cleanup = state.last_cleanup.load(std::sync::atomic::Ordering::Relaxed);
+        let last_cleanup = state
+            .last_cleanup
+            .load(std::sync::atomic::Ordering::Relaxed);
         let five_minutes_secs = 5 * 60;
 
         if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
             match queries::delete_expired_notifications(&conn) {
                 Ok(count) if count > 0 => {
                     tracing::debug!("Cleaned up {} expired notifications", count);
-                    state.last_cleanup.store(now_secs, std::sync::atomic::Ordering::Relaxed);
+                    state
+                        .last_cleanup
+                        .store(now_secs, std::sync::atomic::Ordering::Relaxed);
                 }
                 Ok(_) => {
-                    state.last_cleanup.store(now_secs, std::sync::atomic::Ordering::Relaxed);
+                    state
+                        .last_cleanup
+                        .store(now_secs, std::sync::atomic::Ordering::Relaxed);
                 }
                 Err(e) => {
                     tracing::warn!("Failed to clean expired notifications: {:?}", e);

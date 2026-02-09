@@ -31,7 +31,11 @@ fn test_migration_idempotency() {
     // Should not panic or error
     let conn = pool.get().unwrap();
     let result: i64 = conn
-        .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type='table'", [], |row| row.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table'",
+            [],
+            |row| row.get(0),
+        )
         .unwrap();
     assert!(result > 0);
 }
@@ -428,9 +432,18 @@ fn test_metadata_multiple_keys() {
     queries::set_metadata(&conn, "key3", "value3").unwrap();
 
     // Verify all keys
-    assert_eq!(queries::get_metadata(&conn, "key1").unwrap(), Some("value1".to_string()));
-    assert_eq!(queries::get_metadata(&conn, "key2").unwrap(), Some("value2".to_string()));
-    assert_eq!(queries::get_metadata(&conn, "key3").unwrap(), Some("value3".to_string()));
+    assert_eq!(
+        queries::get_metadata(&conn, "key1").unwrap(),
+        Some("value1".to_string())
+    );
+    assert_eq!(
+        queries::get_metadata(&conn, "key2").unwrap(),
+        Some("value2".to_string())
+    );
+    assert_eq!(
+        queries::get_metadata(&conn, "key3").unwrap(),
+        Some("value3".to_string())
+    );
 }
 
 #[test]
@@ -538,7 +551,11 @@ fn test_acknowledge_notifications_multiple() {
     // Acknowledge multiple notifications
     queries::acknowledge_notifications(
         &conn,
-        &["notif-1".to_string(), "notif-2".to_string(), "notif-3".to_string()],
+        &[
+            "notif-1".to_string(),
+            "notif-2".to_string(),
+            "notif-3".to_string(),
+        ],
     )
     .unwrap();
 

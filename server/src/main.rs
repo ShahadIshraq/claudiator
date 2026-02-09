@@ -46,7 +46,11 @@ async fn main() {
         (data_v, notif_v)
     };
 
-    tracing::info!("Loaded data_version: {}, notification_version: {}", data_version, notification_version);
+    tracing::info!(
+        "Loaded data_version: {}, notification_version: {}",
+        data_version,
+        notification_version
+    );
 
     // Build APNs client if configured
     let apns_client = if let (Some(key_path), Some(key_id), Some(team_id), Some(bundle_id)) = (
