@@ -83,11 +83,15 @@ jobs:
       - name: Test
         run: cargo test
 
-  audit:
-    name: Security Audit
+  audit-server:
+    name: Security Audit - Server
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
       - uses: actions/checkout@v4
       - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: server
