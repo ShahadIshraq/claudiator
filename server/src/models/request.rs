@@ -121,10 +121,7 @@ mod tests {
         let payload: EventPayload = serde_json::from_str(json).unwrap();
         assert_eq!(payload.event.cwd, Some("/home/user".to_string()));
         assert_eq!(payload.event.tool_name, Some("bash".to_string()));
-        assert_eq!(
-            payload.event.notification_type,
-            Some("info".to_string())
-        );
+        assert_eq!(payload.event.notification_type, Some("info".to_string()));
         assert!(payload.event.tool_input.is_some());
     }
 
