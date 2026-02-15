@@ -2,7 +2,7 @@ use axum::http::HeaderMap;
 
 use crate::error::AppError;
 
-pub(crate) fn check_auth(headers: &HeaderMap, api_key: &str) -> Result<(), AppError> {
+pub fn check_auth(headers: &HeaderMap, api_key: &str) -> Result<(), AppError> {
     let auth_header = headers
         .get("Authorization")
         .and_then(|v| v.to_str().ok())
@@ -17,6 +17,7 @@ pub(crate) fn check_auth(headers: &HeaderMap, api_key: &str) -> Result<(), AppEr
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use axum::http::HeaderMap;

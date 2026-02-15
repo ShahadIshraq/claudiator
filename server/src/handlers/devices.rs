@@ -10,7 +10,7 @@ use crate::error::AppError;
 use crate::models::response::{DeviceListResponse, SessionListResponse};
 use crate::router::AppState;
 
-pub(crate) async fn list_devices_handler(
+pub async fn list_devices_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
 ) -> Result<Json<DeviceListResponse>, AppError> {
@@ -27,12 +27,12 @@ pub(crate) async fn list_devices_handler(
 }
 
 #[derive(Deserialize)]
-pub(crate) struct SessionQueryParams {
+pub struct SessionQueryParams {
     pub status: Option<String>,
     pub limit: Option<i64>,
 }
 
-pub(crate) async fn list_device_sessions_handler(
+pub async fn list_device_sessions_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(device_id): Path<String>,

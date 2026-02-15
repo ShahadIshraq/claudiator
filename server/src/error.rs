@@ -40,6 +40,7 @@ impl IntoResponse for AppError {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

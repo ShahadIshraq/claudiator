@@ -11,7 +11,7 @@ use crate::models::request::PushRegisterRequest;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
 
-pub(crate) async fn push_register_handler(
+pub async fn push_register_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<PushRegisterRequest>,

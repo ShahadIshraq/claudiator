@@ -11,11 +11,11 @@ use crate::models::response::{EventListResponse, SessionListResponse};
 use crate::router::AppState;
 
 #[derive(Deserialize)]
-pub(crate) struct EventQueryParams {
+pub struct EventQueryParams {
     pub limit: Option<i64>,
 }
 
-pub(crate) async fn list_session_events_handler(
+pub async fn list_session_events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Path(session_id): Path<String>,
@@ -35,7 +35,7 @@ pub(crate) async fn list_session_events_handler(
     Ok(Json(EventListResponse { events }))
 }
 
-pub(crate) async fn list_all_sessions_handler(
+pub async fn list_all_sessions_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     Query(params): Query<super::devices::SessionQueryParams>,
