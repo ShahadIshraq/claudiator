@@ -85,7 +85,7 @@ Hook stdin (from Claude Code)        Outbound payload (to Server)
 - **events** — id (PK), device_id (FK), session_id (FK), hook_event_name, timestamp, received_at, tool_name, notification_type, event_json
 - **push_tokens** — id (PK), platform, push_token (UNIQUE), sandbox, created_at, updated_at
 - **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, acknowledged (BOOLEAN), created_at (24h TTL auto-cleanup)
-- **notification_metadata** — notification_id (FK), key (TEXT), value (TEXT), unique constraint on (notification_id, key)
+- **metadata** — key (PK), value (TEXT) — stores persistent counters (data_version, notification_version)
 
 ### Server Configuration
 
@@ -102,13 +102,14 @@ Environment variables (stored in `/opt/claudiator/.env`):
 
 ### Server Endpoints
 
-- `GET /api/v1/ping` — Health check, returns `data_version` and `notification_version` (requires Bearer auth)
+- `GET /api/v1/ping` — Health check, returns `dataVersion` and `notificationVersion` (requires Bearer auth)
 - `POST /api/v1/events` — Ingest hook events, generates notifications for Stop/Notification events (requires Bearer auth)
 - `GET /api/v1/devices` — List all devices with active session counts
 - `GET /api/v1/devices/:device_id/sessions` — List sessions for a device
+- `GET /api/v1/sessions` — List all sessions across devices
 - `GET /api/v1/sessions/:session_id/events` — List events for a session
-- `GET /api/v1/notifications?after=<uuid>&limit=N` — List notifications after a given UUID
-- `POST /api/v1/notifications/:id/ack` — Mark notification as acknowledged
+- `GET /api/v1/notifications?after=<timestamp>&limit=N` — List notifications after a given RFC3339 timestamp
+- `POST /api/v1/notifications/ack` — Bulk acknowledge notifications (accepts `ids` array in request body)
 - `POST /api/v1/push/register` — Register mobile push notification token with sandbox flag for APNs routing
 
 ### Deployment

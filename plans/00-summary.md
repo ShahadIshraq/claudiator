@@ -42,7 +42,7 @@ Automated release pipeline:
 Production-ready Rust HTTP server:
 
 - Built with Axum framework
-- Endpoints: `GET /api/v1/ping`, `POST /api/v1/events`, `GET /api/v1/devices`, `GET /api/v1/devices/:id/sessions`, `GET /api/v1/sessions/:id/events`, `POST /api/v1/push/register`, `GET /api/v1/notifications`
+- Endpoints: `GET /api/v1/ping`, `POST /api/v1/events`, `GET /api/v1/devices`, `GET /api/v1/devices/:id/sessions`, `GET /api/v1/sessions`, `GET /api/v1/sessions/:id/events`, `POST /api/v1/push/register`, `GET /api/v1/notifications`, `POST /api/v1/notifications/ack`
 - Bearer token authentication on all endpoints
 - SQLite database with r2d2 connection pooling (WAL mode enabled)
 - Database schema:
@@ -107,7 +107,7 @@ Production-ready native iOS application:
 - **Platform Icons**: SVG-based device icons (Apple logo, Linux Tux, Windows logo)
 - **Notifications**: Dual-path notification system with APNs push and polling fallback
   - **APNs Push**: Direct push from server with custom payload (notification_id, session_id, device_id)
-  - **Deduplication**: 1-minute retention window for push-received IDs prevents duplicate banners
+  - **Deduplication**: 10-minute retention window for push-received IDs prevents duplicate banners
   - **Immediate Updates**: Push triggers instant poll for real-time UI refresh (no 10s delay)
   - **Background Handling**: `content-available` flag enables delegate calls when app backgrounded
   - **Polling Fallback**: `notification_version` tracking via ping for reliable delivery
@@ -160,10 +160,10 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (changed from `since` to `after`)
-  - [x] `POST /api/v1/notifications/:id/ack` endpoint for marking notifications as acknowledged
+  - [x] `GET /api/v1/notifications?after=<timestamp>&limit=N` endpoint (timestamp-based pagination)
+  - [x] `POST /api/v1/notifications/ack` endpoint for bulk acknowledging notifications
   - [x] `acknowledged` boolean column in notifications table
-  - [x] `notification_metadata` table for tracking acknowledgment timestamps
+  - [x] `metadata` table for persisting version counters across restarts
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
@@ -269,10 +269,10 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (changed from `since` to `after`)
-  - [x] `POST /api/v1/notifications/:id/ack` endpoint for marking notifications as acknowledged
+  - [x] `GET /api/v1/notifications?after=<timestamp>&limit=N` endpoint (timestamp-based pagination)
+  - [x] `POST /api/v1/notifications/ack` endpoint for bulk acknowledging notifications
   - [x] `acknowledged` boolean column in notifications table
-  - [x] `notification_metadata` table for tracking acknowledgment timestamps
+  - [x] `metadata` table for persisting version counters across restarts
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
