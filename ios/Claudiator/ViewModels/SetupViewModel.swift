@@ -61,20 +61,19 @@ class SetupViewModel {
         apiClient.baseURL = oldURL
         try? KeychainService.delete(key: "api_key")
 
-        let message: String
-        switch error {
+        let message = switch error {
         case .notConfigured:
-            message = "❌ Server not configured"
+            "❌ Server not configured"
         case .invalidURL:
-            message = "❌ Invalid server URL format"
+            "❌ Invalid server URL format"
         case .unauthorized:
-            message = "❌ Authentication Failed\n\nThe API key is incorrect. Please check your API key and try again."
-        case .serverError(let code):
-            message = "❌ Server Error (\(code))\n\nThe server returned an error. Make sure the server is running correctly."
-        case .networkError(let underlyingError):
-            message = "❌ Network Error\n\n\(underlyingError.localizedDescription)"
-        case .decodingError(let underlyingError):
-            message = "❌ Invalid Response\n\n\(underlyingError.localizedDescription)"
+            "❌ Authentication Failed\n\nThe API key is incorrect. Please check your API key and try again."
+        case let .serverError(code):
+            "❌ Server Error (\(code))\n\nThe server returned an error. Make sure the server is running correctly."
+        case let .networkError(underlyingError):
+            "❌ Network Error\n\n\(underlyingError.localizedDescription)"
+        case let .decodingError(underlyingError):
+            "❌ Invalid Response\n\n\(underlyingError.localizedDescription)"
         }
 
         errorMessage = message
@@ -87,25 +86,25 @@ class SetupViewModel {
         switch urlError.code {
         case .cannotConnectToHost, .cannotFindHost:
             errorMessage = """
-                ❌ Cannot Reach Server
+            ❌ Cannot Reach Server
 
-                Unable to connect to: \(url)
+            Unable to connect to: \(url)
 
-                Make sure:
-                • The server is running
-                • The URL is correct
-                • You're on the same network (for local servers)
-                """
+            Make sure:
+            • The server is running
+            • The URL is correct
+            • You're on the same network (for local servers)
+            """
         case .timedOut:
             errorMessage = "❌ Connection Timeout\n\nThe server didn't respond in time.\n\nCheck:\n• Your network connection\n• The server address"
         case .secureConnectionFailed, .appTransportSecurityRequiresSecureConnection:
             errorMessage = """
-                ❌ HTTPS Connection Failed
+            ❌ HTTPS Connection Failed
 
-                For local development servers, use http:// instead of https://
+            For local development servers, use http:// instead of https://
 
-                Example: http://192.168.1.5:3000
-                """
+            Example: http://192.168.1.5:3000
+            """
         case .notConnectedToInternet:
             errorMessage = "❌ No Internet Connection\n\nPlease check your network connection."
         case .unsupportedURL:
