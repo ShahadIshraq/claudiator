@@ -136,7 +136,6 @@ struct DeviceRow: View {
         }
         .padding(.vertical, 4)
     }
-
 }
 
 struct StatusBadge: View {

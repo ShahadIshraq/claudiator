@@ -3,10 +3,12 @@ import SwiftUI
 struct SetupView: View {
     @Environment(APIClient.self) private var apiClient
     @Environment(ThemeManager.self) private var themeManager
-    @State private var viewModel = SetupViewModel()
+    @Environment(SetupViewModel.self) private var viewModel
     @State private var showAPIKey = false
 
     var body: some View {
+        @Bindable var viewModel = viewModel
+
         NavigationStack {
             Form {
                 Section {

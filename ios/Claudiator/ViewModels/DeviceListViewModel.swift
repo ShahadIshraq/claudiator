@@ -8,9 +8,12 @@ struct SessionStatusCounts {
     var idle: Int = 0
     var ended: Int = 0
 
-    var totalActive: Int { active + waitingInput + waitingPermission + idle }
+    var totalActive: Int {
+        active + waitingInput + waitingPermission + idle
+    }
 }
 
+@MainActor
 @Observable
 class DeviceListViewModel {
     var devices: [Device] = []

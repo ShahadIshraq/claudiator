@@ -1,8 +1,11 @@
 import Foundation
 
 struct AppNotification: Codable, Identifiable, Hashable {
-    var id: String { notificationId }
-    let notificationId: String  // maps from "id" in JSON
+    var id: String {
+        notificationId
+    }
+
+    let notificationId: String // maps from "id" in JSON
     let sessionId: String
     let deviceId: String
     let title: String

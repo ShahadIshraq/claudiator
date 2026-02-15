@@ -58,16 +58,14 @@ struct DeviceDetailView: View {
 
             // Sessions section
             Section {
-                Picker("Filter", selection: $viewModel.filter) {
-                    ForEach(SessionListViewModel.SessionFilter.allCases, id: \.self) { filter in
-                        Text(filter.rawValue).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
+                ThemedSegmentedPicker(
+                    selection: $viewModel.filter,
+                    options: SessionListViewModel.SessionFilter.allCases
+                )
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
-                if viewModel.isLoading && viewModel.sessions.isEmpty {
+                if viewModel.isLoading, viewModel.sessions.isEmpty {
                     ProgressView()
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else if viewModel.sessions.isEmpty {

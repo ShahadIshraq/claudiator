@@ -1,6 +1,8 @@
 import SwiftUI
+import UIKit
 import UserNotifications
 
+@MainActor
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     var apiClient: APIClient?
     var notificationManager: NotificationManager?
@@ -10,16 +12,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return true
     }
 
-    // Handle APNs push notifications (for deduplication)
-    func application(_ application: UIApplication,
-                     didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+    /// Handle APNs push notifications (for deduplication)
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any]
+    ) async -> UIBackgroundFetchResult {
         // Extract notification_id from push payload and mark as received
         if let notificationId = userInfo["notification_id"] as? String {
             notificationManager?.markReceivedViaPush(notificationId: notificationId)
         }
 
         // Trigger immediate poll to update UI (bell icon, borders, notification list)
-        if let apiClient = apiClient, let notificationManager = notificationManager {
+        if let apiClient, let notificationManager {
             await notificationManager.fetchNewNotifications(apiClient: apiClient)
         }
 
@@ -28,10 +32,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-        #if DEBUG
-        print("[Push] Device token: \(token)")
-        #endif
-
         guard let apiClient else { return }
 
         let sandbox = Self.isSandboxEnvironment()
@@ -39,40 +39,35 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         Task {
             do {
                 try await apiClient.registerPushToken(platform: "ios", token: token, sandbox: sandbox)
-                #if DEBUG
-                print("[Push] Token registered (sandbox: \(sandbox))")
-                #endif
             } catch {
-                #if DEBUG
-                print("[Push] Failed to register token: \(error)")
-                #endif
+                // Silent failure - push token registration is non-critical
             }
         }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        #if DEBUG
-        print("[Push] Registration failed: \(error.localizedDescription)")
-        #endif
+        // Silent failure - push token registration is non-critical
     }
 
-    // Show notification banners even when app is in foreground
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        return [.banner, .sound, .badge]
+    /// Show notification banners even when app is in foreground
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .badge]
     }
 
     private static func isSandboxEnvironment() -> Bool {
         #if DEBUG
-        return true
+            return true
         #else
-        // Check embedded provisioning profile for aps-environment
-        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
-              let data = try? Data(contentsOf: url),
-              let content = String(data: data, encoding: .ascii) else {
-            return false
-        }
-        return !content.contains("<string>production</string>")
+            // Check embedded provisioning profile for aps-environment
+            guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+                  let data = try? Data(contentsOf: url),
+                  let content = String(data: data, encoding: .ascii) else {
+                return false
+            }
+            return !content.contains("<string>production</string>")
         #endif
     }
 }
@@ -84,6 +79,7 @@ struct ClaudiatorApp: App {
     @State private var themeManager = ThemeManager()
     @State private var versionMonitor = VersionMonitor()
     @State private var notificationManager = NotificationManager()
+    @State private var setupViewModel = SetupViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -92,6 +88,7 @@ struct ClaudiatorApp: App {
                 .environment(themeManager)
                 .environment(versionMonitor)
                 .environment(notificationManager)
+                .environment(setupViewModel)
                 .preferredColorScheme(themeManager.appearance.colorScheme)
                 .onAppear {
                     appDelegate.apiClient = apiClient
@@ -103,6 +100,7 @@ struct ClaudiatorApp: App {
 
 struct ContentView: View {
     @Environment(APIClient.self) private var apiClient
+    @State private var refreshID = UUID()
 
     var body: some View {
         Group {
@@ -111,6 +109,10 @@ struct ContentView: View {
             } else {
                 SetupView()
             }
+        }
+        .id(refreshID)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("RefreshContentView"))) { _ in
+            refreshID = UUID()
         }
     }
 }
@@ -157,7 +159,7 @@ struct MainTabView: View {
                 .animation(.interactiveSpring(), value: dragOffset)
                 .gesture(
                     isOnDetailView ? nil :
-                    DragGesture(minimumDistance: 20)
+                        DragGesture(minimumDistance: 20)
                         .updating($dragOffset) { value, state, _ in
                             let horizontal = value.translation.width
                             let vertical = value.translation.height

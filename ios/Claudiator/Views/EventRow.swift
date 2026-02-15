@@ -50,13 +50,12 @@ struct EventRow: View {
 
     private var eventIcon: String {
         switch event.hookEventName {
-        case "SessionStart": return "play.circle"
-        case "SessionEnd": return "stop.circle"
-        case "Stop": return "pause.circle"
-        case "Notification": return "bell"
-        case "UserPromptSubmit": return "arrow.up.circle"
-        default: return "circle"
+        case "SessionStart": "play.circle"
+        case "SessionEnd": "stop.circle"
+        case "Stop": "pause.circle"
+        case "Notification": "bell"
+        case "UserPromptSubmit": "arrow.up.circle"
+        default: "circle"
         }
     }
-
 }

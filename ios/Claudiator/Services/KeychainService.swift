@@ -9,10 +9,10 @@ enum KeychainError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .saveFailed(let s): return "Keychain save failed: \(s)"
-        case .loadFailed(let s): return "Keychain load failed: \(s)"
-        case .deleteFailed(let s): return "Keychain delete failed: \(s)"
-        case .unexpectedData: return "Unexpected keychain data"
+        case let .saveFailed(s): "Keychain save failed: \(s)"
+        case let .loadFailed(s): "Keychain load failed: \(s)"
+        case let .deleteFailed(s): "Keychain delete failed: \(s)"
+        case .unexpectedData: "Unexpected keychain data"
         }
     }
 }

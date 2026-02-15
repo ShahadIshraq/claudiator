@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 class VersionMonitor {
     private(set) var dataVersion: UInt64 = 0
@@ -13,10 +14,8 @@ class VersionMonitor {
             while !Task.isCancelled {
                 if let versions = try? await apiClient.ping() {
                     let oldNotifVersion = self.notificationVersion
-                    await MainActor.run {
-                        self.dataVersion = versions.dataVersion
-                        self.notificationVersion = versions.notificationVersion
-                    }
+                    self.dataVersion = versions.dataVersion
+                    self.notificationVersion = versions.notificationVersion
                     if versions.notificationVersion != oldNotifVersion {
                         await notificationManager.fetchNewNotifications(apiClient: apiClient)
                     }

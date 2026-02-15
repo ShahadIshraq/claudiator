@@ -1,7 +1,10 @@
 import Foundation
 
 struct Session: Codable, Identifiable {
-    var id: String { sessionId }
+    var id: String {
+        sessionId
+    }
+
     let sessionId: String
     let deviceId: String
     let startedAt: String

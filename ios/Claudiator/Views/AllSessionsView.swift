@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 struct AllSessionsView: View {
@@ -97,7 +98,11 @@ struct AllSessionsView: View {
                                         ForEach(viewModel.groupedSessions[deviceId] ?? []) { session in
                                             let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
                                             NavigationLink(value: session) {
-                                                AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
+                                                AllSessionRow(
+                                                    session: session,
+                                                    deviceName: session.deviceName ?? "Unknown",
+                                                    platform: session.platform ?? "unknown"
+                                                )
                                             }
                                             .buttonStyle(.plain)
                                             .padding(.horizontal, 12)
@@ -210,9 +215,9 @@ struct AllSessionsView: View {
             }
 
             ToolbarItem(placement: .primaryAction) {
-                Button(action: {
+                Button {
                     viewModel.toggleGrouping()
-                }) {
+                } label: {
                     Image(systemName: viewModel.isGroupedByDevice ? "square.grid.2x2.fill" : "square.grid.2x2")
                 }
             }

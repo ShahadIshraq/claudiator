@@ -4,6 +4,7 @@ extension AppTheme {
     static let allThemes: [AppTheme] = [standard, neonOps, solarized, arctic]
 
     // MARK: - Standard
+
     static let standard = AppTheme(
         id: "standard",
         name: "Standard",
@@ -46,6 +47,7 @@ extension AppTheme {
     )
 
     // MARK: - Neon Ops
+
     static let neonOps = AppTheme(
         id: "neon_ops",
         name: "Neon Ops",
@@ -88,6 +90,7 @@ extension AppTheme {
     )
 
     // MARK: - Solarized
+
     static let solarized = AppTheme(
         id: "solarized",
         name: "Solarized",
@@ -130,6 +133,7 @@ extension AppTheme {
     )
 
     // MARK: - Arctic
+
     static let arctic = AppTheme(
         id: "arctic",
         name: "Arctic",

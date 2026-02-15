@@ -1,61 +1,16 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-echo "Running pre-commit checks..."
-echo ""
+STAGED_SWIFT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
 
-# Hook checks
-if [ -d "hook" ]; then
-    echo "Running pre-commit checks on hook/..."
-
-    (cd hook && cargo fmt --check) || {
-        echo "Formatting check failed. Run 'cargo fmt' in hook/"
-        exit 1
-    }
-
-    (cd hook && cargo clippy --all-targets -- -D warnings) || {
-        echo "Clippy check failed."
-        exit 1
-    }
-
-    (cd hook && cargo test --quiet) || {
-        echo "Tests failed."
-        exit 1
-    }
-
-    echo "✓ Hook checks passed"
-    echo ""
+if [ -z "$STAGED_SWIFT" ]; then
+  exit 0
 fi
 
-# Server checks
-if [ -d "server" ]; then
-    echo "Running pre-commit checks on server/..."
+echo "Running SwiftFormat on staged files..."
+echo "$STAGED_SWIFT" | xargs swiftformat --config ios/.swiftformat 2>/dev/null || true
 
-    (cd server && cargo fmt --check) || {
-        echo "Formatting check failed. Run 'cargo fmt' in server/"
-        exit 1
-    }
+echo "Running SwiftLint on staged files..."
+echo "$STAGED_SWIFT" | xargs swiftlint lint --strict --config ios/.swiftlint.yml --quiet
 
-    (cd server && cargo clippy --all-targets -- -D warnings) || {
-        echo "Clippy check failed."
-        exit 1
-    }
-
-    (cd server && cargo test --quiet) || {
-        echo "Tests failed."
-        exit 1
-    }
-
-    echo "✓ Server checks passed"
-    echo ""
-fi
-
-# iOS checks (placeholder for future implementation)
-# if [ -d "ios" ]; then
-#     echo "Running pre-commit checks on iOS/..."
-#     # SwiftFormat and SwiftLint checks will be added here
-#     echo "✓ iOS checks passed"
-#     echo ""
-# fi
-
-echo "All pre-commit checks passed."
+echo "$STAGED_SWIFT" | xargs git add

@@ -7,13 +7,14 @@ enum AppearanceMode: String, CaseIterable {
 
     var colorScheme: ColorScheme? {
         switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }
 
+@MainActor
 @Observable
 class ThemeManager {
     private static let themeKey = "selectedThemeId"

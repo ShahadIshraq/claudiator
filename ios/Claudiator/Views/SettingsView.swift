@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 struct SettingsView: View {
@@ -139,7 +140,7 @@ struct SettingsView: View {
                                 .frame(width: 8, height: 8)
                             Text("Unreachable")
                                 .foregroundStyle(themeManager.current.serverDisconnected)
-                        case .error(let message):
+                        case let .error(message):
                             Circle()
                                 .fill(themeManager.current.uiError)
                                 .frame(width: 8, height: 8)
@@ -204,7 +205,19 @@ struct SettingsView: View {
         }
         .themedPage()
         .scrollDismissesKeyboard(.interactively)
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } } }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil,
+                        from: nil,
+                        for: nil
+                    )
+                }
+            }
+        }
         .navigationTitle("Settings")
         .task {
             editURL = apiClient.baseURL
@@ -216,6 +229,7 @@ struct SettingsView: View {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func checkStatus() async {
         serverStatus = .checking
 
@@ -255,7 +269,7 @@ struct SettingsView: View {
                 serverStatus = .error("Not configured")
             case .invalidURL:
                 serverStatus = .error("Invalid URL")
-            case .serverError(let code):
+            case let .serverError(code):
                 serverStatus = .error("Server error (\(code))")
             default:
                 serverStatus = .unreachable
@@ -364,8 +378,8 @@ private struct ThemePreviewCard: View {
                     .overlay(
                         isSelected ?
                             Image(systemName: "checkmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundStyle(.white)
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
                             : nil
                     )
                     .frame(width: 18, height: 18)

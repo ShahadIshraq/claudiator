@@ -44,32 +44,32 @@ struct AppTheme: Identifiable, Equatable {
 
     func statusColor(for status: String) -> Color {
         switch status {
-        case "active": return statusActive
-        case "waiting_for_input": return statusWaitingInput
-        case "waiting_for_permission": return statusWaitingPermission
-        case "idle": return statusIdle
-        case "ended": return statusEnded
-        default: return .secondary
+        case "active": statusActive
+        case "waiting_for_input": statusWaitingInput
+        case "waiting_for_permission": statusWaitingPermission
+        case "idle": statusIdle
+        case "ended": statusEnded
+        default: .secondary
         }
     }
 
     func platformColor(for platform: String) -> Color {
         switch platform.lowercased() {
-        case "mac", "macos", "darwin": return platformMac
-        case "linux": return platformLinux
-        case "windows": return platformWindows
-        default: return platformDefault
+        case "mac", "macos", "darwin": platformMac
+        case "linux": platformLinux
+        case "windows": platformWindows
+        default: platformDefault
         }
     }
 
     func eventColor(for hookEventName: String) -> Color {
         switch hookEventName {
-        case "SessionStart": return eventSessionStart
-        case "SessionEnd": return eventSessionEnd
-        case "Stop": return eventStop
-        case "Notification": return eventNotification
-        case "UserPromptSubmit": return eventUserPromptSubmit
-        default: return eventDefault
+        case "SessionStart": eventSessionStart
+        case "SessionEnd": eventSessionEnd
+        case "Stop": eventStop
+        case "Notification": eventNotification
+        case "UserPromptSubmit": eventUserPromptSubmit
+        default: eventDefault
         }
     }
 
