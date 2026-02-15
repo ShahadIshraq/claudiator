@@ -24,7 +24,10 @@ struct NotificationListView: View {
                                     if notificationManager.unreadNotifications.contains(where: { $0.notificationId == notification.notificationId }) {
                                         Button {
                                             Task {
-                                                await notificationManager.markNotificationRead(notificationId: notification.notificationId, apiClient: apiClient)
+                                                await notificationManager.markNotificationRead(
+                                                    notificationId: notification.notificationId,
+                                                    apiClient: apiClient
+                                                )
                                             }
                                         } label: {
                                             Label("Mark Read", systemImage: "checkmark")
@@ -34,7 +37,10 @@ struct NotificationListView: View {
                                 }
                                 .onTapGesture {
                                     Task {
-                                        await notificationManager.markNotificationRead(notificationId: notification.notificationId, apiClient: apiClient)
+                                        await notificationManager.markNotificationRead(
+                                            notificationId: notification.notificationId,
+                                            apiClient: apiClient
+                                        )
                                     }
                                 }
                         }
