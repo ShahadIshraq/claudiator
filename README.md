@@ -4,6 +4,9 @@
 
 # Claudiator
 
+[![CI](https://github.com/ShahadIshraq/claudiator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ShahadIshraq/claudiator/actions/workflows/ci.yml)
+[![iOS Quality](https://github.com/ShahadIshraq/claudiator/actions/workflows/ios-quality.yml/badge.svg?branch=main)](https://github.com/ShahadIshraq/claudiator/actions/workflows/ios-quality.yml)
+
 Orchestrate Claude Code sessions across all your devices.
 
 Claudiator is a lightweight system that captures Claude Code hook events and forwards them to a server, giving you a unified view of all your parallel agent sessions across devices. Track what's running where, know which sessions need input, and orchestrate your Claude Code work across multiple machines.
