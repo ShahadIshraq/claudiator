@@ -53,7 +53,6 @@ struct LogConfig {
 
 static LOG_CONFIG: OnceLock<LogConfig> = OnceLock::new();
 
-#[allow(dead_code)]
 pub fn init(level: LogLevel, max_size_bytes: u64, max_backups: u32) {
     let _ = LOG_CONFIG.set(LogConfig {
         level,
@@ -79,12 +78,10 @@ pub fn log_warn(message: &str) {
     log(LogLevel::Warn, message);
 }
 
-#[allow(dead_code)]
 pub fn log_info(message: &str) {
     log(LogLevel::Info, message);
 }
 
-#[allow(dead_code)]
 pub fn log_debug(message: &str) {
     log(LogLevel::Debug, message);
 }

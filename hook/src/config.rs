@@ -24,13 +24,10 @@ pub struct Config {
     pub device_name: String,
     pub device_id: String,
     pub platform: String,
-    #[allow(dead_code)]
     #[serde(default = "default_log_level")]
     pub log_level: String,
-    #[allow(dead_code)]
     #[serde(default = "default_max_log_size_bytes")]
     pub max_log_size_bytes: u64,
-    #[allow(dead_code)]
     #[serde(default = "default_max_log_backups")]
     pub max_log_backups: u32,
 }
@@ -150,7 +147,8 @@ max_log_backups = 5
         let temp_file = NamedTempFile::new();
         assert!(temp_file.is_ok());
         let Ok(mut temp_file) = temp_file else { return };
-        let write_result = std::io::Write::write_all(&mut temp_file, toml_with_new_fields.as_bytes());
+        let write_result =
+            std::io::Write::write_all(&mut temp_file, toml_with_new_fields.as_bytes());
         assert!(write_result.is_ok());
 
         let config = Config::load_from(temp_file.path());
