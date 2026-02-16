@@ -96,7 +96,7 @@ claudiator-server
 
 The database file and WAL files are created automatically on first run.
 
-**Note:** APNs configuration is optional. Without it, the server operates normally but does not send push notifications.
+**Note:** APNs configuration is optional. Without it, the server operates normally but does not send push notifications. See [APNS_SETUP.md](APNS_SETUP.md) for a step-by-step setup guide.
 
 ## API Endpoints
 
