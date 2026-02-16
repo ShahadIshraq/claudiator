@@ -39,6 +39,7 @@ server/
 │       └── notifications.rs — GET /api/v1/notifications
 └── scripts/
     ├── install.sh           — Linux/systemd installer
+    ├── update.sh            — Non-interactive updater
     └── seed.sh              — Test data seeder
 ```
 
@@ -166,6 +167,7 @@ The install script:
 ```
 /opt/claudiator/
 ├── claudiator-server           — Binary
+├── update.sh                   — Update script
 ├── .env                        — Config (chmod 600)
 └── data/
     ├── claudiator.db           — SQLite database
@@ -183,7 +185,23 @@ journalctl -u claudiator-server -f
 
 ### Upgrading
 
-Re-run the install script. It detects existing installations, preserves configuration, replaces the binary, and restarts the service.
+#### Update Script (Recommended)
+
+```bash
+sudo /opt/claudiator/update.sh
+```
+
+The update script checks GitHub for the latest server release, downloads and replaces the binary, restarts the service, and runs a health check. If the health check fails, it automatically rolls back to the previous version.
+
+To check for updates without applying them:
+
+```bash
+sudo /opt/claudiator/update.sh --check
+```
+
+#### Re-run Install Script
+
+Alternatively, re-run the install script. It detects existing installations, preserves configuration, replaces the binary, and restarts the service.
 
 ### Uninstalling
 

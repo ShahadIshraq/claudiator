@@ -67,11 +67,24 @@ echo "Detected architecture: $ARCH"
 echo "Target: $TARGET"
 echo ""
 
-# Download binary
-echo "Downloading claudiator-server..."
+# Query GitHub API for the latest server-v* release
+echo "Querying latest server release..."
 TEMP_DIR=$(mktemp -d)
-DOWNLOAD_URL="https://github.com/shahadishraq/claudiator/releases/latest/download/claudiator-server-${TARGET}.tar.gz"
+RELEASES_JSON=$(curl -sfL "https://api.github.com/repos/shahadishraq/claudiator/releases" 2>/dev/null) || {
+    echo "Error: Failed to query GitHub releases API"
+    exit 1
+}
 
+LATEST_TAG=$(echo "$RELEASES_JSON" | grep -o '"tag_name":\s*"server-v[^"]*"' | head -1 | sed 's/.*"server-v\([^"]*\)".*/\1/')
+if [[ -z "$LATEST_TAG" ]]; then
+    echo "Error: No server release found on GitHub"
+    exit 1
+fi
+
+echo "Latest server release: v$LATEST_TAG"
+DOWNLOAD_URL="https://github.com/shahadishraq/claudiator/releases/download/server-v${LATEST_TAG}/claudiator-server-${TARGET}.tar.gz"
+
+echo "Downloading claudiator-server..."
 if ! curl -fSL "$DOWNLOAD_URL" | tar -xz -C "$TEMP_DIR"; then
     echo "Error: Failed to download or extract binary"
     exit 1
@@ -92,6 +105,13 @@ fi
 echo "Installing binary..."
 cp "$TEMP_DIR/claudiator-server" /opt/claudiator/claudiator-server
 chmod 755 /opt/claudiator/claudiator-server
+
+# Install update script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "$SCRIPT_DIR/update.sh" ]]; then
+    cp "$SCRIPT_DIR/update.sh" /opt/claudiator/update.sh
+    chmod 755 /opt/claudiator/update.sh
+fi
 
 # Set ownership
 chown -R claudiator:claudiator /opt/claudiator
