@@ -17,11 +17,11 @@ mod sender;
 
 use clap::Parser;
 
+use crate::error::ConfigError;
 use cli::{Cli, Commands};
 use config::Config;
-use crate::error::ConfigError;
 use event::HookEvent;
-use logger::{log_error, log_info, log_debug, LogLevel};
+use logger::{log_debug, log_error, log_info, LogLevel};
 use payload::EventPayload;
 use sender::{send_event, test_connection};
 
@@ -51,11 +51,16 @@ fn main() {
 
     let config_result = Config::load();
 
-    let (config_log_level, max_size, max_backups) = config_result.as_ref().map_or(("error", 1_048_576, 2), |config| (
-            config.log_level.as_str(),
-            config.max_log_size_bytes,
-            config.max_log_backups,
-        ));
+    let (config_log_level, max_size, max_backups) =
+        config_result
+            .as_ref()
+            .map_or(("error", 1_048_576, 2), |config| {
+                (
+                    config.log_level.as_str(),
+                    config.max_log_size_bytes,
+                    config.max_log_backups,
+                )
+            });
 
     let log_level = resolve_log_level(cli.log_level.as_deref(), config_log_level);
     logger::init(log_level, max_size, max_backups);
@@ -76,7 +81,10 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
         }
     };
 
-    log_debug(&format!("Processing event for server: {}", config.server_url));
+    log_debug(&format!(
+        "Processing event for server: {}",
+        config.server_url
+    ));
 
     let event = match HookEvent::from_stdin() {
         Ok(e) => e,
