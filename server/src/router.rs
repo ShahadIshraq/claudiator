@@ -3,6 +3,8 @@ use axum::Router;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
+use tower_http::trace::TraceLayer;
+
 use crate::apns::ApnsClient;
 use crate::db::pool::DbPool;
 use crate::handlers;
@@ -48,5 +50,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/api/v1/notifications/ack",
             post(handlers::notifications::acknowledge_notifications_handler),
         )
+        .layer(TraceLayer::new_for_http())
         .with_state(state)
 }

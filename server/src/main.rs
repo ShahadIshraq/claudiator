@@ -18,12 +18,25 @@ use clap::Parser;
 use config::ServerConfig;
 use db::pool;
 use router::AppState;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let config = ServerConfig::parse();
+
+    // Build env filter: RUST_LOG takes precedence, then config.log_level
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| EnvFilter::new(&config.log_level));
+
+    // File appender with daily rotation
+    let file_appender = tracing_appender::rolling::daily(&config.log_dir, "server.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt::layer().with_target(true))
+        .with(fmt::layer().with_ansi(false).with_writer(non_blocking))
+        .init();
 
     // Initialize database
     let db_pool = pool::create_pool(&config.db_path).expect("Failed to create database pool");
