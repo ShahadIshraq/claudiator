@@ -46,71 +46,6 @@ class APIClient {
         return d
     }()
 
-    private lazy var debugSession: URLSession = {
-        let config = URLSessionConfiguration.default
-        return URLSession(configuration: config, delegate: TLSDebugDelegate(), delegateQueue: nil)
-    }()
-
-    private class TLSDebugDelegate: NSObject, URLSessionDelegate {
-        // swiftlint:disable:next cyclomatic_complexity
-        func urlSession(
-            _ session: URLSession,
-            didReceive challenge: URLAuthenticationChallenge,
-            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-        ) {
-            print("[TLS Debug] Received authentication challenge")
-            print("[TLS Debug] Protection space: \(challenge.protectionSpace.host):\(challenge.protectionSpace.port)")
-            print("[TLS Debug] Authentication method: \(challenge.protectionSpace.authenticationMethod)")
-
-            if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-               let serverTrust = challenge.protectionSpace.serverTrust {
-                print("[TLS Debug] Server trust received, examining certificate chain")
-
-                let certCount = SecTrustGetCertificateCount(serverTrust)
-                print("[TLS Debug] Certificate chain count: \(certCount)")
-
-                for index in 0 ..< certCount {
-                    if let cert = SecTrustGetCertificateAtIndex(serverTrust, index) {
-                        print("[TLS Debug] --- Certificate \(index) ---")
-
-                        if let subjectSummary = SecCertificateCopySubjectSummary(cert) as String? {
-                            print("[TLS Debug] Subject: \(subjectSummary)")
-                        }
-
-                        let certData = SecCertificateCopyData(cert) as Data
-                        print("[TLS Debug] DER data length: \(certData.count) bytes")
-
-                        if let certDict = SecCertificateCopyValues(cert, nil, nil) as? [String: Any] {
-                            print("[TLS Debug] Certificate details available")
-
-                            for (key, value) in certDict {
-                                if key.contains("SubjectAltName") || key.contains("Subject Alternative Name") {
-                                    print("[TLS Debug] Found SAN entry: \(key) = \(value)")
-                                }
-                            }
-
-                            if let properties = certDict as CFDictionary?,
-                               let sanDict = CFDictionaryGetValue(properties, kSecOIDSubjectAltName as CFString) {
-                                print("[TLS Debug] SAN data: \(sanDict)")
-                            }
-                        }
-
-                        if #available(iOS 15.0, *) {
-                            let keys = [kSecOIDSubjectAltName, kSecOIDX509V1SubjectName] as CFArray
-                            if let values = SecCertificateCopyValues(cert, keys, nil) as? [String: Any] {
-                                for (key, value) in values {
-                                    print("[TLS Debug] \(key): \(value)")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            completionHandler(.performDefaultHandling, nil)
-        }
-    }
-
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard !baseURL.isEmpty, let key = apiKey else { throw APIError.notConfigured }
 
@@ -124,25 +59,12 @@ class APIClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { req.httpBody = body }
 
-        print("[API Request] \(method) \(url.absoluteString)")
-
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await debugSession.data(for: req)
+            (data, response) = try await URLSession.shared.data(for: req)
         } catch let urlError as URLError {
-            print("[API Error] URLError occurred")
-            print("[API Error] Error code (rawValue): \(urlError.code.rawValue)")
-            print("[API Error] Error code (errorCode): \(urlError.errorCode)")
-            print("[API Error] Localized description: \(urlError.localizedDescription)")
-            if let failureURL = urlError.failureURLString {
-                print("[API Error] Failure URL: \(failureURL)")
-            }
-            if let underlyingError = urlError.underlyingError {
-                print("[API Error] Underlying error: \(underlyingError)")
-            }
             throw urlError
         } catch {
-            print("[API Error] Non-URLError: \(error)")
             throw APIError.networkError(error)
         }
 

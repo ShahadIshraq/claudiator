@@ -98,7 +98,9 @@ class SetupViewModel {
         case .timedOut:
             errorMessage = "❌ Connection Timeout\n\nThe server didn't respond in time.\n\nCheck:\n• Your network connection\n• The server address"
         case .secureConnectionFailed, .appTransportSecurityRequiresSecureConnection:
-            let underlyingInfo = urlError.underlyingError.map { "\n\nUnderlying: \(String(describing: $0))" } ?? ""
+            let nsError = urlError as NSError
+            let underlyingInfo = (nsError.userInfo[NSUnderlyingErrorKey] as? Error)
+                .map { "\n\nUnderlying: \(String(describing: $0))" } ?? ""
             errorMessage = """
             ❌ HTTPS Connection Failed
 
@@ -114,7 +116,9 @@ class SetupViewModel {
         case .unsupportedURL:
             errorMessage = "❌ Invalid URL Format\n\nPlease enter a valid URL.\n\nExample: http://192.168.1.5:3000"
         default:
-            let underlyingInfo = urlError.underlyingError.map { "\n\nUnderlying: \(String(describing: $0))" } ?? ""
+            let nsErr = urlError as NSError
+            let underlyingInfo = (nsErr.userInfo[NSUnderlyingErrorKey] as? Error)
+                .map { "\n\nUnderlying: \(String(describing: $0))" } ?? ""
             errorMessage = "❌ Network Error (\(urlError.code.rawValue))\n\n\(urlError.localizedDescription)\(underlyingInfo)"
         }
     }
