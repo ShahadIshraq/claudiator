@@ -4,6 +4,9 @@ use clap::{Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[command(name = "claudiator-hook", version, about)]
 pub struct Cli {
+    #[arg(long, global = true)]
+    pub log_level: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -46,6 +49,33 @@ mod tests {
         assert!(cli.is_ok());
         if let Ok(cli) = cli {
             assert!(matches!(cli.command, Commands::Version));
+        }
+    }
+
+    #[test]
+    fn test_parse_without_log_level() {
+        let cli = Cli::try_parse_from(["claudiator-hook", "send"]);
+        assert!(cli.is_ok());
+        if let Ok(cli) = cli {
+            assert!(cli.log_level.is_none());
+        }
+    }
+
+    #[test]
+    fn test_parse_with_log_level_before_subcommand() {
+        let cli = Cli::try_parse_from(["claudiator-hook", "--log-level", "debug", "send"]);
+        assert!(cli.is_ok());
+        if let Ok(cli) = cli {
+            assert_eq!(cli.log_level, Some("debug".to_string()));
+        }
+    }
+
+    #[test]
+    fn test_parse_with_log_level_after_subcommand() {
+        let cli = Cli::try_parse_from(["claudiator-hook", "send", "--log-level", "info"]);
+        assert!(cli.is_ok());
+        if let Ok(cli) = cli {
+            assert_eq!(cli.log_level, Some("info".to_string()));
         }
     }
 }
