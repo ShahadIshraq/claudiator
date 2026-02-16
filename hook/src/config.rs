@@ -5,6 +5,18 @@ use serde::Deserialize;
 
 use crate::error::ConfigError;
 
+fn default_log_level() -> String {
+    "error".to_string()
+}
+
+const fn default_max_log_size_bytes() -> u64 {
+    1_048_576
+}
+
+const fn default_max_log_backups() -> u32 {
+    2
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub server_url: String,
@@ -12,6 +24,15 @@ pub struct Config {
     pub device_name: String,
     pub device_id: String,
     pub platform: String,
+    #[allow(dead_code)]
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
+    #[allow(dead_code)]
+    #[serde(default = "default_max_log_size_bytes")]
+    pub max_log_size_bytes: u64,
+    #[allow(dead_code)]
+    #[serde(default = "default_max_log_backups")]
+    pub max_log_backups: u32,
 }
 
 impl Config {
@@ -59,6 +80,9 @@ platform = "mac"
             assert_eq!(config.device_name, "test-machine");
             assert_eq!(config.device_id, "550e8400-e29b-41d4-a716-446655440000");
             assert_eq!(config.platform, "mac");
+            assert_eq!(config.log_level, "error");
+            assert_eq!(config.max_log_size_bytes, 1_048_576);
+            assert_eq!(config.max_log_backups, 2);
         }
     }
 
@@ -91,6 +115,55 @@ platform = "mac"
             assert_eq!(p, temp_file.path());
         } else {
             panic!("Expected ParseFailed error");
+        }
+    }
+
+    #[test]
+    fn test_load_from_valid_toml_without_new_fields() {
+        let temp_file = NamedTempFile::new();
+        assert!(temp_file.is_ok());
+        let Ok(mut temp_file) = temp_file else { return };
+        let write_result = std::io::Write::write_all(&mut temp_file, VALID_TOML.as_bytes());
+        assert!(write_result.is_ok());
+
+        let config = Config::load_from(temp_file.path());
+        assert!(config.is_ok());
+        if let Ok(config) = config {
+            assert_eq!(config.log_level, "error");
+            assert_eq!(config.max_log_size_bytes, 1_048_576);
+            assert_eq!(config.max_log_backups, 2);
+        }
+    }
+
+    #[test]
+    fn test_load_from_valid_toml_with_new_fields() {
+        let toml_with_new_fields = r#"
+server_url = "https://example.com"
+api_key = "test-key-123"
+device_name = "test-machine"
+device_id = "550e8400-e29b-41d4-a716-446655440000"
+platform = "mac"
+log_level = "debug"
+max_log_size_bytes = 500
+max_log_backups = 5
+"#;
+        let temp_file = NamedTempFile::new();
+        assert!(temp_file.is_ok());
+        let Ok(mut temp_file) = temp_file else { return };
+        let write_result = std::io::Write::write_all(&mut temp_file, toml_with_new_fields.as_bytes());
+        assert!(write_result.is_ok());
+
+        let config = Config::load_from(temp_file.path());
+        assert!(config.is_ok());
+        if let Ok(config) = config {
+            assert_eq!(config.server_url, "https://example.com");
+            assert_eq!(config.api_key, "test-key-123");
+            assert_eq!(config.device_name, "test-machine");
+            assert_eq!(config.device_id, "550e8400-e29b-41d4-a716-446655440000");
+            assert_eq!(config.platform, "mac");
+            assert_eq!(config.log_level, "debug");
+            assert_eq!(config.max_log_size_bytes, 500);
+            assert_eq!(config.max_log_backups, 5);
         }
     }
 }

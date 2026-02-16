@@ -49,6 +49,9 @@ mod tests {
             device_name: "test-machine".to_string(),
             device_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
             platform: "mac".to_string(),
+            log_level: "error".to_string(),
+            max_log_size_bytes: 1_048_576,
+            max_log_backups: 2,
         }
     }
 
