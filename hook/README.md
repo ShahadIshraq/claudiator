@@ -20,7 +20,7 @@ hook/
 │   ├── config.rs     — Config loading from TOML
 │   ├── error.rs      — Error types
 │   ├── event.rs      — Hook event parsing from stdin
-│   ├── logger.rs     — Error logging
+│   ├── logger.rs     — Logging with levels and rotation
 │   ├── payload.rs    — Event payload construction
 │   └── sender.rs     — HTTP client (ureq)
 ├── scripts/
@@ -50,6 +50,19 @@ claudiator-hook send
 ```
 
 This subcommand is typically called by Claude Code hooks. It reads JSON from stdin, parses the event, and POSTs it to the server.
+
+### Global Options
+
+#### `--log-level <level>`
+
+Override the log level for this invocation. Can be placed before or after the subcommand:
+
+```bash
+claudiator-hook --log-level debug send
+claudiator-hook send --log-level debug
+```
+
+Valid levels: `error`, `warn`, `info`, `debug` (case-insensitive).
 
 ### Test Connection
 
@@ -81,6 +94,11 @@ api_key = "your-api-key-here"
 device_name = "MacBook Pro"
 device_id = "unique-device-identifier"
 platform = "mac"
+
+# Logging (optional — defaults shown)
+log_level = "error"
+max_log_size_bytes = 1048576
+max_log_backups = 2
 ```
 
 ### Fields
@@ -90,6 +108,40 @@ platform = "mac"
 - `device_name` — Human-readable device name
 - `device_id` — Unique identifier for this device
 - `platform` — Operating system platform (e.g., "darwin", "linux", "windows")
+- `log_level` — Minimum log level: `error`, `warn`, `info`, or `debug` (default: `"error"`)
+- `max_log_size_bytes` — Maximum log file size in bytes before rotation (default: `1048576` / 1 MB)
+- `max_log_backups` — Number of rotated log files to keep (default: `2`)
+
+## Logging
+
+All log output is written to `~/.claude/claudiator/error.log`. The hook never writes to stderr during `send` mode to avoid interfering with Claude Code.
+
+### Log Levels
+
+| Level | Description |
+|-------|-------------|
+| `error` | Errors only (default) |
+| `warn` | Errors and warnings |
+| `info` | Errors, warnings, and informational messages |
+| `debug` | All messages including debug details |
+
+### Log Level Precedence
+
+The log level is resolved in this order (first match wins):
+
+1. `--log-level` CLI flag
+2. `CLAUDIATOR_LOG_LEVEL` environment variable
+3. `log_level` in `config.toml`
+4. Default: `error`
+
+### Log Rotation
+
+When the log file exceeds `max_log_size_bytes`, it is rotated:
+
+- `error.log` is renamed to `error.log.1`
+- Existing backups shift: `.1` becomes `.2`, etc.
+- The oldest backup beyond `max_log_backups` is deleted
+- If `max_log_backups` is `0`, the file is truncated instead of rotated
 
 ## Test Server
 

@@ -13,7 +13,7 @@
 |  - SessionEnd    |         |  POSTs to server    |         |  Sends APNs push |
 |  - Stop          |         |                     |         |                  |
 |  - Notification  |         |  Always exits 0     |         |                  |
-|  - PromptSubmit  |         |  Errors -> log file |         |                  |
+|  - PromptSubmit  |         |  Leveled logging    |         |                  |
 +------------------+         +---------------------+         +------------------+
                                       |                               |
                                       |                               |
@@ -21,7 +21,8 @@
                              ~/.claude/claudiator/          /opt/claudiator/
                              ├── config.toml                ├── claudiator-server
                              ├── claudiator-hook            ├── claudiator.db (SQLite)
-                             └── error.log                  └── .env
+                             ├── error.log                  └── .env
+                             └── error.log.{1,2,...}
                                                                       |
                                                                       |
                                                    +------------------+------------------+
@@ -124,7 +125,7 @@ The server is deployed as a systemd service on Linux:
 
 ### Hook Constraints
 - **Hook must never block Claude Code** — 3s HTTP timeout, always exits 0
-- **Hook must never write to stderr** — Claude Code captures stderr; errors go to `error.log` only
+- **Hook must never write to stderr** — Claude Code captures stderr; all log output goes to `error.log` only
 - **No async runtime** — ureq keeps binary small (~2MB) and startup instant
 
 ### Server Constraints

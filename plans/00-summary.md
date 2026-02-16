@@ -16,10 +16,12 @@ The `claudiator-hook` Rust CLI is complete and production-ready:
 - POSTs events to the server via HTTP
 - Config stored in `~/.claude/claudiator/config.toml` (server_url, api_key, device_name, device_id, platform)
 - Subcommands: `send`, `test`, `version`
-- Always exits 0 in `send` mode (errors logged to `error.log`)
+- Always exits 0 in `send` mode (log output written to `error.log`)
 - 3-second HTTP timeout to avoid blocking Claude Code
 - Uses ureq for HTTP (no async runtime, small binary ~2MB)
 - Forward-compatible with `#[serde(flatten)]` for unknown fields
+- Configurable log levels (error/warn/info/debug) via CLI flag, env var, or config.toml
+- Size-based log rotation with configurable max file size and backup count
 
 #### Hook Install Script (`hook/scripts/install.sh`)
 Automated installation script for end users:
@@ -220,8 +222,9 @@ Additional server functionality for mobile apps:
 ```
 ~/.claude/claudiator/
 ├── claudiator-hook             # Binary
-├── config.toml                 # Server URL, API key, device metadata
-└── error.log                   # Created on first error
+├── config.toml                 # Server URL, API key, device metadata, logging settings
+├── error.log                   # Log file (configurable level, rotated by size)
+└── error.log.{1,2,...}         # Rotated log backups
 ```
 
 ### Server Machine
@@ -239,7 +242,7 @@ Additional server functionality for mobile apps:
 - **Always exit 0 in `send`**: Non-zero exits disrupt Claude Code (exit 2 blocks tool calls).
 - **3-second HTTP timeout**: Prevents blocking Claude Code if server is unreachable.
 - **`#[serde(flatten)]` for unknown fields**: Forward-compatible with future Claude Code hook changes.
-- **Errors to log file only**: Never to stderr during `send` (Claude Code captures stderr).
+- **Leveled logging to file only**: Configurable log levels (error/warn/info/debug) with size-based rotation. Never to stderr during `send` (Claude Code captures stderr).
 - **SQLite with WAL mode**: Single-file database with good concurrent read performance.
 - **Bearer token auth**: Simple and secure API authentication.
 - **Systemd integration**: Automatic startup, restart on failure, log management.
