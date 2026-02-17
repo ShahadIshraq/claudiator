@@ -16,6 +16,9 @@ pub struct AppState {
     pub notification_version: AtomicU64,
     pub last_cleanup: AtomicU64,
     pub apns_client: Option<Arc<ApnsClient>>,
+    pub retention_events_days: u64,
+    pub retention_sessions_days: u64,
+    pub retention_devices_days: u64,
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {

@@ -17,6 +17,9 @@ fn test_server() -> TestServer {
         notification_version: AtomicU64::new(0),
         last_cleanup: AtomicU64::new(0),
         apns_client: None,
+        retention_events_days: 7,
+        retention_sessions_days: 7,
+        retention_devices_days: 30,
     });
 
     let app = router::build_router(state);

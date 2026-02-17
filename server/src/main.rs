@@ -103,6 +103,9 @@ async fn main() {
         notification_version: AtomicU64::new(notification_version),
         last_cleanup: AtomicU64::new(0),
         apns_client,
+        retention_events_days: config.retention_events_days,
+        retention_sessions_days: config.retention_sessions_days,
+        retention_devices_days: config.retention_devices_days,
     });
 
     let app = router::build_router(state);

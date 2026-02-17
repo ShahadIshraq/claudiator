@@ -29,6 +29,15 @@ pub struct ServerConfig {
     pub apns_bundle_id: Option<String>,
     #[arg(long, default_value = "false", env = "CLAUDIATOR_APNS_SANDBOX")]
     pub apns_sandbox: bool,
+
+    #[arg(long, default_value = "7", env = "CLAUDIATOR_RETENTION_EVENTS_DAYS")]
+    pub retention_events_days: u64,
+
+    #[arg(long, default_value = "7", env = "CLAUDIATOR_RETENTION_SESSIONS_DAYS")]
+    pub retention_sessions_days: u64,
+
+    #[arg(long, default_value = "30", env = "CLAUDIATOR_RETENTION_DEVICES_DAYS")]
+    pub retention_devices_days: u64,
 }
 
 #[cfg(test)]
@@ -61,5 +70,43 @@ mod tests {
             ServerConfig::try_parse_from(["test", "--api-key", "k", "--log-dir", "/tmp/test-logs"])
                 .unwrap();
         assert_eq!(config.log_dir, "/tmp/test-logs");
+    }
+
+    #[test]
+    fn default_retention_events_days_is_7() {
+        let config = ServerConfig::try_parse_from(["test", "--api-key", "k"]).unwrap();
+        assert_eq!(config.retention_events_days, 7);
+    }
+
+    #[test]
+    fn custom_retention_events_days() {
+        let config = ServerConfig::try_parse_from([
+            "test",
+            "--api-key",
+            "k",
+            "--retention-events-days",
+            "14",
+        ])
+        .unwrap();
+        assert_eq!(config.retention_events_days, 14);
+    }
+
+    #[test]
+    fn default_retention_devices_days_is_30() {
+        let config = ServerConfig::try_parse_from(["test", "--api-key", "k"]).unwrap();
+        assert_eq!(config.retention_devices_days, 30);
+    }
+
+    #[test]
+    fn custom_retention_devices_days() {
+        let config = ServerConfig::try_parse_from([
+            "test",
+            "--api-key",
+            "k",
+            "--retention-devices-days",
+            "60",
+        ])
+        .unwrap();
+        assert_eq!(config.retention_devices_days, 60);
     }
 }

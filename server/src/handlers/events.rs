@@ -169,33 +169,6 @@ pub async fn events_handler(
             &new_notif_version.to_string(),
         );
 
-        // Synchronous cleanup with time guard (max once per 5 minutes)
-        #[allow(clippy::cast_sign_loss)]
-        let now_secs = Utc::now().timestamp() as u64;
-        let last_cleanup = state
-            .last_cleanup
-            .load(std::sync::atomic::Ordering::Relaxed);
-        let five_minutes_secs = 5 * 60;
-
-        if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
-            match queries::delete_expired_notifications(&conn) {
-                Ok(count) if count > 0 => {
-                    tracing::debug!("Cleaned up {} expired notifications", count);
-                    state
-                        .last_cleanup
-                        .store(now_secs, std::sync::atomic::Ordering::Relaxed);
-                }
-                Ok(_) => {
-                    state
-                        .last_cleanup
-                        .store(now_secs, std::sync::atomic::Ordering::Relaxed);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to clean expired notifications: {:?}", e);
-                }
-            }
-        }
-
         // APNs push dispatch
         if let Some(ref apns_client) = state.apns_client {
             let apns = apns_client.clone();
@@ -280,6 +253,76 @@ pub async fn events_handler(
         }
     }
 
+    // Async cleanup with time guard (max once per 5 minutes)
+    #[allow(clippy::cast_sign_loss)]
+    let now_secs = Utc::now().timestamp() as u64;
+    let last_cleanup = state
+        .last_cleanup
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let five_minutes_secs = 5 * 60;
+
+    if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
+        state
+            .last_cleanup
+            .store(now_secs, std::sync::atomic::Ordering::Relaxed);
+
+        let cleanup_pool = state.db_pool.clone();
+        let retention_events = state.retention_events_days;
+        let retention_sessions = state.retention_sessions_days;
+        let retention_devices = state.retention_devices_days;
+
+        tokio::spawn(async move {
+            let conn = match cleanup_pool.get() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("Failed to get db connection for cleanup: {}", e);
+                    return;
+                }
+            };
+
+            // FK-safe order: events → notifications → sessions → devices
+            match queries::delete_old_events(&conn, retention_events) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} old events", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean old events: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_expired_notifications(&conn) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} expired notifications", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean expired notifications: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_stale_sessions(&conn, retention_sessions) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} stale sessions", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean stale sessions: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_stale_devices(&conn, retention_devices) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} stale devices", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean stale devices: {:?}", e);
+                }
+                _ => {}
+            }
+        });
+    }
+
     tracing::info!(
         device_id = %payload.device.device_id,
         session_id = %payload.event.session_id,
@@ -317,8 +360,7 @@ fn should_notify(
     let title_from_session = |fallback: &str| -> String {
         session_title
             .filter(|t| !t.is_empty())
-            .map(String::from)
-            .unwrap_or_else(|| fallback.to_string())
+            .map_or_else(|| fallback.to_string(), String::from)
     };
 
     match hook_event_name {

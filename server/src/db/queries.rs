@@ -402,6 +402,61 @@ pub fn delete_expired_notifications(conn: &Connection) -> Result<usize, AppError
     Ok(count)
 }
 
+pub fn delete_old_events(conn: &Connection, retention_days: u64) -> Result<usize, AppError> {
+    #[allow(clippy::cast_possible_wrap)]
+    let cutoff = chrono::Utc::now()
+        .checked_sub_signed(chrono::Duration::days(retention_days as i64))
+        .ok_or_else(|| AppError::Internal("Time calculation overflow".to_string()))?
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    let count = conn
+        .execute(
+            "DELETE FROM events WHERE received_at < ?1",
+            rusqlite::params![cutoff],
+        )
+        .map_err(|e| AppError::Internal(format!("Failed to delete old events: {e}")))?;
+
+    Ok(count)
+}
+
+pub fn delete_stale_sessions(conn: &Connection, retention_days: u64) -> Result<usize, AppError> {
+    #[allow(clippy::cast_possible_wrap)]
+    let cutoff = chrono::Utc::now()
+        .checked_sub_signed(chrono::Duration::days(retention_days as i64))
+        .ok_or_else(|| AppError::Internal("Time calculation overflow".to_string()))?
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    let count = conn
+        .execute(
+            "DELETE FROM sessions WHERE last_event < ?1
+               AND session_id NOT IN (SELECT DISTINCT session_id FROM events)
+               AND session_id NOT IN (SELECT DISTINCT session_id FROM notifications)",
+            rusqlite::params![cutoff],
+        )
+        .map_err(|e| AppError::Internal(format!("Failed to delete stale sessions: {e}")))?;
+
+    Ok(count)
+}
+
+pub fn delete_stale_devices(conn: &Connection, retention_days: u64) -> Result<usize, AppError> {
+    #[allow(clippy::cast_possible_wrap)]
+    let cutoff = chrono::Utc::now()
+        .checked_sub_signed(chrono::Duration::days(retention_days as i64))
+        .ok_or_else(|| AppError::Internal("Time calculation overflow".to_string()))?
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    let count = conn
+        .execute(
+            "DELETE FROM devices WHERE last_seen < ?1
+               AND device_id NOT IN (SELECT DISTINCT device_id FROM sessions)
+               AND device_id NOT IN (SELECT DISTINCT device_id FROM events)",
+            rusqlite::params![cutoff],
+        )
+        .map_err(|e| AppError::Internal(format!("Failed to delete stale devices: {e}")))?;
+
+    Ok(count)
+}
+
 pub struct PushTokenRow {
     pub push_token: String,
     #[allow(dead_code)]

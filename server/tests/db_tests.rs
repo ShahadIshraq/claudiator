@@ -764,3 +764,279 @@ fn test_get_session_title_nonexistent_session() {
     let title = queries::get_session_title(&conn, "nonexistent").unwrap();
     assert_eq!(title, None);
 }
+
+#[test]
+fn test_delete_old_events() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Setup device and session
+    let now = chrono::Utc::now().to_rfc3339();
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, None, None, None).unwrap();
+
+    // Insert old event (8 days ago)
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(8))
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &old_time,
+        &old_time,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Insert recent event
+    let recent = chrono::Utc::now()
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    queries::insert_event(
+        &conn,
+        "device-1",
+        "session-1",
+        "tool-use",
+        &recent,
+        &recent,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Delete events older than 7 days
+    let deleted = queries::delete_old_events(&conn, 7).unwrap();
+    assert_eq!(deleted, 1);
+
+    // Verify only recent event remains
+    let events = queries::list_events(&conn, "session-1", 10).unwrap();
+    assert_eq!(events.len(), 1);
+}
+
+#[test]
+fn test_delete_stale_sessions() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    let now = chrono::Utc::now().to_rfc3339();
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+
+    // Insert old orphaned session (8 days ago)
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(8)).to_rfc3339();
+    queries::upsert_session(
+        &conn,
+        "old-session",
+        "device-1",
+        &old_time,
+        Some("ended"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    // Insert recent session
+    queries::upsert_session(
+        &conn,
+        "recent-session",
+        "device-1",
+        &now,
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    // Delete stale sessions older than 7 days
+    let deleted = queries::delete_stale_sessions(&conn, 7).unwrap();
+    assert_eq!(deleted, 1);
+
+    // Verify only recent session remains
+    let sessions = queries::list_sessions(&conn, "device-1", None, 10).unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].session_id, "recent-session");
+}
+
+#[test]
+fn test_delete_stale_sessions_keeps_session_with_events() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    let now = chrono::Utc::now().to_rfc3339();
+    queries::upsert_device(&conn, "device-1", "Device", "macos", &now).unwrap();
+
+    // Insert old session (8 days ago)
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(8)).to_rfc3339();
+    queries::upsert_session(
+        &conn,
+        "old-session-with-events",
+        "device-1",
+        &old_time,
+        Some("ended"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    // Insert an event referencing this session (recent event, so not cleaned by delete_old_events)
+    let recent = chrono::Utc::now()
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    queries::insert_event(
+        &conn,
+        "device-1",
+        "old-session-with-events",
+        "tool-use",
+        &recent,
+        &recent,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Try to delete stale sessions — should NOT delete because events still reference it
+    let deleted = queries::delete_stale_sessions(&conn, 7).unwrap();
+    assert_eq!(deleted, 0);
+
+    let sessions = queries::list_sessions(&conn, "device-1", None, 10).unwrap();
+    assert_eq!(sessions.len(), 1);
+}
+
+#[test]
+fn test_delete_stale_devices() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Insert old orphaned device (31 days ago)
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(31)).to_rfc3339();
+    queries::upsert_device(&conn, "old-device", "Old Device", "macos", &old_time).unwrap();
+
+    // Insert recent device
+    let now = chrono::Utc::now().to_rfc3339();
+    queries::upsert_device(&conn, "recent-device", "Recent Device", "linux", &now).unwrap();
+
+    // Delete stale devices older than 30 days
+    let deleted = queries::delete_stale_devices(&conn, 30).unwrap();
+    assert_eq!(deleted, 1);
+
+    // Verify only recent device remains
+    let devices = queries::list_devices(&conn).unwrap();
+    assert_eq!(devices.len(), 1);
+    assert_eq!(devices[0].device_id, "recent-device");
+}
+
+#[test]
+fn test_delete_stale_devices_keeps_device_with_sessions() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Insert old device (31 days ago)
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(31)).to_rfc3339();
+    queries::upsert_device(&conn, "old-device", "Old Device", "macos", &old_time).unwrap();
+
+    // Add a session referencing this device
+    let now = chrono::Utc::now().to_rfc3339();
+    queries::upsert_session(
+        &conn,
+        "session-on-old-device",
+        "old-device",
+        &now,
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    // Try to delete stale devices — should NOT delete because sessions still reference it
+    let deleted = queries::delete_stale_devices(&conn, 30).unwrap();
+    assert_eq!(deleted, 0);
+
+    let devices = queries::list_devices(&conn).unwrap();
+    assert_eq!(devices.len(), 1);
+}
+
+#[test]
+fn test_full_retention_cascade() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // --- Old chain (should be fully cleaned) ---
+    let old_time = (chrono::Utc::now() - chrono::Duration::days(31)).to_rfc3339();
+    let old_time_millis = (chrono::Utc::now() - chrono::Duration::days(31))
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    queries::upsert_device(&conn, "old-device", "Old", "macos", &old_time).unwrap();
+    queries::upsert_session(
+        &conn,
+        "old-session",
+        "old-device",
+        &old_time,
+        Some("ended"),
+        None,
+        None,
+    )
+    .unwrap();
+    queries::insert_event(
+        &conn,
+        "old-device",
+        "old-session",
+        "tool-use",
+        &old_time_millis,
+        &old_time_millis,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // --- Recent chain (should be untouched) ---
+    let now = chrono::Utc::now().to_rfc3339();
+    let now_millis = chrono::Utc::now()
+        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    queries::upsert_device(&conn, "new-device", "New", "linux", &now).unwrap();
+    queries::upsert_session(
+        &conn,
+        "new-session",
+        "new-device",
+        &now,
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
+    queries::insert_event(
+        &conn,
+        "new-device",
+        "new-session",
+        "tool-use",
+        &now_millis,
+        &now_millis,
+        None,
+        None,
+        "{}",
+    )
+    .unwrap();
+
+    // Execute cleanup in FK-safe order
+    let events_deleted = queries::delete_old_events(&conn, 7).unwrap();
+    assert_eq!(events_deleted, 1);
+
+    let sessions_deleted = queries::delete_stale_sessions(&conn, 7).unwrap();
+    assert_eq!(sessions_deleted, 1);
+
+    let devices_deleted = queries::delete_stale_devices(&conn, 30).unwrap();
+    assert_eq!(devices_deleted, 1);
+
+    // Verify recent chain is untouched
+    let devices = queries::list_devices(&conn).unwrap();
+    assert_eq!(devices.len(), 1);
+    assert_eq!(devices[0].device_id, "new-device");
+
+    let sessions = queries::list_sessions(&conn, "new-device", None, 10).unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].session_id, "new-session");
+
+    let events = queries::list_events(&conn, "new-session", 10).unwrap();
+    assert_eq!(events.len(), 1);
+}
