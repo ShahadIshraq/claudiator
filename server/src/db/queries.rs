@@ -269,6 +269,28 @@ pub fn list_events(
     Ok(events)
 }
 
+pub fn get_session_title(conn: &Connection, session_id: &str) -> Result<Option<String>, AppError> {
+    let mut stmt = conn
+        .prepare("SELECT title FROM sessions WHERE session_id = ?1")
+        .map_err(|e| AppError::Internal(format!("Failed to prepare session title query: {e}")))?;
+
+    let mut rows = stmt
+        .query(rusqlite::params![session_id])
+        .map_err(|e| AppError::Internal(format!("Failed to query session title: {e}")))?;
+
+    if let Some(row) = rows
+        .next()
+        .map_err(|e| AppError::Internal(format!("Failed to fetch session title row: {e}")))?
+    {
+        let title: Option<String> = row
+            .get(0)
+            .map_err(|e| AppError::Internal(format!("Failed to get session title value: {e}")))?;
+        Ok(title)
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn upsert_push_token(
     conn: &Connection,
     platform: &str,

@@ -719,3 +719,48 @@ fn test_timestamp_pagination_ordering() {
     assert_eq!(notifs[1].id, "notif-2");
     assert_eq!(notifs[2].id, "notif-3");
 }
+
+#[test]
+fn test_get_session_title_with_title() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
+    queries::upsert_session(
+        &conn,
+        "session-1",
+        "device-1",
+        &now,
+        Some("active"),
+        None,
+        Some("Fix login bug"),
+    )
+    .unwrap();
+
+    let title = queries::get_session_title(&conn, "session-1").unwrap();
+    assert_eq!(title, Some("Fix login bug".to_string()));
+}
+
+#[test]
+fn test_get_session_title_without_title() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
+    queries::upsert_session(&conn, "session-1", "device-1", &now, Some("active"), None, None)
+        .unwrap();
+
+    let title = queries::get_session_title(&conn, "session-1").unwrap();
+    assert_eq!(title, None);
+}
+
+#[test]
+fn test_get_session_title_nonexistent_session() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    let title = queries::get_session_title(&conn, "nonexistent").unwrap();
+    assert_eq!(title, None);
+}

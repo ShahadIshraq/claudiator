@@ -561,3 +561,137 @@ async fn test_acknowledge_notifications_without_auth() {
 
     response.assert_status_unauthorized();
 }
+
+#[tokio::test]
+async fn test_notification_content_uses_session_title() {
+    let server = test_server();
+
+    // First, set a session title via UserPromptSubmit
+    let prompt_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {
+            "session_id": "sess-1",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "Fix the login bug"
+        },
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&prompt_event)
+        .await;
+
+    // Then trigger a Stop event (which creates a notification)
+    let stop_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {
+            "session_id": "sess-1",
+            "hook_event_name": "Stop",
+            "message": "Max turns reached"
+        },
+        "timestamp": "2024-01-01T00:01:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop_event)
+        .await;
+
+    // Fetch notifications and verify content
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(notifications.len(), 1);
+    assert_eq!(notifications[0]["title"], "Fix the login bug");
+    assert_eq!(notifications[0]["body"], "Session stopped: Max turns reached");
+}
+
+#[tokio::test]
+async fn test_notification_content_fallback_without_session_title() {
+    let server = test_server();
+
+    // Send a Stop event without a prior UserPromptSubmit (no session title)
+    let stop_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {
+            "session_id": "sess-no-title",
+            "hook_event_name": "Stop",
+            "message": "User interrupted"
+        },
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop_event)
+        .await;
+
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(notifications.len(), 1);
+    // Should fall back to hardcoded title
+    assert_eq!(notifications[0]["title"], "Session Stopped");
+    assert_eq!(notifications[0]["body"], "Session stopped: User interrupted");
+}
+
+#[tokio::test]
+async fn test_notification_content_permission_with_tool_name() {
+    let server = test_server();
+
+    // Set session title
+    let prompt_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {
+            "session_id": "sess-perm",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": "Refactor auth module"
+        },
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&prompt_event)
+        .await;
+
+    // Send a PermissionRequest event with tool_name and message
+    let perm_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "Device 1", "platform": "macos"},
+        "event": {
+            "session_id": "sess-perm",
+            "hook_event_name": "PermissionRequest",
+            "tool_name": "Bash",
+            "message": "run npm test"
+        },
+        "timestamp": "2024-01-01T00:01:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&perm_event)
+        .await;
+
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(notifications.len(), 1);
+    assert_eq!(notifications[0]["title"], "Refactor auth module");
+    assert_eq!(notifications[0]["body"], "Permission required: Bash \u{2014} run npm test");
+}

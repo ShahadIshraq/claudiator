@@ -131,11 +131,17 @@ pub async fn events_handler(
         }
     };
 
+    // Fetch session title for notification content
+    let session_title = queries::get_session_title(&conn, &payload.event.session_id)
+        .unwrap_or(None);
+
     // Notification pipeline — after successful commit
     if let Some((notif_title, notif_body, notif_type)) = should_notify(
         &payload.event.hook_event_name,
         payload.event.notification_type.as_deref(),
         payload.event.message.as_deref(),
+        session_title.as_deref(),
+        payload.event.tool_name.as_deref(),
     ) {
         let notification_id = uuid::Uuid::new_v4().to_string();
 
@@ -305,34 +311,56 @@ fn should_notify(
     hook_event_name: &str,
     notification_type: Option<&str>,
     message: Option<&str>,
+    session_title: Option<&str>,
+    tool_name: Option<&str>,
 ) -> Option<(String, String, String)> {
+    let title_from_session = |fallback: &str| -> String {
+        session_title
+            .filter(|t| !t.is_empty())
+            .map(String::from)
+            .unwrap_or_else(|| fallback.to_string())
+    };
+
     match hook_event_name {
         "Stop" => {
-            let body = message.unwrap_or("Session has stopped").to_string();
-            Some(("Session Stopped".to_string(), body, "stop".to_string()))
+            let title = title_from_session("Session Stopped");
+            let body = format!(
+                "Session stopped: {}",
+                message.unwrap_or("No reason given")
+            );
+            Some((title, body, "stop".to_string()))
         }
         "Notification" => match notification_type {
-            Some("permission_prompt") => Some((
-                "Permission Required".to_string(),
-                message
-                    .unwrap_or("A session needs permission to continue")
-                    .to_string(),
-                "permission_prompt".to_string(),
-            )),
-            Some("idle_prompt") => Some((
-                "Session Idle".to_string(),
-                message
-                    .unwrap_or("A session is waiting for input")
-                    .to_string(),
-                "idle_prompt".to_string(),
-            )),
+            Some("permission_prompt") => {
+                let title = title_from_session("Permission Required");
+                let body = match (tool_name, message) {
+                    (Some(tool), Some(msg)) => format!("Permission required: {tool} — {msg}"),
+                    (Some(tool), None) => format!("Permission required: {tool}"),
+                    (None, Some(msg)) => format!("Permission required: {msg}"),
+                    (None, None) => "A session needs permission to continue".to_string(),
+                };
+                Some((title, body, "permission_prompt".to_string()))
+            }
+            Some("idle_prompt") => {
+                let title = title_from_session("Session Idle");
+                let body = format!(
+                    "Session idle: {}",
+                    message.unwrap_or("Waiting for input")
+                );
+                Some((title, body, "idle_prompt".to_string()))
+            }
             _ => None,
         },
-        "PermissionRequest" => Some((
-            "Permission Required".to_string(),
-            message.unwrap_or("A session needs permission to continue").to_string(),
-            "permission_prompt".to_string(),
-        )),
+        "PermissionRequest" => {
+            let title = title_from_session("Permission Required");
+            let body = match (tool_name, message) {
+                (Some(tool), Some(msg)) => format!("Permission required: {tool} — {msg}"),
+                (Some(tool), None) => format!("Permission required: {tool}"),
+                (None, Some(msg)) => format!("Permission required: {msg}"),
+                (None, None) => "A session needs permission to continue".to_string(),
+            };
+            Some((title, body, "permission_prompt".to_string()))
+        }
         _ => None,
     }
 }
