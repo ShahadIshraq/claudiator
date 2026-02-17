@@ -99,7 +99,7 @@ $HooksConfigured = $false
 if ($ConfigureHooks -match "^[Yy]$") {
     $SettingsFile = "$env:USERPROFILE\.claude\settings.json"
     $HookCommand = "~/.claude/claudiator/claudiator-hook send"
-    $Events = @("SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit")
+    $Events = @("SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "SubagentStart", "SubagentStop", "PermissionRequest", "TeammateIdle", "TaskCompleted")
 
     # Create settings directory if it doesn't exist
     $SettingsDir = Split-Path -Parent $SettingsFile
@@ -132,13 +132,16 @@ if ($ConfigureHooks -match "^[Yy]$") {
         }
 
         # Check if hook already exists
-        $Existing = $Settings.hooks.$Event | Where-Object { $_.command -eq $HookCommand }
+        $Existing = $Settings.hooks.$Event | Where-Object { $_.hooks | Where-Object { $_.command -eq $HookCommand } }
 
         if (-not $Existing) {
             # Add the hook
             $NewHook = [PSCustomObject]@{
                 matcher = ""
-                command = $HookCommand
+                hooks = @([PSCustomObject]@{
+                    type = "command"
+                    command = $HookCommand
+                })
             }
             $Settings.hooks.$Event += $NewHook
         }

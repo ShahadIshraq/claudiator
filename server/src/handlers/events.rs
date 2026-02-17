@@ -286,9 +286,12 @@ pub async fn events_handler(
 
 fn derive_session_status(hook_event_name: &str, notification_type: Option<&str>) -> Option<String> {
     match hook_event_name {
-        "SessionStart" | "UserPromptSubmit" => Some("active".to_string()),
+        "SessionStart" | "UserPromptSubmit" | "SubagentStart" | "SubagentStop" => {
+            Some("active".to_string())
+        }
         "Stop" => Some("waiting_for_input".to_string()),
         "SessionEnd" => Some("ended".to_string()),
+        "PermissionRequest" => Some("waiting_for_permission".to_string()),
         "Notification" => match notification_type {
             Some("permission_prompt") => Some("waiting_for_permission".to_string()),
             Some("idle_prompt") => Some("idle".to_string()),
@@ -325,6 +328,11 @@ fn should_notify(
             )),
             _ => None,
         },
+        "PermissionRequest" => Some((
+            "Permission Required".to_string(),
+            message.unwrap_or("A session needs permission to continue").to_string(),
+            "permission_prompt".to_string(),
+        )),
         _ => None,
     }
 }

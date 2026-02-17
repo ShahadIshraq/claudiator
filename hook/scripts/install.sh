@@ -115,7 +115,12 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
       "SessionEnd",
       "Stop",
       "Notification",
-      "UserPromptSubmit"
+      "UserPromptSubmit",
+      "SubagentStart",
+      "SubagentStop",
+      "PermissionRequest",
+      "TeammateIdle",
+      "TaskCompleted"
     ]'
 
     if command -v jq &> /dev/null; then
@@ -126,16 +131,16 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
         fi
 
         # For each hook event, add if not already present
-        for EVENT in SessionStart SessionEnd Stop Notification UserPromptSubmit; do
+        for EVENT in SessionStart SessionEnd Stop Notification UserPromptSubmit SubagentStart SubagentStop PermissionRequest TeammateIdle TaskCompleted; do
             # Check if hook already exists
             EXISTING=$(jq -r --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
-                '.hooks[$event] // [] | map(select(.command == $cmd)) | length' \
+                '.hooks[$event] // [] | map(select(.hooks[]? | select(.command == $cmd))) | length' \
                 "$SETTINGS_FILE")
 
             if [ "$EXISTING" -eq 0 ]; then
                 # Add the hook
                 jq --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
-                    '.hooks[$event] = (.hooks[$event] // []) + [{"matcher": "", "command": $cmd}]' \
+                    '.hooks[$event] = (.hooks[$event] // []) + [{"matcher": "", "hooks": [{"type": "command", "command": $cmd}]}]' \
                     "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
             fi
         done
@@ -149,7 +154,7 @@ import os
 
 settings_file = os.path.expanduser("~/.claude/settings.json")
 hook_command = "~/.claude/claudiator/claudiator-hook send"
-events = ["SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit"]
+events = ["SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "SubagentStart", "SubagentStop", "PermissionRequest", "TeammateIdle", "TaskCompleted"]
 
 # Load or create settings
 if os.path.exists(settings_file):
@@ -168,12 +173,15 @@ for event in events:
         settings['hooks'][event] = []
 
     # Check if hook already exists
-    existing = any(hook.get('command') == hook_command for hook in settings['hooks'][event])
+    existing = any(
+        any(h.get('command') == hook_command for h in hook.get('hooks', []))
+        for hook in settings['hooks'][event]
+    )
 
     if not existing:
         settings['hooks'][event].append({
             "matcher": "",
-            "command": hook_command
+            "hooks": [{"type": "command", "command": hook_command}]
         })
 
 # Write back
@@ -193,31 +201,61 @@ PYEOF
     "SessionStart": [
       {
         "matcher": "",
-        "command": "~/.claude/claudiator/claudiator-hook send"
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
       }
     ],
     "SessionEnd": [
       {
         "matcher": "",
-        "command": "~/.claude/claudiator/claudiator-hook send"
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
       }
     ],
     "Stop": [
       {
         "matcher": "",
-        "command": "~/.claude/claudiator/claudiator-hook send"
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
       }
     ],
     "Notification": [
       {
         "matcher": "",
-        "command": "~/.claude/claudiator/claudiator-hook send"
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
       }
     ],
     "UserPromptSubmit": [
       {
         "matcher": "",
-        "command": "~/.claude/claudiator/claudiator-hook send"
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
       }
     ]
   }
