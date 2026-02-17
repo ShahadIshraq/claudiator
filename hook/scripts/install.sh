@@ -46,7 +46,21 @@ TARGET="${ARCH_TARGET}-${OS_TARGET}"
 INSTALL_DIR="$HOME/.claude/claudiator"
 BINARY_NAME="claudiator-hook"
 REPO="shahadishraq/claudiator"
-DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}-${TARGET}.tar.gz"
+# Query GitHub API for the latest hook-v* release
+echo "Querying latest hook release..."
+RELEASES_JSON=$(curl -sfL "https://api.github.com/repos/${REPO}/releases" 2>/dev/null) || {
+    echo "Error: Failed to query GitHub releases API"
+    exit 1
+}
+
+LATEST_TAG=$(echo "$RELEASES_JSON" | grep -o '"tag_name":\s*"hook-v[^"]*"' | head -1 | sed 's/.*"hook-v\([^"]*\)".*/\1/')
+if [[ -z "$LATEST_TAG" ]]; then
+    echo "Error: No hook release found on GitHub"
+    exit 1
+fi
+
+echo "Latest hook release: v${LATEST_TAG}"
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/hook-v${LATEST_TAG}/${BINARY_NAME}-${TARGET}.tar.gz"
 
 # Create install directory
 mkdir -p "$INSTALL_DIR"

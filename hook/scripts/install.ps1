@@ -26,7 +26,24 @@ $Platform = "windows"
 $InstallDir = "$env:USERPROFILE\.claude\claudiator"
 $BinaryName = "claudiator-hook.exe"
 $Repo = "shahadishraq/claudiator"
-$DownloadUrl = "https://github.com/${Repo}/releases/latest/download/claudiator-hook-${Target}.zip"
+# Query GitHub API for the latest hook-v* release
+Write-Host "Querying latest hook release..." -ForegroundColor Yellow
+try {
+    $ReleasesJson = Invoke-RestMethod -Uri "https://api.github.com/repos/${Repo}/releases" -ErrorAction Stop
+} catch {
+    Write-Host "Error: Failed to query GitHub releases API" -ForegroundColor Red
+    exit 1
+}
+
+$LatestRelease = $ReleasesJson | Where-Object { $_.tag_name -match '^hook-v' } | Select-Object -First 1
+if (-not $LatestRelease) {
+    Write-Host "Error: No hook release found on GitHub" -ForegroundColor Red
+    exit 1
+}
+
+$LatestTag = $LatestRelease.tag_name
+Write-Host "Latest hook release: $LatestTag" -ForegroundColor Green
+$DownloadUrl = "https://github.com/${Repo}/releases/download/${LatestTag}/claudiator-hook-${Target}.zip"
 $ZipPath = "$env:TEMP\claudiator-hook.zip"
 
 # Create install directory
