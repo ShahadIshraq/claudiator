@@ -25,10 +25,7 @@ pub type AuthFailureMap = Mutex<HashMap<IpAddr, (u32, Instant)>>;
 /// exempt from limiting.
 pub fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
     // X-Forwarded-For may contain a comma-separated list; take the first.
-    if let Some(forwarded) = headers
-        .get("X-Forwarded-For")
-        .and_then(|v| v.to_str().ok())
-    {
+    if let Some(forwarded) = headers.get("X-Forwarded-For").and_then(|v| v.to_str().ok()) {
         let first = forwarded.split(',').next().unwrap_or("").trim();
         if let Ok(ip) = first.parse::<IpAddr>() {
             return ip;
@@ -49,7 +46,9 @@ pub fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
 /// within `FAILURE_WINDOW`. Cleans up expired entries for other IPs while
 /// holding the lock.
 pub fn check_rate_limit(map: &AuthFailureMap, ip: IpAddr) -> Result<(), AppError> {
-    let mut guard = map.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut guard = map
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
 
     // Opportunistic sweep: remove entries whose window has expired.
     let now = Instant::now();
@@ -70,7 +69,9 @@ pub fn check_rate_limit(map: &AuthFailureMap, ip: IpAddr) -> Result<(), AppError
 /// Records a failed authentication attempt for `ip`.
 #[allow(clippy::significant_drop_tightening)]
 pub fn record_auth_failure(map: &AuthFailureMap, ip: IpAddr) {
-    let mut guard = map.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut guard = map
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let now = Instant::now();
 
     let entry = guard.entry(ip).or_insert((0, now));

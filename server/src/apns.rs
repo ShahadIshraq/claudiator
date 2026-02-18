@@ -233,7 +233,11 @@ iE0Cu0jnmlsdhPTG/Cur1JBJ2a+hRANCAAR1QTINEESoo+PCsqnLmhFvOCNhbNe5\n\
             .expect("token generation should succeed");
 
         let parts: Vec<&str> = token.split('.').collect();
-        assert_eq!(parts.len(), 3, "JWT must have exactly three dot-separated parts");
+        assert_eq!(
+            parts.len(),
+            3,
+            "JWT must have exactly three dot-separated parts"
+        );
     }
 
     #[tokio::test]
@@ -306,7 +310,10 @@ iE0Cu0jnmlsdhPTG/Cur1JBJ2a+hRANCAAR1QTINEESoo+PCsqnLmhFvOCNhbNe5\n\
             .await
             .expect("second token generation should succeed");
 
-        assert_eq!(token1, token2, "token must be reused within the cache window");
+        assert_eq!(
+            token1, token2,
+            "token must be reused within the cache window"
+        );
     }
 
     #[tokio::test]
@@ -388,7 +395,10 @@ iE0Cu0jnmlsdhPTG/Cur1JBJ2a+hRANCAAR1QTINEESoo+PCsqnLmhFvOCNhbNe5\n\
         let result = ApnsClient::status_to_push_result(500, "Internal Server Error");
         match result {
             ApnsPushResult::OtherError(msg) => {
-                assert!(msg.contains("500"), "error message must include status code");
+                assert!(
+                    msg.contains("500"),
+                    "error message must include status code"
+                );
                 assert!(
                     msg.contains("Internal Server Error"),
                     "error message must include body"

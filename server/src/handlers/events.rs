@@ -315,8 +315,7 @@ pub async fn events_handler(
         // APNs push dispatch
         if let Some(ref apns_client) = state.apns_client {
             // Use session_id as collapse_id with 64-byte truncation guard
-            let collapse_id =
-                truncate_at_char_boundary(&payload.event.session_id, 64);
+            let collapse_id = truncate_at_char_boundary(&payload.event.session_id, 64);
 
             dispatch_push_notifications(
                 apns_client.clone(),
