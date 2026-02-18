@@ -11,7 +11,7 @@ class SetupViewModel {
     var connectionSuccess = false
 
     func connect(apiClient: APIClient) async {
-        guard let cleanedURL = cleanAndValidateURL() else {
+        guard let cleanedURL = URLValidator.cleanAndValidate(serverURL) else {
             errorMessage = "Invalid URL format"
             return
         }
@@ -24,18 +24,6 @@ class SetupViewModel {
     }
 
     // MARK: - Private Helpers
-
-    private func cleanAndValidateURL() -> String? {
-        var url = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if url.hasSuffix("/") { url.removeLast() }
-        if !url.hasPrefix("http") {
-            let isLocal = url.contains(".local") || url.starts(with: "localhost") || url.starts(with: "127.0.0.1")
-            url = (isLocal ? "http://" : "https://") + url
-        }
-
-        guard URL(string: url) != nil else { return nil }
-        return url
-    }
 
     private func testConnection(apiClient: APIClient, url: String) async {
         let oldURL = apiClient.baseURL

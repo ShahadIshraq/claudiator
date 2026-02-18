@@ -91,6 +91,8 @@ struct DeviceDetailView: View {
             await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId)
         }
         .task(id: viewModel.filter) {
+            viewModel.apiClient = apiClient
+            viewModel.deviceId = device.deviceId
             await viewModel.refresh(apiClient: apiClient, deviceId: device.deviceId)
         }
         .onChange(of: versionMonitor.dataVersion) { _, _ in

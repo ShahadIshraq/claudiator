@@ -21,6 +21,17 @@ class DeviceListViewModel {
     var isLoading = false
     var errorMessage: String?
 
+    var apiClient: APIClient?
+
+    init(apiClient: APIClient? = nil) {
+        self.apiClient = apiClient
+    }
+
+    func refresh() async {
+        guard let apiClient else { return }
+        await refresh(apiClient: apiClient)
+    }
+
     func refresh(apiClient: APIClient) async {
         if devices.isEmpty { isLoading = true }
         do {

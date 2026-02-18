@@ -14,6 +14,8 @@ class AllSessionsViewModel {
     var expandedDevices: Set<String> = []
     private(set) var groupedSessions: [String: [Session]] = [:]
 
+    var apiClient: APIClient?
+
     private static let groupingKey = "sessionsGroupedByDevice"
 
     enum SessionFilter: String, CaseIterable {
@@ -21,9 +23,15 @@ class AllSessionsViewModel {
         case all = "All"
     }
 
-    init() {
+    init(apiClient: APIClient? = nil) {
+        self.apiClient = apiClient
         // Load persisted grouping preference
         isGroupedByDevice = UserDefaults.standard.bool(forKey: Self.groupingKey)
+    }
+
+    func refresh() async {
+        guard let apiClient else { return }
+        await refresh(apiClient: apiClient)
     }
 
     func refresh(apiClient: APIClient) async {

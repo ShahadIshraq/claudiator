@@ -9,9 +9,21 @@ class SessionListViewModel {
     var errorMessage: String?
     var filter: SessionFilter = .active
 
+    var apiClient: APIClient?
+    var deviceId: String?
+
     enum SessionFilter: String, CaseIterable {
         case active = "Active"
         case all = "All"
+    }
+
+    init(apiClient: APIClient? = nil) {
+        self.apiClient = apiClient
+    }
+
+    func refresh() async {
+        guard let apiClient, let deviceId else { return }
+        await refresh(apiClient: apiClient, deviceId: deviceId)
     }
 
     func refresh(apiClient: APIClient, deviceId: String) async {

@@ -177,6 +177,8 @@ struct SessionDetailView: View {
             await viewModel.refresh(apiClient: apiClient, sessionId: session.sessionId)
         }
         .task {
+            viewModel.apiClient = apiClient
+            viewModel.sessionId = session.sessionId
             await notificationManager.markSessionRead(sessionId: session.sessionId, apiClient: apiClient)
             if device == nil {
                 if let devices = try? await apiClient.fetchDevices() {

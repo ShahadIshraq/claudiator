@@ -223,6 +223,7 @@ struct AllSessionsView: View {
             }
         }
         .task(id: viewModel.filter) {
+            viewModel.apiClient = apiClient
             await viewModel.refresh(apiClient: apiClient)
         }
         .onChange(of: versionMonitor.dataVersion) { _, _ in

@@ -78,6 +78,7 @@ struct DeviceListView: View {
             NotificationListView()
         }
         .task {
+            viewModel.apiClient = apiClient
             await viewModel.refresh(apiClient: apiClient)
         }
         .onChange(of: versionMonitor.dataVersion) { _, _ in

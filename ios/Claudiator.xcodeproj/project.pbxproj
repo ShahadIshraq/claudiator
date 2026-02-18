@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -18,6 +18,7 @@
 		4179907D27458F74DBF285FD /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AAF855F4092FF49D97095A /* NotificationService.swift */; };
 		4F13D2374561A5E0A9CF2DFF /* SessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */; };
 		51D7A41B347135171944DD27 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3F4D5A912F0EA0FBCB4D97 /* ThemeTests.swift */; };
+		572E5C52D5E2995EB14B6031 /* URLValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FBDB81867164E7A489CEDE /* URLValidator.swift */; };
 		5C6A86C452DD67D69C23359B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B3C77036CB46B0AE26A346 /* ThemeManager.swift */; };
 		5F4F446C18C04F2AC21415FD /* SessionListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BCFCA556B42F8815C64824C /* SessionListViewModel.swift */; };
 		6186F613DD2D63EE7F844752 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1D242197C2DF3D58182B00 /* Extensions.swift */; };
@@ -67,6 +68,7 @@
 		1DD09398533E36AEBEF7166B /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		1F7CF7EDD2ECF8E4C1E18F97 /* DeviceListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListViewModel.swift; sourceTree = "<group>"; };
 		1F9F97CDEFF639BF40655B06 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		22FBDB81867164E7A489CEDE /* URLValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLValidator.swift; sourceTree = "<group>"; };
 		2E5FF85AD6F155325855323A /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		3125752B14533C0B090C24AE /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
 		4545D1CD72862AB65D364FAC /* AppNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotification.swift; sourceTree = "<group>"; };
@@ -89,7 +91,7 @@
 		997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRow.swift; sourceTree = "<group>"; };
 		A1F7E01CBCC958502E20846A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
-		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
 		EE3C05D1BFD1685B773C2391 /* NotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManagerTests.swift; sourceTree = "<group>"; };
 		EFA2349E52FA004421D9903E /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
@@ -99,6 +101,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0299B808B91F4DD470DC31A3 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				22FBDB81867164E7A489CEDE /* URLValidator.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
 		071C37F0C1CEC5FF85EF0003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -127,6 +137,7 @@
 				E5609AE37A048168FCD39BC3 /* Models */,
 				EA669EE884F94C41B94FC88B /* Services */,
 				A74E08F158AED55C7340F702 /* Theme */,
+				0299B808B91F4DD470DC31A3 /* Utilities */,
 				8E91DD49987031B35EF403CF /* ViewModels */,
 				86FFA5613632EE997ACE38D3 /* Views */,
 				5E668CF9AFD8F468650F9FE0 /* Assets.xcassets */,
@@ -273,6 +284,7 @@
 			);
 			mainGroup = B95F982188FE10D4D22125FC;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -348,6 +360,7 @@
 				A1C53FBC2B4DC5C27EE7A9DE /* SetupView.swift in Sources */,
 				B6B843DAE40C3AEF5C26651D /* SetupViewModel.swift in Sources */,
 				5C6A86C452DD67D69C23359B /* ThemeManager.swift in Sources */,
+				572E5C52D5E2995EB14B6031 /* URLValidator.swift in Sources */,
 				A35EE0647C8E3F95726BD67A /* VersionMonitor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -402,7 +415,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -486,7 +498,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Y4X5LMM4FD;
 				INFOPLIST_FILE = Claudiator/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

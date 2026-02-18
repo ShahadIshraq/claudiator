@@ -287,13 +287,11 @@ struct SettingsView: View {
     }
 
     private func saveConfig() async {
-        var url = editURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if url.hasSuffix("/") { url.removeLast() }
-        if !url.hasPrefix("http") {
-            let isLocal = url.contains(".local") || url.starts(with: "localhost") || url.starts(with: "127.0.0.1")
-            url = (isLocal ? "http://" : "https://") + url
-            editURL = url
+        guard let url = URLValidator.cleanAndValidate(editURL) else {
+            serverStatus = .error("Invalid URL")
+            return
         }
+        editURL = url
 
         do {
             try apiClient.configure(url: url, apiKey: editAPIKey)
