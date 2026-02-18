@@ -126,39 +126,28 @@ pub fn list_sessions(
     status: Option<&str>,
     limit: i64,
 ) -> Result<Vec<SessionResponse>, AppError> {
-    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
-        Some(s) => (
-            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+    let mut sql = "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
              FROM sessions s
              LEFT JOIN devices d ON d.device_id = s.device_id
-             WHERE s.device_id = ?1 AND s.status = ?2
-             ORDER BY s.last_event DESC
-             LIMIT ?3"
-                .to_string(),
-            vec![
-                Box::new(device_id.to_string()),
-                Box::new(s.to_string()),
-                Box::new(limit),
-            ],
-        ),
-        None => (
-            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
-             FROM sessions s
-             LEFT JOIN devices d ON d.device_id = s.device_id
-             WHERE s.device_id = ?1
-             ORDER BY s.last_event DESC
-             LIMIT ?2"
-                .to_string(),
-            vec![Box::new(device_id.to_string()), Box::new(limit)],
-        ),
-    };
+             WHERE s.device_id = :device_id".to_string();
+
+    let mut params: Vec<(&str, Box<dyn rusqlite::types::ToSql>)> =
+        vec![(":device_id", Box::new(device_id.to_string()))];
+
+    if let Some(s) = status {
+        sql.push_str(" AND s.status = :status");
+        params.push((":status", Box::new(s.to_string())));
+    }
+
+    sql.push_str(" ORDER BY s.last_event DESC LIMIT :limit");
+    params.push((":limit", Box::new(limit)));
 
     let mut stmt = conn
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
-        params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<(&str, &dyn rusqlite::types::ToSql)> =
+        params.iter().map(|(k, v)| (*k, v.as_ref())).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -186,34 +175,27 @@ pub fn list_all_sessions(
     status: Option<&str>,
     limit: i64,
 ) -> Result<Vec<SessionResponse>, AppError> {
-    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match status {
-        Some(s) => (
-            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+    let mut sql = "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
              FROM sessions s
              LEFT JOIN devices d ON d.device_id = s.device_id
-             WHERE s.status = ?1
-             ORDER BY s.last_event DESC
-             LIMIT ?2"
-                .to_string(),
-            vec![Box::new(s.to_string()), Box::new(limit)],
-        ),
-        None => (
-            "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
-             FROM sessions s
-             LEFT JOIN devices d ON d.device_id = s.device_id
-             ORDER BY s.last_event DESC
-             LIMIT ?1"
-                .to_string(),
-            vec![Box::new(limit)],
-        ),
-    };
+             WHERE 1=1".to_string();
+
+    let mut params: Vec<(&str, Box<dyn rusqlite::types::ToSql>)> = vec![];
+
+    if let Some(s) = status {
+        sql.push_str(" AND s.status = :status");
+        params.push((":status", Box::new(s.to_string())));
+    }
+
+    sql.push_str(" ORDER BY s.last_event DESC LIMIT :limit");
+    params.push((":limit", Box::new(limit)));
 
     let mut stmt = conn
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
-        params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<(&str, &dyn rusqlite::types::ToSql)> =
+        params.iter().map(|(k, v)| (*k, v.as_ref())).collect();
 
     let sessions = stmt
         .query_map(params_refs.as_slice(), |row| {
@@ -339,30 +321,26 @@ pub fn list_notifications(
     after_timestamp: Option<&str>,
     limit: i64,
 ) -> Result<Vec<NotificationResponse>, AppError> {
-    let (sql, params): (String, Vec<Box<dyn rusqlite::types::ToSql>>) = match after_timestamp {
-        Some(ts) => (
-            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at, acknowledged
+    let mut sql = "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at, acknowledged
              FROM notifications
-             WHERE created_at > ?1
-             ORDER BY created_at ASC
-             LIMIT ?2".to_string(),
-            vec![Box::new(ts.to_string()), Box::new(limit)],
-        ),
-        None => (
-            "SELECT id, event_id, session_id, device_id, title, body, notification_type, payload_json, created_at, acknowledged
-             FROM notifications
-             ORDER BY created_at ASC
-             LIMIT ?1".to_string(),
-            vec![Box::new(limit)],
-        ),
-    };
+             WHERE 1=1".to_string();
+
+    let mut params: Vec<(&str, Box<dyn rusqlite::types::ToSql>)> = vec![];
+
+    if let Some(ts) = after_timestamp {
+        sql.push_str(" AND created_at > :after_timestamp");
+        params.push((":after_timestamp", Box::new(ts.to_string())));
+    }
+
+    sql.push_str(" ORDER BY created_at ASC LIMIT :limit");
+    params.push((":limit", Box::new(limit)));
 
     let mut stmt = conn
         .prepare(&sql)
         .map_err(|e| AppError::Internal(format!("Failed to prepare notifications query: {e}")))?;
 
-    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
-        params.iter().map(std::convert::AsRef::as_ref).collect();
+    let params_refs: Vec<(&str, &dyn rusqlite::types::ToSql)> =
+        params.iter().map(|(k, v)| (*k, v.as_ref())).collect();
 
     let notifications = stmt
         .query_map(params_refs.as_slice(), |row| {
