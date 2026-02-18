@@ -94,6 +94,11 @@ claudiator-server
 | `--apns-team-id` / `CLAUDIATOR_APNS_TEAM_ID` | — | Apple Developer Team ID |
 | `--apns-bundle-id` / `CLAUDIATOR_APNS_BUNDLE_ID` | — | iOS app bundle identifier |
 | `--apns-sandbox` / `CLAUDIATOR_APNS_SANDBOX` | `false` | Use APNs sandbox endpoint |
+| `--log-level` / `CLAUDIATOR_LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
+| `--log-dir` / `CLAUDIATOR_LOG_DIR` | `logs` | Log directory (daily rotation) |
+| `--retention-events-days` / `CLAUDIATOR_RETENTION_EVENTS_DAYS` | `7` | Days to retain events |
+| `--retention-sessions-days` / `CLAUDIATOR_RETENTION_SESSIONS_DAYS` | `7` | Days to retain sessions |
+| `--retention-devices-days` / `CLAUDIATOR_RETENTION_DEVICES_DAYS` | `30` | Days to retain devices |
 
 The database file and WAL files are created automatically on first run.
 
@@ -109,10 +114,11 @@ All endpoints require `Authorization: Bearer <api_key>`.
 | `POST` | `/api/v1/events` | Ingest a hook event from a device |
 | `GET` | `/api/v1/devices` | List all devices with active session counts |
 | `GET` | `/api/v1/devices/:device_id/sessions` | List sessions for a device |
+| `GET` | `/api/v1/sessions` | List all sessions across all devices |
 | `GET` | `/api/v1/sessions/:session_id/events` | List events for a session |
 | `POST` | `/api/v1/push/register` | Register a mobile push notification token |
 | `GET` | `/api/v1/notifications` | List notifications (with optional `after` and `limit` params) |
-| `POST` | `/api/v1/notifications/:id/ack` | Mark notification as acknowledged |
+| `POST` | `/api/v1/notifications/ack` | Bulk acknowledge notifications (accepts `ids` array) |
 
 See [API.md](API.md) for full request/response schemas and query parameters.
 
@@ -127,7 +133,7 @@ SQLite with WAL mode enabled. The schema is created automatically on startup.
 - **events** — All hook events with full JSON storage
 - **push_tokens** — Mobile push notification tokens (APNs/FCM) with sandbox tracking
 - **notifications** — Push notification records (UUID primary key, 24h TTL auto-cleanup, acknowledged boolean column)
-- **notification_metadata** — Tracking table for notification acknowledgment timestamps and metadata
+- **metadata** — Key-value store for persistent counters (data_version, notification_version)
 
 ### Session Status Values
 
@@ -136,8 +142,10 @@ Status is derived from hook events:
 | Hook Event | Derived Status |
 |---|---|
 | `SessionStart`, `UserPromptSubmit` | `active` |
+| `SubagentStart`, `SubagentStop` | `active` |
 | `Stop` | `waiting_for_input` |
 | `SessionEnd` | `ended` |
+| `PermissionRequest` | `waiting_for_permission` |
 | `Notification` (permission_prompt) | `waiting_for_permission` |
 | `Notification` (idle_prompt) | `idle` |
 
@@ -255,8 +263,11 @@ curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notific
 # List notifications after a specific ID
 curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?after=<uuid>&limit=10"
 
-# Acknowledge a notification
-curl -s -X POST -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications/<uuid>/ack
+# Acknowledge notifications
+curl -s -X POST -H "Authorization: Bearer test-key" \
+  -H "Content-Type: application/json" \
+  -d '{"ids": ["<uuid>"]}' \
+  http://localhost:3000/api/v1/notifications/ack
 ```
 
 ### Seed Data

@@ -136,6 +136,11 @@ Unknown fields in the event object are preserved as-is (the hook uses a catch-al
 | `Stop`              | Execution was stopped                    |
 | `Notification`      | A notification was generated             |
 | `UserPromptSubmit`  | The user submitted a prompt              |
+| `SubagentStart`     | A subagent was started                   |
+| `SubagentStop`      | A subagent was stopped                   |
+| `PermissionRequest` | A tool requested user permission         |
+| `TeammateIdle`      | A teammate went idle                     |
+| `TaskCompleted`     | A task was completed                     |
 
 **Response: 200 OK**
 
@@ -195,7 +200,9 @@ List sessions for a specific device.
       "last_event": "string (RFC 3339)",
       "status": "string",
       "cwd": "string | null",
-      "title": "string | null"
+      "title": "string | null",
+      "device_name": "string | null",
+      "platform": "string | null"
     }
   ]
 }
@@ -208,6 +215,8 @@ Sessions are ordered by `last_event` descending. Returns an empty array if the d
 | Field        | Type          | Description                                                                 |
 |--------------|---------------|-----------------------------------------------------------------------------|
 | `title`      | string / null | Session title derived from the first user prompt. Null if no prompt has been submitted yet. |
+| `device_name` | string / null | Device name (included when listing all sessions) |
+| `platform` | string / null | Device platform (included when listing all sessions) |
 
 ---
 
@@ -220,7 +229,7 @@ List all sessions across all devices.
 | Parameter | Type   | Default | Description                                           |
 |-----------|--------|---------|-------------------------------------------------------|
 | `status`  | string | —       | Filter by session status |
-| `limit`   | int    | 50      | Maximum number of sessions to return                  |
+| `limit`   | int    | 200     | Maximum number of sessions to return                  |
 
 **Response: 200 OK**
 
@@ -332,12 +341,25 @@ Notifications are ordered by `created_at` ascending. Use the `after` parameter w
 | `stop` | `Stop` hook event | "Session Stopped" |
 | `permission_prompt` | `Notification` event with `notification_type: "permission_prompt"` | "Permission Required" |
 | `idle_prompt` | `Notification` event with `notification_type: "idle_prompt"` | "Session Idle" |
+| `permission_prompt` | `PermissionRequest` hook event | "Permission Required" |
 
 ---
 
-### POST /api/v1/notifications/:id/ack
+### POST /api/v1/notifications/ack
 
-Mark a notification as acknowledged.
+Bulk acknowledge notifications.
+
+**Request Body**
+
+```json
+{
+  "ids": ["string (UUID)", "..."]
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ids` | array of strings | yes | Notification UUIDs to acknowledge |
 
 **Response: 200 OK**
 
@@ -385,8 +407,11 @@ curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notific
 # List notifications after a specific ID
 curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?after=<uuid>&limit=10"
 
-# Acknowledge a notification
-curl -s -X POST -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications/<uuid>/ack
+# Acknowledge notifications
+curl -s -X POST -H "Authorization: Bearer test-key" \
+  -H "Content-Type: application/json" \
+  -d '{"ids": ["<uuid>"]}' \
+  http://localhost:3000/api/v1/notifications/ack
 
 ## Timeouts
 
