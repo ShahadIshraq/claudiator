@@ -338,6 +338,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-test",
+ "tower",
  "tower-http 0.5.2",
  "tracing",
  "tracing-appender",

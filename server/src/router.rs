@@ -1,8 +1,12 @@
+use axum::error_handling::HandleErrorLayer;
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::Router;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::time::Duration;
 
+use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use crate::apns::ApnsClient;
@@ -19,6 +23,15 @@ pub struct AppState {
     pub retention_events_days: u64,
     pub retention_sessions_days: u64,
     pub retention_devices_days: u64,
+}
+
+/// Converts a tower timeout error into an HTTP 408 Request Timeout response.
+async fn handle_timeout_error(err: tower::BoxError) -> (StatusCode, &'static str) {
+    if err.is::<tower::timeout::error::Elapsed>() {
+        (StatusCode::REQUEST_TIMEOUT, "Request timed out")
+    } else {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+    }
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
@@ -53,6 +66,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/api/v1/notifications/ack",
             post(handlers::notifications::acknowledge_notifications_handler),
         )
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            ServiceBuilder::new()
+                .layer(HandleErrorLayer::new(handle_timeout_error))
+                .layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(30)))
+                .layer(TraceLayer::new_for_http()),
+        )
         .with_state(state)
 }

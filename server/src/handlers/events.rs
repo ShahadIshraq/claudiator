@@ -188,6 +188,7 @@ fn schedule_retention_cleanup(state: &Arc<AppState>) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn events_handler(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -213,18 +214,20 @@ pub async fn events_handler(
         .map_err(|e| AppError::Internal(format!("Failed to serialize event: {e}")))?;
 
     // Get a connection from the pool
-    let conn = state
+    let mut conn = state
         .db_pool
         .get()
         .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
-    // Execute all inserts in a transaction
-    conn.execute_batch("BEGIN")
-        .map_err(|e| AppError::Internal(format!("Transaction begin failed: {e}")))?;
+    // Execute all inserts in a transaction.
+    // The Transaction type auto-rolls-back on drop if commit() is not called.
+    let event_id = {
+        let tx = conn
+            .transaction()
+            .map_err(|e| AppError::Internal(format!("Transaction begin failed: {e}")))?;
 
-    let result = (|| {
         queries::upsert_device(
-            &conn,
+            &tx,
             &payload.device.device_id,
             &payload.device.device_name,
             &payload.device.platform,
@@ -232,7 +235,7 @@ pub async fn events_handler(
         )?;
 
         queries::upsert_session(
-            &conn,
+            &tx,
             &payload.event.session_id,
             &payload.device.device_id,
             &received_at,
@@ -242,7 +245,7 @@ pub async fn events_handler(
         )?;
 
         let event_id = queries::insert_event(
-            &conn,
+            &tx,
             &payload.device.device_id,
             &payload.event.session_id,
             &payload.event.hook_event_name,
@@ -253,26 +256,17 @@ pub async fn events_handler(
             &event_json,
         )?;
 
-        Ok::<i64, AppError>(event_id)
-    })();
+        // Persist data version bump inside the transaction
+        let new_version = state
+            .version
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
+        queries::set_metadata(&tx, "data_version", &new_version.to_string())?;
 
-    let event_id = match result {
-        Ok(event_id) => {
-            // Persist data version bump
-            let new_version = state
-                .version
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-                + 1;
-            queries::set_metadata(&conn, "data_version", &new_version.to_string())?;
+        tx.commit()
+            .map_err(|e| AppError::Internal(format!("Transaction commit failed: {e}")))?;
 
-            conn.execute_batch("COMMIT")
-                .map_err(|e| AppError::Internal(format!("Transaction commit failed: {e}")))?;
-            event_id
-        }
-        Err(e) => {
-            let _ = conn.execute_batch("ROLLBACK");
-            return Err(e);
-        }
+        event_id
     };
 
     // Fetch session title for notification content
