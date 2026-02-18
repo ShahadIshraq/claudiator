@@ -6,6 +6,10 @@ description = "CLI hook that forwards Claude Code session events to a Claudiator
 license = "MIT"
 repository = "https://github.com/shahadishraq/claudiator"
 
+[lib]
+name = "claudiator_hook"
+path = "src/lib.rs"
+
 [[bin]]
 name = "claudiator-hook"
 path = "src/main.rs"

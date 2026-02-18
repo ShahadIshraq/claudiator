@@ -171,3 +171,98 @@ fn cmd_test() {
 fn cmd_version() {
     println!("claudiator-hook {}", env!("CARGO_PKG_VERSION"));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::logger::LogLevel;
+
+    // These tests exercise resolve_log_level() which reads the
+    // CLAUDIATOR_LOG_LEVEL env var. To avoid cross-test interference each
+    // test removes the variable before running and restores it afterwards.
+    // Tests that set the variable are run sequentially via a Mutex.
+
+    use std::sync::Mutex;
+
+    // Serialise every test that touches the env var through this lock so
+    // parallel test threads cannot observe each other's temporary values.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn with_env_var<F: FnOnce()>(key: &str, value: Option<&str>, f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let original = std::env::var(key).ok();
+
+        match value {
+            Some(v) => std::env::set_var(key, v),
+            None => std::env::remove_var(key),
+        }
+
+        f();
+
+        // Restore original value regardless of whether f() panicked.
+        match original {
+            Some(orig) => std::env::set_var(key, orig),
+            None => std::env::remove_var(key),
+        }
+    }
+
+    // --- resolve_log_level precedence tests ---
+
+    #[test]
+    fn test_cli_flag_overrides_env_and_config() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", Some("info"), || {
+            let level = resolve_log_level(Some("debug"), "warn");
+            assert_eq!(level, LogLevel::Debug, "CLI flag must win over env var and config");
+        });
+    }
+
+    #[test]
+    fn test_cli_flag_overrides_config_when_no_env() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
+            let level = resolve_log_level(Some("warn"), "error");
+            assert_eq!(level, LogLevel::Warn, "CLI flag must win over config when env var absent");
+        });
+    }
+
+    #[test]
+    fn test_env_var_overrides_config() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", Some("info"), || {
+            // No CLI flag supplied (None).
+            let level = resolve_log_level(None, "error");
+            assert_eq!(level, LogLevel::Info, "Env var must win over config when CLI flag absent");
+        });
+    }
+
+    #[test]
+    fn test_config_value_used_when_no_cli_or_env() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
+            let level = resolve_log_level(None, "warn");
+            assert_eq!(level, LogLevel::Warn, "Config value must be used when neither CLI nor env var are set");
+        });
+    }
+
+    #[test]
+    fn test_default_used_when_nothing_set() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
+            // Pass an invalid config string so the config tier is also skipped.
+            let level = resolve_log_level(None, "not-a-level");
+            assert_eq!(level, LogLevel::Error, "Hard-coded default (Error) must be used as last resort");
+        });
+    }
+
+    #[test]
+    fn test_invalid_cli_flag_falls_through_to_env() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", Some("debug"), || {
+            let level = resolve_log_level(Some("bad-level"), "error");
+            assert_eq!(level, LogLevel::Debug, "Invalid CLI flag must be skipped; env var takes over");
+        });
+    }
+
+    #[test]
+    fn test_invalid_env_var_falls_through_to_config() {
+        with_env_var("CLAUDIATOR_LOG_LEVEL", Some("not-valid"), || {
+            let level = resolve_log_level(None, "info");
+            assert_eq!(level, LogLevel::Info, "Invalid env var must be skipped; config takes over");
+        });
+    }
+}
