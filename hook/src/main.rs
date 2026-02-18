@@ -212,7 +212,11 @@ mod tests {
     fn test_cli_flag_overrides_env_and_config() {
         with_env_var("CLAUDIATOR_LOG_LEVEL", Some("info"), || {
             let level = resolve_log_level(Some("debug"), "warn");
-            assert_eq!(level, LogLevel::Debug, "CLI flag must win over env var and config");
+            assert_eq!(
+                level,
+                LogLevel::Debug,
+                "CLI flag must win over env var and config"
+            );
         });
     }
 
@@ -220,7 +224,11 @@ mod tests {
     fn test_cli_flag_overrides_config_when_no_env() {
         with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
             let level = resolve_log_level(Some("warn"), "error");
-            assert_eq!(level, LogLevel::Warn, "CLI flag must win over config when env var absent");
+            assert_eq!(
+                level,
+                LogLevel::Warn,
+                "CLI flag must win over config when env var absent"
+            );
         });
     }
 
@@ -229,7 +237,11 @@ mod tests {
         with_env_var("CLAUDIATOR_LOG_LEVEL", Some("info"), || {
             // No CLI flag supplied (None).
             let level = resolve_log_level(None, "error");
-            assert_eq!(level, LogLevel::Info, "Env var must win over config when CLI flag absent");
+            assert_eq!(
+                level,
+                LogLevel::Info,
+                "Env var must win over config when CLI flag absent"
+            );
         });
     }
 
@@ -237,7 +249,11 @@ mod tests {
     fn test_config_value_used_when_no_cli_or_env() {
         with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
             let level = resolve_log_level(None, "warn");
-            assert_eq!(level, LogLevel::Warn, "Config value must be used when neither CLI nor env var are set");
+            assert_eq!(
+                level,
+                LogLevel::Warn,
+                "Config value must be used when neither CLI nor env var are set"
+            );
         });
     }
 
@@ -246,7 +262,11 @@ mod tests {
         with_env_var("CLAUDIATOR_LOG_LEVEL", None, || {
             // Pass an invalid config string so the config tier is also skipped.
             let level = resolve_log_level(None, "not-a-level");
-            assert_eq!(level, LogLevel::Error, "Hard-coded default (Error) must be used as last resort");
+            assert_eq!(
+                level,
+                LogLevel::Error,
+                "Hard-coded default (Error) must be used as last resort"
+            );
         });
     }
 
@@ -254,7 +274,11 @@ mod tests {
     fn test_invalid_cli_flag_falls_through_to_env() {
         with_env_var("CLAUDIATOR_LOG_LEVEL", Some("debug"), || {
             let level = resolve_log_level(Some("bad-level"), "error");
-            assert_eq!(level, LogLevel::Debug, "Invalid CLI flag must be skipped; env var takes over");
+            assert_eq!(
+                level,
+                LogLevel::Debug,
+                "Invalid CLI flag must be skipped; env var takes over"
+            );
         });
     }
 
@@ -262,7 +286,11 @@ mod tests {
     fn test_invalid_env_var_falls_through_to_config() {
         with_env_var("CLAUDIATOR_LOG_LEVEL", Some("not-valid"), || {
             let level = resolve_log_level(None, "info");
-            assert_eq!(level, LogLevel::Info, "Invalid env var must be skipped; config takes over");
+            assert_eq!(
+                level,
+                LogLevel::Info,
+                "Invalid env var must be skipped; config takes over"
+            );
         });
     }
 }

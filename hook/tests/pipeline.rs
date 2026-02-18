@@ -54,7 +54,10 @@ fn test_pipeline_minimal_event_json_to_payload_to_body() {
     let config = make_config("https://example.com");
     let payload = EventPayload::new(&config, event);
 
-    assert_eq!(payload.device.device_id, "550e8400-e29b-41d4-a716-446655440000");
+    assert_eq!(
+        payload.device.device_id,
+        "550e8400-e29b-41d4-a716-446655440000"
+    );
     assert_eq!(payload.device.device_name, "test-machine");
     assert_eq!(payload.device.platform, "mac");
     assert_eq!(payload.event.session_id, "sess-abc");
@@ -66,12 +69,24 @@ fn test_pipeline_minimal_event_json_to_payload_to_body() {
         serde_json::from_str(&body).expect("serialized body must be valid JSON");
 
     // Verify top-level structure expected by the server.
-    assert!(body_value.get("device").is_some(), "body must contain 'device'");
-    assert!(body_value.get("event").is_some(), "body must contain 'event'");
-    assert!(body_value.get("timestamp").is_some(), "body must contain 'timestamp'");
+    assert!(
+        body_value.get("device").is_some(),
+        "body must contain 'device'"
+    );
+    assert!(
+        body_value.get("event").is_some(),
+        "body must contain 'event'"
+    );
+    assert!(
+        body_value.get("timestamp").is_some(),
+        "body must contain 'timestamp'"
+    );
 
     // Device fields.
-    assert_eq!(body_value["device"]["device_id"], "550e8400-e29b-41d4-a716-446655440000");
+    assert_eq!(
+        body_value["device"]["device_id"],
+        "550e8400-e29b-41d4-a716-446655440000"
+    );
     assert_eq!(body_value["device"]["device_name"], "test-machine");
     assert_eq!(body_value["device"]["platform"], "mac");
 
@@ -166,7 +181,10 @@ fn test_pipeline_timestamp_is_rfc3339_with_millis() {
         chrono::DateTime::parse_from_rfc3339(ts).is_ok(),
         "timestamp must be valid RFC 3339: {ts}"
     );
-    assert!(ts.contains('.'), "timestamp must have sub-second precision: {ts}");
+    assert!(
+        ts.contains('.'),
+        "timestamp must have sub-second precision: {ts}"
+    );
 }
 
 #[test]
@@ -181,7 +199,10 @@ fn test_pipeline_missing_required_fields_returns_error() {
     // session_id and hook_event_name are required (not Option<>).
     let missing_fields = r#"{"cwd": "/tmp"}"#;
     let result = HookEvent::from_reader(missing_fields.as_bytes());
-    assert!(result.is_err(), "missing required fields must return an error");
+    assert!(
+        result.is_err(),
+        "missing required fields must return an error"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -221,9 +242,18 @@ fn test_payload_omits_none_optional_fields() {
 
     // These optional fields should be absent when None.
     let event_obj = &value["event"];
-    assert!(event_obj.get("tool_name").is_none(), "absent tool_name must not appear in JSON");
-    assert!(event_obj.get("cwd").is_none(), "absent cwd must not appear in JSON");
-    assert!(event_obj.get("message").is_none(), "absent message must not appear in JSON");
+    assert!(
+        event_obj.get("tool_name").is_none(),
+        "absent tool_name must not appear in JSON"
+    );
+    assert!(
+        event_obj.get("cwd").is_none(),
+        "absent cwd must not appear in JSON"
+    );
+    assert!(
+        event_obj.get("message").is_none(),
+        "absent message must not appear in JSON"
+    );
 }
 
 #[test]
