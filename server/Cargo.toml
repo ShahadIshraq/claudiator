@@ -28,6 +28,7 @@ time = "0.3.47"   # Security fix for RUSTSEC-2026-0009
 axum-test = "16"
 tokio-test = "0.4"
 tempfile = "3"
+base64 = "0.22"
 
 [lints.rust]
 missing_docs = "warn"
