@@ -244,4 +244,118 @@ struct ViewModelTests {
         #expect(counts["dev2"]?.active == 1)
         #expect(counts["dev2"]?.waitingInput == 1)
     }
+
+    // MARK: - nil apiClient Safety Tests
+
+    @Test("AllSessionsViewModel refresh without apiClient does not crash")
+    func testAllSessionsRefreshNilAPIClient() async {
+        let viewModel = AllSessionsViewModel()
+        // apiClient is nil by default; refresh() must return early without crashing
+        await viewModel.refresh()
+        // State must remain in its initial form
+        #expect(viewModel.sessions.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("DeviceListViewModel refresh without apiClient does not crash")
+    func testDeviceListRefreshNilAPIClient() async {
+        let viewModel = DeviceListViewModel()
+        await viewModel.refresh()
+        #expect(viewModel.devices.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("SessionListViewModel refresh without apiClient does not crash")
+    func testSessionListRefreshNilAPIClient() async {
+        let viewModel = SessionListViewModel()
+        await viewModel.refresh()
+        #expect(viewModel.sessions.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    @Test("EventListViewModel refresh without apiClient does not crash")
+    func testEventListRefreshNilAPIClient() async {
+        let viewModel = EventListViewModel()
+        await viewModel.refresh()
+        #expect(viewModel.events.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+    }
+
+    // MARK: - SessionListViewModel Tests
+
+    @Test("SessionListViewModel initializes with correct defaults")
+    func testSessionListViewModelInit() {
+        let viewModel = SessionListViewModel()
+
+        #expect(viewModel.sessions.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.filter == .active)
+        #expect(viewModel.apiClient == nil)
+        #expect(viewModel.deviceId == nil)
+    }
+
+    @Test("SessionListViewModel filter enum has correct cases")
+    func testSessionListFilterCases() {
+        let allCases = SessionListViewModel.SessionFilter.allCases
+
+        #expect(allCases.count == 2)
+        #expect(allCases.contains(.active))
+        #expect(allCases.contains(.all))
+
+        #expect(SessionListViewModel.SessionFilter.active.rawValue == "Active")
+        #expect(SessionListViewModel.SessionFilter.all.rawValue == "All")
+    }
+
+    @Test("SessionListViewModel deviceId property can be set")
+    func testSessionListDeviceId() {
+        let viewModel = SessionListViewModel()
+        #expect(viewModel.deviceId == nil)
+
+        viewModel.deviceId = "dev123"
+        #expect(viewModel.deviceId == "dev123")
+    }
+
+    @Test("SessionListViewModel refresh without deviceId does not crash")
+    func testSessionListRefreshNilDeviceId() async {
+        let viewModel = SessionListViewModel()
+        // apiClient is set but deviceId is nil – must return early without crashing
+        await viewModel.refresh()
+        #expect(viewModel.sessions.isEmpty)
+        #expect(viewModel.isLoading == false)
+    }
+
+    // MARK: - EventListViewModel Tests
+
+    @Test("EventListViewModel initializes with correct defaults")
+    func testEventListViewModelInit() {
+        let viewModel = EventListViewModel()
+
+        #expect(viewModel.events.isEmpty)
+        #expect(viewModel.isLoading == false)
+        #expect(viewModel.errorMessage == nil)
+        #expect(viewModel.apiClient == nil)
+        #expect(viewModel.sessionId == nil)
+    }
+
+    @Test("EventListViewModel sessionId property can be set")
+    func testEventListSessionId() {
+        let viewModel = EventListViewModel()
+        #expect(viewModel.sessionId == nil)
+
+        viewModel.sessionId = "sess456"
+        #expect(viewModel.sessionId == "sess456")
+    }
+
+    @Test("EventListViewModel refresh without sessionId does not crash")
+    func testEventListRefreshNilSessionId() async {
+        let viewModel = EventListViewModel()
+        await viewModel.refresh()
+        #expect(viewModel.events.isEmpty)
+        #expect(viewModel.isLoading == false)
+    }
 }
