@@ -1,8 +1,32 @@
+//! File-based logger with size-capped rotation.
+//!
+//! Log output goes to `~/.claude/claudiator/error.log`. Stderr is intentionally
+//! avoided for normal operation: Claude Code surfaces stderr output to the user,
+//! which would be noisy for routine events. Only the `test` subcommand writes
+//! to stderr (on failure) because it is run interactively by the user.
+//!
+//! # Initialization
+//!
+//! Call [`init`] once at startup with the desired level and rotation settings.
+//! If the log functions are called before `init`, a safe default config
+//! (level = Error, 1 MiB, 2 backups) is used automatically.
+//!
+//! # Rotation
+//!
+//! When the log file exceeds `max_size_bytes`, it is renamed to `.1`, existing
+//! `.1` becomes `.2`, and so on up to `max_backups`. The oldest backup is
+//! deleted. If `max_backups` is 0 the file is simply truncated in place.
+
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::sync::OnceLock;
 
+/// Log verbosity levels, ordered from least to most verbose.
+///
+/// The numeric values are meaningful: a level is active when it is less than
+/// or equal to the configured maximum, which makes the comparison in [`log`]
+/// a simple integer comparison.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
     Error = 0,
@@ -53,6 +77,10 @@ struct LogConfig {
 
 static LOG_CONFIG: OnceLock<LogConfig> = OnceLock::new();
 
+/// Initialize the logger.
+///
+/// Must be called once before any log helpers are used. Subsequent calls are
+/// silently ignored (the `OnceLock` ensures the first write wins).
 pub fn init(level: LogLevel, max_size_bytes: u64, max_backups: u32) {
     let _ = LOG_CONFIG.set(LogConfig {
         level,

@@ -1,9 +1,20 @@
+//! The outbound event payload sent to the Claudiator server.
+//!
+//! [`EventPayload`] wraps the raw [`HookEvent`] with device metadata and a
+//! server-side timestamp. The server uses the device fields to associate
+//! events with a specific registered device, and the timestamp for accurate
+//! ordering of events that arrive out of order due to network delays.
+
 use chrono::{SecondsFormat, Utc};
 use serde::Serialize;
 
 use crate::config::Config;
 use crate::event::HookEvent;
 
+/// Device identity fields included with every event.
+///
+/// These are copied from [`Config`] at payload-construction time so the server
+/// can match events to the correct device without a separate lookup.
 #[derive(Debug, Serialize)]
 pub struct DeviceInfo {
     pub device_id: String,
@@ -11,14 +22,19 @@ pub struct DeviceInfo {
     pub platform: String,
 }
 
+/// The complete JSON body sent to `POST /api/v1/events`.
 #[derive(Debug, Serialize)]
 pub struct EventPayload {
+    /// Device that produced this event.
     pub device: DeviceInfo,
+    /// The raw hook event from Claude Code, forwarded as-is.
     pub event: HookEvent,
+    /// RFC 3339 timestamp (millisecond precision) of when this payload was created.
     pub timestamp: String,
 }
 
 impl EventPayload {
+    /// Build a payload from the loaded config and a parsed hook event.
     pub fn new(config: &Config, event: HookEvent) -> Self {
         let device = DeviceInfo {
             device_id: config.device_id.clone(),

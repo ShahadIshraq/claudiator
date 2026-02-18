@@ -1,3 +1,9 @@
+//! HTTP transport for forwarding events to the Claudiator server.
+//!
+//! All requests use a hard-coded 3-second timeout. The hook is invoked
+//! synchronously by Claude Code on every hook event, so a slow or unreachable
+//! server must not stall the Claude Code session.
+
 use std::time::Duration;
 
 use crate::config::Config;
@@ -12,6 +18,11 @@ fn build_ping_url(server_url: &str) -> String {
     format!("{}/api/v1/ping", server_url.trim_end_matches('/'))
 }
 
+/// POST a hook event payload to `POST /api/v1/events`.
+///
+/// Authenticates with a `Bearer` token from the config and includes a
+/// `User-Agent` header for server-side diagnostics. Returns `Ok(())` only
+/// for HTTP 200; any other status is returned as [`SendError::ServerError`].
 pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendError> {
     let body = serde_json::to_string(payload).map_err(SendError::Serialize)?;
     let url = build_events_url(&config.server_url);
@@ -47,6 +58,10 @@ pub fn send_event(config: &Config, payload: &EventPayload) -> Result<(), SendErr
     }
 }
 
+/// GET `/api/v1/ping` and return the response body as a string.
+///
+/// Used by the `test` subcommand to verify the server is reachable and the
+/// API key is valid before configuring hooks in Claude Code.
 pub fn test_connection(config: &Config) -> Result<String, SendError> {
     let url = build_ping_url(&config.server_url);
 

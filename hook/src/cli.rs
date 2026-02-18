@@ -1,9 +1,18 @@
+//! Command-line interface definition for `claudiator-hook`.
+//!
+//! Parsed once at startup by [`clap`]. The resolved [`Cli`] is then used by
+//! `main` to choose the subcommand and (optionally) override the log level.
+
 use clap::{Parser, Subcommand};
 
 /// Claudiator hook binary — forwards Claude Code events to a remote server
 #[derive(Debug, Parser)]
 #[command(name = "claudiator-hook", version, about)]
 pub struct Cli {
+    /// Override the log level for this invocation.
+    ///
+    /// Accepts `error`, `warn`, `info`, or `debug` (case-insensitive).
+    /// Takes precedence over `CLAUDIATOR_LOG_LEVEL` and `config.toml`.
     #[arg(long, global = true)]
     pub log_level: Option<String>,
 

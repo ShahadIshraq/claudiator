@@ -1,3 +1,14 @@
+//! Deserialization of Claude Code hook events from stdin.
+//!
+//! Claude Code writes a JSON object to the hook process's stdin before each
+//! invocation. The shape of this object varies by event type (`PreToolUse`,
+//! `PostToolUse`, `Stop`, `Notification`, etc.) and may gain new fields as
+//! Claude Code evolves.
+//!
+//! [`HookEvent`] covers all known fields as `Option<_>` and uses
+//! `#[serde(flatten)]` to capture any unknown fields in [`HookEvent::extra`],
+//! ensuring forward-compatibility without requiring a hook update.
+
 use std::collections::HashMap;
 use std::io;
 
@@ -5,10 +16,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::EventError;
 
+/// A hook event payload emitted by Claude Code.
+///
+/// Every field except `session_id` and `hook_event_name` is optional because
+/// different event types carry different fields. For example, `tool_name` is
+/// only present for `PreToolUse`/`PostToolUse`, while `message` and
+/// `notification_type` are only present for `Notification` events.
+///
+/// # Forward-compatibility
+///
+/// The `#[serde(flatten)]` attribute on [`extra`](HookEvent::extra) collects
+/// any JSON keys that don't match a known field into a `HashMap`. This means
+/// the hook will not fail to parse if Claude Code adds new fields in a future
+/// version — those fields are preserved and forwarded to the server as-is.
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(clippy::struct_field_names)]
 pub struct HookEvent {
+    /// Identifies the Claude Code session that fired this event.
     pub session_id: String,
+    /// The name of the hook point, e.g. `"PreToolUse"`, `"Stop"`, `"Notification"`.
     pub hook_event_name: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -90,17 +116,32 @@ pub struct HookEvent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permission_suggestions: Option<serde_json::Value>,
 
+    /// Any JSON fields not matched by a named field above.
+    ///
+    /// Using `#[serde(flatten)]` here is the key to forward-compatibility:
+    /// if Claude Code adds a new field that this crate does not yet know
+    /// about, it lands here rather than causing a deserialization error. The
+    /// server receives it anyway because `HookEvent` is re-serialized into
+    /// the outbound `EventPayload`.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
 impl HookEvent {
+    /// Parse a [`HookEvent`] from the process's stdin.
+    ///
+    /// This is the normal production path: Claude Code pipes the event JSON
+    /// to the hook binary's stdin before invoking it.
     pub fn from_stdin() -> Result<Self, EventError> {
         let stdin = io::stdin();
         let reader = stdin.lock();
         Self::from_reader(reader)
     }
 
+    /// Parse a [`HookEvent`] from any `Read` source.
+    ///
+    /// Separated from [`from_stdin`](Self::from_stdin) to allow unit tests to
+    /// pass a byte slice instead of touching actual stdin.
     pub fn from_reader<R: io::Read>(reader: R) -> Result<Self, EventError> {
         serde_json::from_reader(reader).map_err(EventError::ParseFailed)
     }

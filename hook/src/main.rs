@@ -1,3 +1,21 @@
+//! `claudiator-hook` — a small binary invoked by Claude Code's hook system.
+//!
+//! Claude Code calls this binary for each hook event (e.g. `PreToolUse`,
+//! `PostToolUse`, `Stop`). The binary reads the JSON event from stdin,
+//! wraps it with device metadata, and forwards it to the Claudiator server.
+//!
+//! # Design constraints
+//!
+//! The hook binary must always exit 0. Claude Code interprets a non-zero exit
+//! code as a "block" signal and will surface an error to the user. We never
+//! want a backend outage or misconfiguration to disrupt the Claude Code
+//! session, so all errors are logged and the process exits cleanly.
+//!
+//! # Entry point
+//!
+//! See [`main`] for the top-level dispatch and [`resolve_log_level`] for the
+//! log-level precedence rules.
+
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
@@ -25,6 +43,16 @@ use logger::{log_debug, log_error, log_info, LogLevel};
 use payload::EventPayload;
 use sender::{send_event, test_connection};
 
+/// Determine the active log level from all sources.
+///
+/// Precedence (highest to lowest):
+/// 1. `--log-level <LEVEL>` CLI flag
+/// 2. `CLAUDIATOR_LOG_LEVEL` environment variable
+/// 3. `log_level` field in `~/.claude/claudiator/config.toml`
+/// 4. Hard-coded default: `error`
+///
+/// Invalid values at any tier are silently skipped so the next source
+/// can take effect. This avoids a misconfigured env var breaking the hook.
 fn resolve_log_level(cli_level: Option<&str>, config_level: &str) -> LogLevel {
     // Precedence: CLI flag > env var > config > default (Error)
     if let Some(level_str) = cli_level {
@@ -72,6 +100,14 @@ fn main() {
     }
 }
 
+/// Handle the `send` subcommand.
+///
+/// Reads a Claude Code hook event from stdin, wraps it in an [`EventPayload`]
+/// containing device metadata, and POSTs it to the server.
+///
+/// Errors are logged but the function always returns normally so that the
+/// process exits 0. A non-zero exit would signal Claude Code to block the
+/// current action, which is never the right response to a backend failure.
 fn cmd_send(config_result: Result<Config, ConfigError>) {
     let config = match config_result {
         Ok(c) => c,
@@ -103,6 +139,11 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
     }
 }
 
+/// Handle the `test` subcommand.
+///
+/// Hits the server's `/api/v1/ping` endpoint and prints the result. Unlike
+/// `send`, this command exits non-zero on failure — it is only run by the
+/// user interactively to verify connectivity, never by Claude Code directly.
 fn cmd_test() {
     let config = match Config::load() {
         Ok(c) => c,
@@ -126,6 +167,7 @@ fn cmd_test() {
     }
 }
 
+/// Handle the `version` subcommand.
 fn cmd_version() {
     println!("claudiator-hook {}", env!("CARGO_PKG_VERSION"));
 }

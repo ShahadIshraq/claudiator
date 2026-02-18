@@ -1,10 +1,20 @@
+//! Error types used throughout the hook crate.
+//!
+//! Each module has its own error enum so callers get precise, typed failure
+//! information. All errors implement [`Display`](std::fmt::Display) so they
+//! can be formatted into log messages without additional mapping.
+
 use std::io;
 use std::path::PathBuf;
 
+/// Errors that can occur while loading `config.toml`.
 #[derive(Debug)]
 pub enum ConfigError {
+    /// The home directory could not be determined from the OS.
     NoHomeDir,
+    /// The config file exists but could not be read (e.g. permission denied).
     ReadFailed(PathBuf, io::Error),
+    /// The config file was read but is not valid TOML or is missing required fields.
     ParseFailed(PathBuf, toml::de::Error),
 }
 
@@ -22,8 +32,10 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
+/// Errors that can occur while parsing a hook event from stdin.
 #[derive(Debug)]
 pub enum EventError {
+    /// The stdin payload was not valid JSON or did not match the expected shape.
     ParseFailed(serde_json::Error),
 }
 
@@ -35,10 +47,14 @@ impl std::fmt::Display for EventError {
     }
 }
 
+/// Errors that can occur while sending an event to the server.
 #[derive(Debug)]
 pub enum SendError {
+    /// The payload could not be serialized to JSON.
     Serialize(serde_json::Error),
+    /// A network-level failure (DNS, connection refused, timeout, etc.).
     Network(String),
+    /// The server returned a non-200 HTTP status code.
     ServerError(u16, String),
 }
 
