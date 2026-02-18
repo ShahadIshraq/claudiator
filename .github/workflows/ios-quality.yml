@@ -55,3 +55,18 @@ jobs:
             -enableCodeCoverage YES \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty
+
+      - name: Generate code coverage report
+        run: |
+          XCRESULT=$(find ~/Library/Developer/Xcode/DerivedData -name '*.xcresult' | head -n 1)
+          xcrun xccov view --report --json "$XCRESULT" > coverage.json
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ios/coverage.json
+          flags: ios
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
