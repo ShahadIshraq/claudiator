@@ -25,8 +25,8 @@ async fn main() {
     let config = ServerConfig::parse();
 
     // Build env filter: RUST_LOG takes precedence, then config.log_level
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&config.log_level));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.log_level));
 
     // File appender with daily rotation
     let file_appender = tracing_appender::rolling::daily(&config.log_dir, "server.log");

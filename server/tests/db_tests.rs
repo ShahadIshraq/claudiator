@@ -749,8 +749,16 @@ fn test_get_session_title_without_title() {
     let now = chrono::Utc::now().to_rfc3339();
 
     queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
-    queries::upsert_session(&conn, "session-1", "device-1", &now, Some("active"), None, None)
-        .unwrap();
+    queries::upsert_session(
+        &conn,
+        "session-1",
+        "device-1",
+        &now,
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
 
     let title = queries::get_session_title(&conn, "session-1").unwrap();
     assert_eq!(title, None);
@@ -792,8 +800,7 @@ fn test_delete_old_events() {
     .unwrap();
 
     // Insert recent event
-    let recent = chrono::Utc::now()
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let recent = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     queries::insert_event(
         &conn,
         "device-1",
@@ -881,8 +888,7 @@ fn test_delete_stale_sessions_keeps_session_with_events() {
     .unwrap();
 
     // Insert an event referencing this session (recent event, so not cleaned by delete_old_events)
-    let recent = chrono::Utc::now()
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let recent = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     queries::insert_event(
         &conn,
         "device-1",
@@ -992,8 +998,7 @@ fn test_full_retention_cascade() {
 
     // --- Recent chain (should be untouched) ---
     let now = chrono::Utc::now().to_rfc3339();
-    let now_millis = chrono::Utc::now()
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+    let now_millis = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     queries::upsert_device(&conn, "new-device", "New", "linux", &now).unwrap();
     queries::upsert_session(
         &conn,

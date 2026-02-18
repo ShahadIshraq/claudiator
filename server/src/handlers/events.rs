@@ -132,8 +132,8 @@ pub async fn events_handler(
     };
 
     // Fetch session title for notification content
-    let session_title = queries::get_session_title(&conn, &payload.event.session_id)
-        .unwrap_or(None);
+    let session_title =
+        queries::get_session_title(&conn, &payload.event.session_id).unwrap_or(None);
 
     // Notification pipeline — after successful commit
     if let Some((notif_title, notif_body, notif_type)) = should_notify(
@@ -366,10 +366,7 @@ fn should_notify(
     match hook_event_name {
         "Stop" => {
             let title = title_from_session("Session Stopped");
-            let body = format!(
-                "Session stopped: {}",
-                message.unwrap_or("No reason given")
-            );
+            let body = format!("Session stopped: {}", message.unwrap_or("No reason given"));
             Some((title, body, "stop".to_string()))
         }
         "Notification" => match notification_type {
@@ -385,10 +382,7 @@ fn should_notify(
             }
             Some("idle_prompt") => {
                 let title = title_from_session("Session Idle");
-                let body = format!(
-                    "Session idle: {}",
-                    message.unwrap_or("Waiting for input")
-                );
+                let body = format!("Session idle: {}", message.unwrap_or("Waiting for input"));
                 Some((title, body, "idle_prompt".to_string()))
             }
             _ => None,

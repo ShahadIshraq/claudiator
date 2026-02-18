@@ -612,7 +612,10 @@ async fn test_notification_content_uses_session_title() {
     let notifications = json["notifications"].as_array().unwrap();
     assert_eq!(notifications.len(), 1);
     assert_eq!(notifications[0]["title"], "Fix the login bug");
-    assert_eq!(notifications[0]["body"], "Session stopped: Max turns reached");
+    assert_eq!(
+        notifications[0]["body"],
+        "Session stopped: Max turns reached"
+    );
 }
 
 #[tokio::test]
@@ -646,7 +649,10 @@ async fn test_notification_content_fallback_without_session_title() {
     assert_eq!(notifications.len(), 1);
     // Should fall back to hardcoded title
     assert_eq!(notifications[0]["title"], "Session Stopped");
-    assert_eq!(notifications[0]["body"], "Session stopped: User interrupted");
+    assert_eq!(
+        notifications[0]["body"],
+        "Session stopped: User interrupted"
+    );
 }
 
 #[tokio::test]
@@ -696,5 +702,8 @@ async fn test_notification_content_permission_with_tool_name() {
     let notifications = json["notifications"].as_array().unwrap();
     assert_eq!(notifications.len(), 1);
     assert_eq!(notifications[0]["title"], "Refactor auth module");
-    assert_eq!(notifications[0]["body"], "Permission required: Bash \u{2014} run npm test");
+    assert_eq!(
+        notifications[0]["body"],
+        "Permission required: Bash \u{2014} run npm test"
+    );
 }
