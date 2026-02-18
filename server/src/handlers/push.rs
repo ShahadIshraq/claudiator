@@ -4,7 +4,7 @@ use axum::Json;
 use chrono::{SecondsFormat, Utc};
 use std::sync::Arc;
 
-use crate::auth::check_auth;
+use crate::auth::{check_auth, check_rate_limit, extract_client_ip, record_auth_failure};
 use crate::db::queries;
 use crate::error::AppError;
 use crate::models::request::PushRegisterRequest;
@@ -16,7 +16,12 @@ pub async fn push_register_handler(
     headers: HeaderMap,
     Json(payload): Json<PushRegisterRequest>,
 ) -> Result<Json<StatusOk>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     if payload.platform.is_empty() {
         return Err(AppError::BadRequest("platform is required".into()));

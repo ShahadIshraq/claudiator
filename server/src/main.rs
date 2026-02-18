@@ -10,8 +10,10 @@ mod models;
 mod router;
 mod utils;
 
+use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use clap::Parser;
 
@@ -107,6 +109,7 @@ async fn main() {
         retention_events_days: config.retention_events_days,
         retention_sessions_days: config.retention_sessions_days,
         retention_devices_days: config.retention_devices_days,
+        auth_failures: Arc::new(Mutex::new(HashMap::new())),
     });
 
     let app = router::build_router(state);

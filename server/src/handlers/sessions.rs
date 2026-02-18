@@ -4,7 +4,7 @@ use axum::Json;
 use serde::Deserialize;
 use std::sync::Arc;
 
-use crate::auth::check_auth;
+use crate::auth::{check_auth, check_rate_limit, extract_client_ip, record_auth_failure};
 use crate::db::queries;
 use crate::error::AppError;
 use crate::models::response::{EventListResponse, SessionListResponse};
@@ -21,7 +21,12 @@ pub async fn list_session_events_handler(
     Path(session_id): Path<String>,
     Query(params): Query<EventQueryParams>,
 ) -> Result<Json<EventListResponse>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     let limit = params.limit.unwrap_or(100);
 
@@ -40,7 +45,12 @@ pub async fn list_all_sessions_handler(
     headers: HeaderMap,
     Query(params): Query<super::devices::SessionQueryParams>,
 ) -> Result<Json<SessionListResponse>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     let limit = params.limit.unwrap_or(200);
 

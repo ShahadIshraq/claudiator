@@ -5,6 +5,7 @@ use axum::Json;
 #[derive(Debug)]
 pub enum AppError {
     Unauthorized,
+    RateLimited,
     BadRequest(String),
     Internal(String),
 }
@@ -16,6 +17,11 @@ impl IntoResponse for AppError {
                 StatusCode::UNAUTHORIZED,
                 "unauthorized",
                 "Invalid or missing API key".to_string(),
+            ),
+            Self::RateLimited => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "rate_limited",
+                "Too many failed authentication attempts".to_string(),
             ),
             Self::BadRequest(msg) => (StatusCode::UNPROCESSABLE_ENTITY, "bad_request", msg),
             Self::Internal(msg) => {

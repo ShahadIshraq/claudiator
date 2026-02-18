@@ -3,7 +3,7 @@ use axum::http::HeaderMap;
 use axum::Json;
 use std::sync::Arc;
 
-use crate::auth::check_auth;
+use crate::auth::{check_auth, check_rate_limit, extract_client_ip, record_auth_failure};
 use crate::db::queries;
 use crate::error::AppError;
 use crate::models::request::AckRequest;
@@ -21,7 +21,12 @@ pub async fn list_notifications_handler(
     headers: HeaderMap,
     Query(query): Query<NotificationQuery>,
 ) -> Result<Json<NotificationListResponse>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     let limit = query.limit.unwrap_or(50).min(200);
 
@@ -40,7 +45,12 @@ pub async fn acknowledge_notifications_handler(
     headers: HeaderMap,
     Json(payload): Json<AckRequest>,
 ) -> Result<Json<StatusOk>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     let conn = state
         .db_pool

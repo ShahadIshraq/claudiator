@@ -5,7 +5,7 @@ use chrono::{SecondsFormat, Utc};
 use std::sync::Arc;
 
 use crate::apns::ApnsClient;
-use crate::auth::check_auth;
+use crate::auth::{check_auth, check_rate_limit, extract_client_ip, record_auth_failure};
 use crate::db::pool::DbPool;
 use crate::db::queries;
 use crate::error::AppError;
@@ -194,7 +194,12 @@ pub async fn events_handler(
     headers: HeaderMap,
     Json(payload): Json<EventPayload>,
 ) -> Result<Json<StatusOk>, AppError> {
-    check_auth(&headers, &state.api_key)?;
+    let ip = extract_client_ip(&headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+    if let Err(e) = check_auth(&headers, &state.api_key) {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(e);
+    }
 
     validate_event_payload(&payload)?;
 
