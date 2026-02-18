@@ -228,12 +228,10 @@ struct AllSessionsView: View {
         .onChange(of: versionMonitor.dataVersion) { _, _ in
             Task { await viewModel.refresh(apiClient: apiClient) }
         }
-        .onAppear {
-            Task {
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(1.2))
-                    notificationPulse.toggle()
-                }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1.2))
+                notificationPulse.toggle()
             }
         }
         .sheet(isPresented: $showNotifications) {
