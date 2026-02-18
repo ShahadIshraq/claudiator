@@ -46,6 +46,32 @@ class APIClient {
         return d
     }()
 
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 30
+        return URLSession(configuration: config)
+    }()
+
+    private static let retryableErrors: Set<URLError.Code> = [
+        .timedOut, .networkConnectionLost, .notConnectedToInternet, .cannotConnectToHost
+    ]
+
+    private func performRequest(_ req: URLRequest) async throws -> Data {
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await Self.session.data(for: req)
+        } catch let urlError as URLError {
+            throw urlError
+        } catch {
+            throw APIError.networkError(error)
+        }
+        guard let http = response as? HTTPURLResponse else { throw APIError.networkError(URLError(.badServerResponse)) }
+        if http.statusCode == 401 { throw APIError.unauthorized }
+        guard (200 ... 299).contains(http.statusCode) else { throw APIError.serverError(http.statusCode) }
+        return data
+    }
+
     private func request(_ path: String, method: String = "GET", body: Data? = nil) async throws -> Data {
         guard !baseURL.isEmpty, let key = apiKey else { throw APIError.notConfigured }
 
@@ -59,19 +85,18 @@ class APIClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let body { req.httpBody = body }
 
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await URLSession.shared.data(for: req)
-        } catch let urlError as URLError {
-            throw urlError
-        } catch {
-            throw APIError.networkError(error)
+        var lastError: Error?
+        for attempt in 0 ..< 3 {
+            if attempt > 0 {
+                try await Task.sleep(for: .seconds(0.5 * Double(attempt)))
+            }
+            do {
+                return try await performRequest(req)
+            } catch let error as URLError where Self.retryableErrors.contains(error.code) {
+                lastError = error
+            }
         }
-
-        guard let http = response as? HTTPURLResponse else { throw APIError.networkError(URLError(.badServerResponse)) }
-        if http.statusCode == 401 { throw APIError.unauthorized }
-        guard (200 ... 299).contains(http.statusCode) else { throw APIError.serverError(http.statusCode) }
-        return data
+        throw lastError ?? APIError.networkError(URLError(.unknown))
     }
 
     func ping() async throws -> (dataVersion: UInt64, notificationVersion: UInt64) {
