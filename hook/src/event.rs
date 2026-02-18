@@ -223,6 +223,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_from_reader_minimal_json() {
         let json = r#"{
             "session_id": "sess-123",

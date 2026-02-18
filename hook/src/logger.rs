@@ -195,6 +195,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::cognitive_complexity)]
     fn test_log_level_from_str() {
         use std::str::FromStr;
 

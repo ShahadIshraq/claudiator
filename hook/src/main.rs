@@ -189,7 +189,9 @@ mod tests {
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     fn with_env_var<F: FnOnce()>(key: &str, value: Option<&str>, f: F) {
-        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let original = std::env::var(key).ok();
 
         match value {
