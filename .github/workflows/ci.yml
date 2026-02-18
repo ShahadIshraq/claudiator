@@ -34,6 +34,10 @@ jobs:
         run: cargo test
       - name: Build
         run: cargo build --release
+      - name: Cargo deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: hook/Cargo.toml
 
   check-test-server:
     name: Test Server - Check
