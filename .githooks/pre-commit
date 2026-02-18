@@ -1,16 +1,36 @@
 #!/bin/bash
 set -e
 
-STAGED_SWIFT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+REPO_ROOT=$(git rev-parse --show-toplevel)
 
-if [ -z "$STAGED_SWIFT" ]; then
-  exit 0
+STAGED_SWIFT=$(git diff --cached --name-only -z --diff-filter=ACM | tr '\0' '\n' | grep '\.swift$' || true)
+STAGED_RS=$(git diff --cached --name-only -z --diff-filter=ACM | tr '\0' '\n' | grep '\.rs$' || true)
+
+# --- Swift checks ---
+
+if [ -n "$STAGED_SWIFT" ]; then
+  echo "Running SwiftFormat on staged files..."
+  printf '%s\0' $STAGED_SWIFT | xargs -0 swiftformat --config ios/.swiftformat
+
+  echo "Running SwiftLint on staged files..."
+  printf '%s\0' $STAGED_SWIFT | xargs -0 swiftlint lint --strict --config ios/.swiftlint.yml --quiet
+
+  printf '%s\0' $STAGED_SWIFT | xargs -0 git add
 fi
 
-echo "Running SwiftFormat on staged files..."
-echo "$STAGED_SWIFT" | xargs swiftformat --config ios/.swiftformat 2>/dev/null || true
+# --- Rust checks ---
 
-echo "Running SwiftLint on staged files..."
-echo "$STAGED_SWIFT" | xargs swiftlint lint --strict --config ios/.swiftlint.yml --quiet
+if [ -n "$STAGED_RS" ]; then
+  HOOK_RS=$(echo "$STAGED_RS" | grep '^hook/' || true)
+  SERVER_RS=$(echo "$STAGED_RS" | grep '^server/' || true)
 
-echo "$STAGED_SWIFT" | xargs git add
+  if [ -n "$HOOK_RS" ]; then
+    echo "Running cargo fmt --check on hook/..."
+    (cd "$REPO_ROOT/hook" && cargo fmt --check)
+  fi
+
+  if [ -n "$SERVER_RS" ]; then
+    echo "Running cargo fmt --check on server/..."
+    (cd "$REPO_ROOT/server" && cargo fmt --check)
+  fi
+fi
