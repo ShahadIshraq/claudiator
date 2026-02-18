@@ -10,16 +10,19 @@
 		077F55705435862A9D96271B /* DeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA2349E52FA004421D9903E /* DeviceListView.swift */; };
 		089E8EE343EC881AA26836EE /* AppTheme+Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8859CCC46CD74710BAE87C93 /* AppTheme+Themes.swift */; };
 		08D752D083F443D374FA3CFA /* ViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5309F42CF996CC904BCD8D /* ViewModelTests.swift */; };
+		0E6819BBF04214E4C157A533 /* DangerZoneSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACA62980E9021D7DCC3A3899 /* DangerZoneSection.swift */; };
 		0F72D3779BCF8339354836FD /* EventListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FBAE6F68B4F3E42FBB4A0AB /* EventListViewModel.swift */; };
 		141DCDA8F400ECAA0A66DF79 /* DeviceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3ABD644D529F92C0CC2D31 /* DeviceDetailView.swift */; };
 		1877AD1D518E72E9D89BF2D6 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7EAD4C0052956689AC888B /* APIClient.swift */; };
 		1ACDDE02152E14B691B91127 /* Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53A4352B3D899318EEC3C837 /* Device.swift */; };
 		3E7D3CC4C7E4C7C203FC5B83 /* AppNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4545D1CD72862AB65D364FAC /* AppNotification.swift */; };
+		4023A2FE58FC56EAFAB264D3 /* AllSessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BB50D0D5D66716FDAE3D637 /* AllSessionRow.swift */; };
 		4179907D27458F74DBF285FD /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02AAF855F4092FF49D97095A /* NotificationService.swift */; };
 		4F13D2374561A5E0A9CF2DFF /* SessionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */; };
 		51D7A41B347135171944DD27 /* ThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3F4D5A912F0EA0FBCB4D97 /* ThemeTests.swift */; };
 		572E5C52D5E2995EB14B6031 /* URLValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FBDB81867164E7A489CEDE /* URLValidator.swift */; };
 		5C6A86C452DD67D69C23359B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50B3C77036CB46B0AE26A346 /* ThemeManager.swift */; };
+		5EE8B325CD69ED977B0B6225 /* DeviceGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F68E70992CA2375D125B2E1 /* DeviceGroupCard.swift */; };
 		5F4F446C18C04F2AC21415FD /* SessionListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BCFCA556B42F8815C64824C /* SessionListViewModel.swift */; };
 		6186F613DD2D63EE7F844752 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1D242197C2DF3D58182B00 /* Extensions.swift */; };
 		6250719CE70727DAB79836A9 /* Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4863EF8C465F443F02129640 /* Event.swift */; };
@@ -31,6 +34,7 @@
 		7E3F68E2C352B3412784C689 /* DeviceListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F7CF7EDD2ECF8E4C1E18F97 /* DeviceListViewModel.swift */; };
 		87F83820A2A645E4495E2D20 /* HelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55361C12AC7C03738DCA3149 /* HelperTests.swift */; };
 		8FA725AB1CB53A0EAD468D2B /* AllSessionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */; };
+		941CB931E1C9D26BD42BD6C7 /* AppearanceSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BFC777E41E5377A414F9CD /* AppearanceSection.swift */; };
 		97C2672B9D84FE1D9207DD35 /* ModelDecodingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */; };
 		9AC90BCF10C5CB88CD6EF362 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD09398533E36AEBEF7166B /* KeychainService.swift */; };
 		9C28FF9C05029088BE553A13 /* SetupViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40676B3D536F650FAEF2AD7 /* SetupViewModelTests.swift */; };
@@ -41,7 +45,9 @@
 		B6B843DAE40C3AEF5C26651D /* SetupViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7654B1BBD5CF0A7CF6A6922 /* SetupViewModel.swift */; };
 		B887037394EC215974F02040 /* NotificationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E87DBA8F704370D7C0EE66 /* NotificationListView.swift */; };
 		C31D48A990DEE59E30EE640B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5E668CF9AFD8F468650F9FE0 /* Assets.xcassets */; };
+		D0AB6D592F95CA6DCB4DCFA7 /* DeviceGroupHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E48846D2C05C80CC56E1D7F7 /* DeviceGroupHeader.swift */; };
 		DE154F37D11E1668264F36E7 /* EventRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080C4E27028D30E30E085841 /* EventRow.swift */; };
+		E57EB7556073253D81C071A7 /* ServerConfigSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A317AEC7796A20CBFCA685EC /* ServerConfigSection.swift */; };
 		F53C5E76B5D861A79B211F75 /* ClaudiatorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96515A62435FB0E5C5B72CF1 /* ClaudiatorApp.swift */; };
 		F9F1E3165BB0B983B19229B3 /* Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E5FF85AD6F155325855323A /* Helpers.swift */; };
 /* End PBXBuildFile section */
@@ -71,6 +77,7 @@
 		22FBDB81867164E7A489CEDE /* URLValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLValidator.swift; sourceTree = "<group>"; };
 		2E5FF85AD6F155325855323A /* Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Helpers.swift; sourceTree = "<group>"; };
 		3125752B14533C0B090C24AE /* SessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailView.swift; sourceTree = "<group>"; };
+		3F68E70992CA2375D125B2E1 /* DeviceGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupCard.swift; sourceTree = "<group>"; };
 		4545D1CD72862AB65D364FAC /* AppNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotification.swift; sourceTree = "<group>"; };
 		4863EF8C465F443F02129640 /* Event.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
 		50B3C77036CB46B0AE26A346 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
@@ -81,6 +88,7 @@
 		6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllSessionsView.swift; sourceTree = "<group>"; };
 		728C111D63CF0C7931892291 /* AllSessionsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllSessionsViewModel.swift; sourceTree = "<group>"; };
 		7B9C45824F59F74B9AD93273 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		7BB50D0D5D66716FDAE3D637 /* AllSessionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllSessionRow.swift; sourceTree = "<group>"; };
 		7C1D242197C2DF3D58182B00 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		8040BE8BC24416A1A9EBE88A /* VersionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionMonitor.swift; sourceTree = "<group>"; };
 		8859CCC46CD74710BAE87C93 /* AppTheme+Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppTheme+Themes.swift"; sourceTree = "<group>"; };
@@ -90,9 +98,13 @@
 		96515A62435FB0E5C5B72CF1 /* ClaudiatorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudiatorApp.swift; sourceTree = "<group>"; };
 		997F3B09CC3AE4DD696ABEE6 /* SessionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRow.swift; sourceTree = "<group>"; };
 		A1F7E01CBCC958502E20846A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A317AEC7796A20CBFCA685EC /* ServerConfigSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerConfigSection.swift; sourceTree = "<group>"; };
 		A7B3D54D9A5A9AADC0E177CA /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		ACA62980E9021D7DCC3A3899 /* DangerZoneSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DangerZoneSection.swift; sourceTree = "<group>"; };
 		BA0EF4E03506658D16D945AB /* Claudiator.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Claudiator.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2D8D617B160A70565AD1112 /* ModelDecodingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDecodingTests.swift; sourceTree = "<group>"; };
+		D6BFC777E41E5377A414F9CD /* AppearanceSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSection.swift; sourceTree = "<group>"; };
+		E48846D2C05C80CC56E1D7F7 /* DeviceGroupHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupHeader.swift; sourceTree = "<group>"; };
 		EE3C05D1BFD1685B773C2391 /* NotificationManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManagerTests.swift; sourceTree = "<group>"; };
 		EFA2349E52FA004421D9903E /* DeviceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceListView.swift; sourceTree = "<group>"; };
 		F40676B3D536F650FAEF2AD7 /* SetupViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViewModelTests.swift; sourceTree = "<group>"; };
@@ -148,11 +160,25 @@
 			path = Claudiator;
 			sourceTree = "<group>";
 		};
+		545FE6716DC41EC6BA26BE84 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				D6BFC777E41E5377A414F9CD /* AppearanceSection.swift */,
+				ACA62980E9021D7DCC3A3899 /* DangerZoneSection.swift */,
+				A317AEC7796A20CBFCA685EC /* ServerConfigSection.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
 		86FFA5613632EE997ACE38D3 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				545FE6716DC41EC6BA26BE84 /* Settings */,
+				7BB50D0D5D66716FDAE3D637 /* AllSessionRow.swift */,
 				6AC1E0817A9287E80D9487CE /* AllSessionsView.swift */,
 				1D3ABD644D529F92C0CC2D31 /* DeviceDetailView.swift */,
+				3F68E70992CA2375D125B2E1 /* DeviceGroupCard.swift */,
+				E48846D2C05C80CC56E1D7F7 /* DeviceGroupHeader.swift */,
 				EFA2349E52FA004421D9903E /* DeviceListView.swift */,
 				080C4E27028D30E30E085841 /* EventRow.swift */,
 				2E5FF85AD6F155325855323A /* Helpers.swift */,
@@ -333,14 +359,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				1877AD1D518E72E9D89BF2D6 /* APIClient.swift in Sources */,
+				4023A2FE58FC56EAFAB264D3 /* AllSessionRow.swift in Sources */,
 				8FA725AB1CB53A0EAD468D2B /* AllSessionsView.swift in Sources */,
 				6939F0730D0608AC8EC09E0B /* AllSessionsViewModel.swift in Sources */,
 				3E7D3CC4C7E4C7C203FC5B83 /* AppNotification.swift in Sources */,
 				089E8EE343EC881AA26836EE /* AppTheme+Themes.swift in Sources */,
 				6C55763F5D3976D08672E38A /* AppTheme.swift in Sources */,
+				941CB931E1C9D26BD42BD6C7 /* AppearanceSection.swift in Sources */,
 				F53C5E76B5D861A79B211F75 /* ClaudiatorApp.swift in Sources */,
+				0E6819BBF04214E4C157A533 /* DangerZoneSection.swift in Sources */,
 				1ACDDE02152E14B691B91127 /* Device.swift in Sources */,
 				141DCDA8F400ECAA0A66DF79 /* DeviceDetailView.swift in Sources */,
+				5EE8B325CD69ED977B0B6225 /* DeviceGroupCard.swift in Sources */,
+				D0AB6D592F95CA6DCB4DCFA7 /* DeviceGroupHeader.swift in Sources */,
 				077F55705435862A9D96271B /* DeviceListView.swift in Sources */,
 				7E3F68E2C352B3412784C689 /* DeviceListViewModel.swift in Sources */,
 				6250719CE70727DAB79836A9 /* Event.swift in Sources */,
@@ -352,6 +383,7 @@
 				B887037394EC215974F02040 /* NotificationListView.swift in Sources */,
 				6F697551013FB3D9C01750B1 /* NotificationManager.swift in Sources */,
 				4179907D27458F74DBF285FD /* NotificationService.swift in Sources */,
+				E57EB7556073253D81C071A7 /* ServerConfigSection.swift in Sources */,
 				B56E028DF73F878B4B86DCD3 /* Session.swift in Sources */,
 				B5CF20E40C3F591343773E90 /* SessionDetailView.swift in Sources */,
 				5F4F446C18C04F2AC21415FD /* SessionListViewModel.swift in Sources */,
