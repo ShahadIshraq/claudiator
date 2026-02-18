@@ -4,23 +4,17 @@ use axum::Json;
 use chrono::{SecondsFormat, Utc};
 use std::sync::Arc;
 
+use crate::apns::ApnsClient;
 use crate::auth::check_auth;
+use crate::db::pool::DbPool;
 use crate::db::queries;
 use crate::error::AppError;
 use crate::models::request::EventPayload;
 use crate::models::response::StatusOk;
 use crate::router::AppState;
+use crate::utils::truncate_at_char_boundary;
 
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::cognitive_complexity)]
-pub async fn events_handler(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
-    Json(payload): Json<EventPayload>,
-) -> Result<Json<StatusOk>, AppError> {
-    check_auth(&headers, &state.api_key)?;
-
-    // Validate required fields
+fn validate_event_payload(payload: &EventPayload) -> Result<(), AppError> {
     if payload.device.device_id.is_empty() {
         return Err(AppError::BadRequest("device_id is required".into()));
     }
@@ -38,25 +32,175 @@ pub async fn events_handler(
         ));
     }
 
+    Ok(())
+}
+
+fn extract_session_title(payload: &EventPayload) -> Option<String> {
+    if payload.event.hook_event_name == "UserPromptSubmit" {
+        payload
+            .event
+            .prompt
+            .as_deref()
+            .map(|p| truncate_at_char_boundary(p, 200))
+    } else {
+        None
+    }
+}
+
+fn dispatch_push_notifications(
+    apns_client: Arc<ApnsClient>,
+    db_pool: DbPool,
+    title: String,
+    body: String,
+    collapse_id: String,
+    notification_id: String,
+    session_id: String,
+    device_id: String,
+) {
+    tokio::spawn(async move {
+        let tokens = match db_pool.get() {
+            Ok(c) => match queries::list_push_tokens(&c) {
+                Ok(t) => t,
+                Err(e) => {
+                    tracing::warn!("Failed to list push tokens: {:?}", e);
+                    return;
+                }
+            },
+            Err(e) => {
+                tracing::warn!("Failed to get db connection for push: {}", e);
+                return;
+            }
+        };
+
+        for token_row in &tokens {
+            let result = apns_client
+                .send_push(
+                    &token_row.push_token,
+                    &title,
+                    &body,
+                    Some(&collapse_id),
+                    &notification_id,
+                    &session_id,
+                    &device_id,
+                    token_row.sandbox,
+                )
+                .await;
+
+            match result {
+                crate::apns::ApnsPushResult::Success => {
+                    tracing::debug!(
+                        "Push sent to token {}",
+                        &token_row.push_token[..8.min(token_row.push_token.len())]
+                    );
+                }
+                crate::apns::ApnsPushResult::Gone => {
+                    tracing::info!(
+                        "Push token gone, removing: {}",
+                        &token_row.push_token[..8.min(token_row.push_token.len())]
+                    );
+                    if let Ok(c) = db_pool.get() {
+                        let _ = queries::delete_push_token(&c, &token_row.push_token);
+                    }
+                }
+                crate::apns::ApnsPushResult::AuthError => {
+                    tracing::error!("APNs auth error — check credentials");
+                }
+                crate::apns::ApnsPushResult::Retry => {
+                    tracing::warn!("APNs rate limited, skipping remaining tokens");
+                    break;
+                }
+                crate::apns::ApnsPushResult::OtherError(e) => {
+                    tracing::warn!("APNs push error: {}", e);
+                }
+            }
+        }
+    });
+}
+
+fn schedule_retention_cleanup(state: &Arc<AppState>) {
+    #[allow(clippy::cast_sign_loss)]
+    let now_secs = Utc::now().timestamp() as u64;
+    let last_cleanup = state
+        .last_cleanup
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let five_minutes_secs = 5 * 60;
+
+    if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
+        state
+            .last_cleanup
+            .store(now_secs, std::sync::atomic::Ordering::Relaxed);
+
+        let cleanup_pool = state.db_pool.clone();
+        let retention_events = state.retention_events_days;
+        let retention_sessions = state.retention_sessions_days;
+        let retention_devices = state.retention_devices_days;
+
+        tokio::spawn(async move {
+            let conn = match cleanup_pool.get() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("Failed to get db connection for cleanup: {}", e);
+                    return;
+                }
+            };
+
+            // FK-safe order: events → notifications → sessions → devices
+            match queries::delete_old_events(&conn, retention_events) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} old events", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean old events: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_expired_notifications(&conn) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} expired notifications", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean expired notifications: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_stale_sessions(&conn, retention_sessions) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} stale sessions", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean stale sessions: {:?}", e);
+                }
+                _ => {}
+            }
+
+            match queries::delete_stale_devices(&conn, retention_devices) {
+                Ok(count) if count > 0 => {
+                    tracing::debug!("Cleaned up {} stale devices", count);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean stale devices: {:?}", e);
+                }
+                _ => {}
+            }
+        });
+    }
+}
+
+pub async fn events_handler(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(payload): Json<EventPayload>,
+) -> Result<Json<StatusOk>, AppError> {
+    check_auth(&headers, &state.api_key)?;
+
+    validate_event_payload(&payload)?;
+
     let received_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
 
     // Extract title from UserPromptSubmit events
-    let title: Option<String> = if payload.event.hook_event_name == "UserPromptSubmit" {
-        payload.event.prompt.as_deref().map(|p| {
-            if p.len() > 200 {
-                // Find a safe char boundary at or before position 200
-                let mut boundary = 200;
-                while boundary > 0 && !p.is_char_boundary(boundary) {
-                    boundary -= 1;
-                }
-                format!("{}…", &p[..boundary])
-            } else {
-                p.to_string()
-            }
-        })
-    } else {
-        None
-    };
+    let title = extract_session_title(&payload);
 
     // Derive session status
     let session_status = derive_session_status(
@@ -171,157 +315,24 @@ pub async fn events_handler(
 
         // APNs push dispatch
         if let Some(ref apns_client) = state.apns_client {
-            let apns = apns_client.clone();
-            let push_pool = state.db_pool.clone();
-            let push_title = notif_title;
-            let push_body = notif_body;
-
             // Use session_id as collapse_id with 64-byte truncation guard
-            let session_id_str = &payload.event.session_id;
-            let collapse_id = if session_id_str.len() > 64 {
-                let mut boundary = 64;
-                while boundary > 0 && !session_id_str.is_char_boundary(boundary) {
-                    boundary -= 1;
-                }
-                session_id_str[..boundary].to_string()
-            } else {
-                session_id_str.clone()
-            };
+            let collapse_id =
+                truncate_at_char_boundary(&payload.event.session_id, 64);
 
-            let push_notification_id = notification_id;
-            let push_session_id = payload.event.session_id.clone();
-            let push_device_id = payload.device.device_id.clone();
-
-            tokio::spawn(async move {
-                let tokens = match push_pool.get() {
-                    Ok(c) => match queries::list_push_tokens(&c) {
-                        Ok(t) => t,
-                        Err(e) => {
-                            tracing::warn!("Failed to list push tokens: {:?}", e);
-                            return;
-                        }
-                    },
-                    Err(e) => {
-                        tracing::warn!("Failed to get db connection for push: {}", e);
-                        return;
-                    }
-                };
-
-                for token_row in &tokens {
-                    let result = apns
-                        .send_push(
-                            &token_row.push_token,
-                            &push_title,
-                            &push_body,
-                            Some(&collapse_id),
-                            &push_notification_id,
-                            &push_session_id,
-                            &push_device_id,
-                            token_row.sandbox,
-                        )
-                        .await;
-
-                    match result {
-                        crate::apns::ApnsPushResult::Success => {
-                            tracing::debug!(
-                                "Push sent to token {}",
-                                &token_row.push_token[..8.min(token_row.push_token.len())]
-                            );
-                        }
-                        crate::apns::ApnsPushResult::Gone => {
-                            tracing::info!(
-                                "Push token gone, removing: {}",
-                                &token_row.push_token[..8.min(token_row.push_token.len())]
-                            );
-                            if let Ok(c) = push_pool.get() {
-                                let _ = queries::delete_push_token(&c, &token_row.push_token);
-                            }
-                        }
-                        crate::apns::ApnsPushResult::AuthError => {
-                            tracing::error!("APNs auth error — check credentials");
-                        }
-                        crate::apns::ApnsPushResult::Retry => {
-                            tracing::warn!("APNs rate limited, skipping remaining tokens");
-                            break;
-                        }
-                        crate::apns::ApnsPushResult::OtherError(e) => {
-                            tracing::warn!("APNs push error: {}", e);
-                        }
-                    }
-                }
-            });
+            dispatch_push_notifications(
+                apns_client.clone(),
+                state.db_pool.clone(),
+                notif_title,
+                notif_body,
+                collapse_id,
+                notification_id,
+                payload.event.session_id.clone(),
+                payload.device.device_id.clone(),
+            );
         }
     }
 
-    // Async cleanup with time guard (max once per 5 minutes)
-    #[allow(clippy::cast_sign_loss)]
-    let now_secs = Utc::now().timestamp() as u64;
-    let last_cleanup = state
-        .last_cleanup
-        .load(std::sync::atomic::Ordering::Relaxed);
-    let five_minutes_secs = 5 * 60;
-
-    if now_secs.saturating_sub(last_cleanup) >= five_minutes_secs {
-        state
-            .last_cleanup
-            .store(now_secs, std::sync::atomic::Ordering::Relaxed);
-
-        let cleanup_pool = state.db_pool.clone();
-        let retention_events = state.retention_events_days;
-        let retention_sessions = state.retention_sessions_days;
-        let retention_devices = state.retention_devices_days;
-
-        tokio::spawn(async move {
-            let conn = match cleanup_pool.get() {
-                Ok(c) => c,
-                Err(e) => {
-                    tracing::warn!("Failed to get db connection for cleanup: {}", e);
-                    return;
-                }
-            };
-
-            // FK-safe order: events → notifications → sessions → devices
-            match queries::delete_old_events(&conn, retention_events) {
-                Ok(count) if count > 0 => {
-                    tracing::debug!("Cleaned up {} old events", count);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to clean old events: {:?}", e);
-                }
-                _ => {}
-            }
-
-            match queries::delete_expired_notifications(&conn) {
-                Ok(count) if count > 0 => {
-                    tracing::debug!("Cleaned up {} expired notifications", count);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to clean expired notifications: {:?}", e);
-                }
-                _ => {}
-            }
-
-            match queries::delete_stale_sessions(&conn, retention_sessions) {
-                Ok(count) if count > 0 => {
-                    tracing::debug!("Cleaned up {} stale sessions", count);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to clean stale sessions: {:?}", e);
-                }
-                _ => {}
-            }
-
-            match queries::delete_stale_devices(&conn, retention_devices) {
-                Ok(count) if count > 0 => {
-                    tracing::debug!("Cleaned up {} stale devices", count);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to clean stale devices: {:?}", e);
-                }
-                _ => {}
-            }
-        });
-    }
+    schedule_retention_cleanup(&state);
 
     tracing::info!(
         device_id = %payload.device.device_id,

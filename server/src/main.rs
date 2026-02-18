@@ -9,6 +9,7 @@ mod error;
 mod handlers;
 mod models;
 mod router;
+mod utils;
 
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
