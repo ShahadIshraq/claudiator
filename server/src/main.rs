@@ -1,5 +1,4 @@
 #![allow(missing_docs)]
-#![allow(clippy::expect_used)]
 
 mod apns;
 mod auth;
@@ -22,6 +21,7 @@ use router::AppState;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[tokio::main]
+#[allow(clippy::expect_used)]
 async fn main() {
     let config = ServerConfig::parse();
 

@@ -1,5 +1,6 @@
 use crate::db::pool::DbPool;
 
+#[allow(clippy::missing_errors_doc)]
 pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
     let conn = pool.get()?;
 

@@ -13,6 +13,7 @@ fn setup_connection(conn: &Connection) -> rusqlite::Result<()> {
     )
 }
 
+#[allow(clippy::missing_errors_doc)]
 pub fn create_pool(db_path: &str) -> Result<DbPool, Box<dyn std::error::Error>> {
     let manager = SqliteConnectionManager::file(db_path);
     let pool = Pool::builder()

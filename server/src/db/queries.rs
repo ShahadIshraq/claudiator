@@ -1,4 +1,5 @@
 #![allow(clippy::option_if_let_else)]
+#![allow(clippy::missing_errors_doc)]
 
 use rusqlite::Connection;
 
