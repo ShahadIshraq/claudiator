@@ -33,10 +33,19 @@ Automated installation script for end users:
 - Optional auto-configuration of Claude Code hooks in `~/.claude/settings.json`
 - JSON manipulation via jq or python3 fallback
 
+#### Hook Install Script — Windows (`hook/scripts/install.ps1`)
+PowerShell installer for Windows:
+
+- Supports Windows x86_64 and ARM64 architectures
+- Downloads binary from GitHub Releases
+- Interactive prompts for server URL and API key (secure input)
+- Generates unique device ID and writes `config.toml`
+- Optional auto-configuration of Claude Code hooks in `~/.claude/settings.json`
+
 #### Hook CI/CD (`.github/workflows/release.yml`)
 Automated release pipeline:
 
-- Triggers on `v*` tags
+- Triggers on `hook-v*` tags
 - Cross-compiles for 5 targets: macOS (x86_64, aarch64), Linux (x86_64, aarch64), Windows (x86_64)
 - Creates GitHub Release with `.tar.gz` and `.zip` assets
 
@@ -64,6 +73,9 @@ Production-ready Rust HTTP server:
   - `CLAUDIATOR_APNS_TEAM_ID`: Apple Developer Team ID
   - `CLAUDIATOR_APNS_BUNDLE_ID`: iOS app bundle identifier
   - `CLAUDIATOR_APNS_SANDBOX`: Set to "true" for sandbox APNs environment
+  - `CLAUDIATOR_RETENTION_EVENTS_DAYS`: Days to retain events (default: 7)
+  - `CLAUDIATOR_RETENTION_SESSIONS_DAYS`: Days to retain sessions (default: 7)
+  - `CLAUDIATOR_RETENTION_DEVICES_DAYS`: Days to retain devices (default: 30)
 - Uses `rusqlite` with bundled SQLite (no system dependency required)
 
 #### Server Release CI/CD (`.github/workflows/server-release.yml`)
@@ -123,25 +135,6 @@ Production-ready native iOS application:
   - **Auto-dismiss**: Viewing a session automatically marks its notifications as read
 - **UI**: Native SwiftUI with iOS design patterns
 
-### 🚧 In Progress / Planned
-
-#### Android App
-Native Android application for mobile notifications:
-
-- **Platform**: Native Android (Kotlin)
-- **Server Integration**: REST API client for Claudiator server
-- **Core Features**:
-  - Device list view with last-seen timestamps
-  - Live session status per device
-  - Session detail view with event history
-  - Real-time updates when events occur
-- **Push Notifications** via Firebase Cloud Messaging (FCM):
-  - `Notification` events (permission prompts, idle prompts, elicitation dialogs)
-  - `Stop` events (agent finished, waiting for input)
-  - `SessionEnd` events (optional/configurable)
-- **UI**: Material Design 3
-- **Auth**: Bearer token configuration
-
 #### Server Enhancements (Mobile App Support)
 Additional server functionality for mobile apps:
 
@@ -162,16 +155,36 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?after=<timestamp>&limit=N` endpoint (timestamp-based pagination)
+  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (cursor-based pagination)
   - [x] `POST /api/v1/notifications/ack` endpoint for bulk acknowledging notifications
   - [x] `acknowledged` boolean column in notifications table
   - [x] `metadata` table for persisting version counters across restarts
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
-- **Live Updates** (optional):
-  - WebSocket or Server-Sent Events (SSE) for real-time updates
-  - Alternative to polling for session status changes
+
+### 🚧 In Progress / Planned
+
+#### Android App
+Native Android application for mobile notifications:
+
+- **Platform**: Native Android (Kotlin)
+- **Server Integration**: REST API client for Claudiator server
+- **Core Features**:
+  - Device list view with last-seen timestamps
+  - Live session status per device
+  - Session detail view with event history
+  - Real-time updates when events occur
+- **Push Notifications** via Firebase Cloud Messaging (FCM):
+  - `Notification` events (permission prompts, idle prompts, elicitation dialogs)
+  - `Stop` events (agent finished, waiting for input)
+  - `SessionEnd` events (optional/configurable)
+- **UI**: Material Design 3
+- **Auth**: Bearer token configuration
+
+#### Live Updates (Optional)
+- WebSocket or Server-Sent Events (SSE) for real-time updates
+- Alternative to polling for session status changes
 
 ## Hook Events Captured
 
@@ -182,6 +195,11 @@ Additional server functionality for mobile apps:
 | Stop | Agent finished, waiting for next prompt | Yes |
 | Notification | Permission prompt, idle, dialog | Yes |
 | UserPromptSubmit | User submitted a prompt | No (activity tracking) |
+| SubagentStart | A subagent started | No (tracking only) |
+| SubagentStop | A subagent stopped | No (tracking only) |
+| PermissionRequest | Tool needs user permission | Yes |
+| TeammateIdle | A teammate went idle | No (tracking only) |
+| TaskCompleted | A task was completed | No (tracking only) |
 
 ## Architecture
 
@@ -272,7 +290,7 @@ Additional server functionality for mobile apps:
   - [x] Notification generation on event ingestion (Stop, permission_prompt, idle_prompt)
   - [x] `notification_version` atomic counter in AppState
   - [x] `notification_version` in ping response
-  - [x] `GET /api/v1/notifications?after=<timestamp>&limit=N` endpoint (timestamp-based pagination)
+  - [x] `GET /api/v1/notifications?after=<uuid>&limit=N` endpoint (cursor-based pagination)
   - [x] `POST /api/v1/notifications/ack` endpoint for bulk acknowledging notifications
   - [x] `acknowledged` boolean column in notifications table
   - [x] `metadata` table for persisting version counters across restarts
@@ -301,14 +319,17 @@ Additional server functionality for mobile apps:
 - [ ] Android real-time updates
 - [ ] iOS real-time updates
 
-### Phase 4: Distribution & Polish
+### Phase 4: iOS Distribution
 - [ ] TestFlight beta distribution setup
 - [ ] App Store preparation and screenshots
 - [ ] User onboarding improvements
-- [ ] Documentation updates
 
 ### Phase 5: Android Development
-- [ ] Testing across platforms
+- [ ] Android app development
+- [ ] FCM push notification integration
+- [ ] Google Play Store submission
+
+### Phase 6: Polish & Maintenance
 - [ ] Documentation updates
-- [ ] App store submissions (iOS/Android)
-- [ ] User onboarding improvements
+- [ ] Cross-platform testing
+- [ ] Performance and reliability improvements
