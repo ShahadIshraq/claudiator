@@ -130,8 +130,6 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
       "Stop",
       "Notification",
       "UserPromptSubmit",
-      "SubagentStart",
-      "SubagentStop",
       "PermissionRequest",
       "TeammateIdle",
       "TaskCompleted"
@@ -145,7 +143,7 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
         fi
 
         # For each hook event, add if not already present
-        for EVENT in SessionStart SessionEnd Stop Notification UserPromptSubmit SubagentStart SubagentStop PermissionRequest TeammateIdle TaskCompleted; do
+        for EVENT in SessionStart SessionEnd Stop Notification UserPromptSubmit PermissionRequest TeammateIdle TaskCompleted; do
             # Check if hook already exists
             EXISTING=$(jq -r --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
                 '.hooks[$event] // [] | map(select(.hooks[]? | select(.command == $cmd))) | length' \
@@ -168,7 +166,7 @@ import os
 
 settings_file = os.path.expanduser("~/.claude/settings.json")
 hook_command = "~/.claude/claudiator/claudiator-hook send"
-events = ["SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "SubagentStart", "SubagentStop", "PermissionRequest", "TeammateIdle", "TaskCompleted"]
+events = ["SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest", "TeammateIdle", "TaskCompleted"]
 
 # Load or create settings
 if os.path.exists(settings_file):
@@ -237,18 +235,6 @@ PYEOF
       }
     ],
     "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]
-      }
-    ],
-    "SubagentStop": [
       {
         "matcher": "",
         "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}]

@@ -182,11 +182,14 @@ To integrate with Claude Code, add the hook to `~/.claude/settings.json`:
 ```json
 {
   "hooks": {
-    "SessionStart": [{ "matcher": "", "command": "~/.claude/claudiator/claudiator-hook send" }],
-    "SessionEnd": [{ "matcher": "", "command": "~/.claude/claudiator/claudiator-hook send" }],
-    "Stop": [{ "matcher": "", "command": "~/.claude/claudiator/claudiator-hook send" }],
-    "Notification": [{ "matcher": "", "command": "~/.claude/claudiator/claudiator-hook send" }],
-    "UserPromptSubmit": [{ "matcher": "", "command": "~/.claude/claudiator/claudiator-hook send" }]
+    "SessionStart": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "SessionEnd": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "Stop": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "Notification": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "UserPromptSubmit": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "PermissionRequest": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "TeammateIdle": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "TaskCompleted": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }]
   }
 }
 ```
@@ -200,6 +203,22 @@ When any of these events occur, Claude Code will invoke `claudiator-hook send` w
 - `Stop` — Fired when execution is stopped
 - `Notification` — Fired when notifications are generated
 - `UserPromptSubmit` — Fired when a user submits a prompt
+- `PermissionRequest` — Fired when a tool permission is requested
+- `TeammateIdle` — Fired when a teammate agent goes idle
+- `TaskCompleted` — Fired when a task is completed
+
+### Opt-in: Sub-Agent Events
+
+Sub-agent hooks (`SubagentStart`, `SubagentStop`) are **not installed by default** because they fire for every spawned sub-agent and can generate significant volume when using teams or parallel agents. To opt in, add them manually to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SubagentStart": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }],
+    "SubagentStop": [{ "matcher": "", "hooks": [{"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"}] }]
+  }
+}
+```
 
 ## License
 

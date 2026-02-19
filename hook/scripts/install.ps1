@@ -116,7 +116,7 @@ $HooksConfigured = $false
 if ($ConfigureHooks -match "^[Yy]$") {
     $SettingsFile = "$env:USERPROFILE\.claude\settings.json"
     $HookCommand = "~/.claude/claudiator/claudiator-hook send"
-    $Events = @("SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "SubagentStart", "SubagentStop", "PermissionRequest", "TeammateIdle", "TaskCompleted")
+    $Events = @("SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest", "TeammateIdle", "TaskCompleted")
 
     # Create settings directory if it doesn't exist
     $SettingsDir = Split-Path -Parent $SettingsFile
