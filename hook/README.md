@@ -22,6 +22,7 @@ hook/
 │   ├── event.rs      — Hook event parsing from stdin
 │   ├── logger.rs     — Logging with levels and rotation
 │   ├── payload.rs    — Event payload construction
+│   ├── raw_log.rs    — Raw event JSONL logging
 │   └── sender.rs     — HTTP client (ureq)
 ├── scripts/
 │   ├── install.sh    — macOS/Linux installer
@@ -50,6 +51,16 @@ claudiator-hook send
 ```
 
 This subcommand is typically called by Claude Code hooks. It reads JSON from stdin, parses the event, and POSTs it to the server.
+
+#### `--raw-event-log <path>`
+
+Append the raw stdin JSON to a local JSONL file before parsing or sending:
+
+```bash
+claudiator-hook send --raw-event-log ~/.claude/claudiator/events.jsonl
+```
+
+Each event is written as a single line (JSONL format). The file and any missing parent directories are created automatically. This flag overrides `raw_event_log_path` in `config.toml`. See [Raw Event Logging](#raw-event-logging) for details.
 
 ### Global Options
 
@@ -99,6 +110,9 @@ platform = "mac"
 log_level = "error"
 max_log_size_bytes = 1048576
 max_log_backups = 2
+
+# Raw event logging (optional — disabled by default)
+# raw_event_log_path = "~/.claude/claudiator/events.jsonl"
 ```
 
 ### Fields
@@ -111,6 +125,7 @@ max_log_backups = 2
 - `log_level` — Minimum log level: `error`, `warn`, `info`, or `debug` (default: `"error"`)
 - `max_log_size_bytes` — Maximum log file size in bytes before rotation (default: `1048576` / 1 MB)
 - `max_log_backups` — Number of rotated log files to keep (default: `2`)
+- `raw_event_log_path` — Path to append raw hook events in JSONL format; absent or omitted means raw logging is disabled (default: unset)
 
 ## Logging
 
@@ -142,6 +157,45 @@ When the log file exceeds `max_log_size_bytes`, it is rotated:
 - Existing backups shift: `.1` becomes `.2`, etc.
 - The oldest backup beyond `max_log_backups` is deleted
 - If `max_log_backups` is `0`, the file is truncated instead of rotated
+
+## Raw Event Logging
+
+When enabled, the hook appends the full, unmodified stdin JSON to a local JSONL file **before** any parsing or field trimming. This is useful for:
+
+- Inspecting exactly what Claude Code is sending for each event type
+- Detecting when new fields appear after a Claude Code update
+- Offline analysis and schema change tracking
+
+### Enabling
+
+Set `raw_event_log_path` in `config.toml`:
+
+```toml
+raw_event_log_path = "~/.claude/claudiator/events.jsonl"
+```
+
+Or pass `--raw-event-log` on the CLI for a one-off override:
+
+```bash
+claudiator-hook send --raw-event-log /tmp/debug-events.jsonl
+```
+
+The CLI flag takes precedence over `config.toml`. If neither is set, raw logging is disabled.
+
+### Format
+
+Each event is written as a single trimmed JSON object followed by a newline (JSONL / NDJSON):
+
+```jsonl
+{"session_id":"abc123","hook_event_name":"Stop","cwd":"/workspace","stop_hook_active":false}
+{"session_id":"abc123","hook_event_name":"Notification","notification_type":"info","message":"Done"}
+```
+
+The file is opened in append mode, so existing entries are never overwritten. Parent directories are created automatically if they don't exist.
+
+### Privacy note
+
+The raw log captures **all fields** from the Claude Code event, including high-sensitivity fields such as `tool_input`, `tool_output`, `custom_instructions`, and `transcript_path` that are otherwise stripped before transmission. Only enable this on machines where the log path is appropriately protected.
 
 ## Test Server
 
