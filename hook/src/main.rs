@@ -31,6 +31,7 @@ mod error;
 mod event;
 mod logger;
 mod payload;
+mod raw_log;
 mod sender;
 
 use clap::Parser;
@@ -38,7 +39,7 @@ use clap::Parser;
 use crate::error::ConfigError;
 use cli::{Cli, Commands};
 use config::Config;
-use event::RawHookEvent;
+use event::HookEvent;
 use logger::{log_debug, log_error, log_info, LogLevel};
 use payload::EventPayload;
 use sender::{send_event, test_connection};
@@ -94,7 +95,7 @@ fn main() {
     logger::init(log_level, max_size, max_backups);
 
     match cli.command {
-        Commands::Send => cmd_send(config_result),
+        Commands::Send { raw_event_log } => cmd_send(config_result, raw_event_log),
         Commands::Test => cmd_test(),
         Commands::Version => cmd_version(),
     }
@@ -108,7 +109,7 @@ fn main() {
 /// Errors are logged but the function always returns normally so that the
 /// process exits 0. A non-zero exit would signal Claude Code to block the
 /// current action, which is never the right response to a backend failure.
-fn cmd_send(config_result: Result<Config, ConfigError>) {
+fn cmd_send(config_result: Result<Config, ConfigError>, raw_event_log_cli: Option<String>) {
     let config = match config_result {
         Ok(c) => c,
         Err(e) => {
@@ -122,7 +123,25 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
         config.server_url
     ));
 
-    let raw = match RawHookEvent::from_stdin() {
+    // Read raw stdin so we can optionally log it before parsing.
+    let raw_stdin = {
+        let stdin = std::io::stdin();
+        let mut reader = stdin.lock();
+        let mut buf = String::new();
+        if let Err(e) = std::io::Read::read_to_string(&mut reader, &mut buf) {
+            log_error(&format!("Stdin read error: {e}"));
+            return;
+        }
+        buf
+    };
+
+    // CLI flag takes precedence over config for the raw event log path.
+    let raw_log_path = raw_event_log_cli.or_else(|| config.raw_event_log_path.clone());
+    if let Some(ref path) = raw_log_path {
+        raw_log::append_raw_event(path, &raw_stdin);
+    }
+
+    let event = match serde_json::from_str::<HookEvent>(&raw_stdin) {
         Ok(e) => e,
         Err(e) => {
             log_error(&format!("Event parse error: {e}"));
@@ -130,7 +149,7 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
         }
     };
 
-    let payload = EventPayload::new(&config, raw);
+    let payload = EventPayload::new(&config, event);
 
     if let Err(e) = send_event(&config, &payload) {
         log_error(&format!("Send error: {e}"));

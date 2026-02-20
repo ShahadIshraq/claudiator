@@ -10,4 +10,5 @@ pub mod error;
 pub mod event;
 pub mod logger;
 pub mod payload;
+pub mod raw_log;
 pub mod sender;

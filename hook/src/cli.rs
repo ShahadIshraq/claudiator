@@ -23,7 +23,11 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Read a hook event from stdin and send it to the server
-    Send,
+    Send {
+        /// Append the raw stdin JSON to this file (JSONL). Overrides config.
+        #[arg(long)]
+        raw_event_log: Option<String>,
+    },
     /// Test the connection to the configured server
     Test,
     /// Print the version and exit
@@ -39,7 +43,35 @@ mod tests {
         let cli = Cli::try_parse_from(["claudiator-hook", "send"]);
         assert!(cli.is_ok());
         if let Ok(cli) = cli {
-            assert!(matches!(cli.command, Commands::Send));
+            assert!(matches!(cli.command, Commands::Send { .. }));
+        }
+    }
+
+    #[test]
+    fn test_parse_send_with_raw_event_log() {
+        let cli = Cli::try_parse_from([
+            "claudiator-hook", "send", "--raw-event-log", "/tmp/events.jsonl",
+        ]);
+        assert!(cli.is_ok());
+        if let Ok(cli) = cli {
+            if let Commands::Send { raw_event_log } = cli.command {
+                assert_eq!(raw_event_log, Some("/tmp/events.jsonl".to_string()));
+            } else {
+                panic!("Expected Send command");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_send_without_raw_event_log() {
+        let cli = Cli::try_parse_from(["claudiator-hook", "send"]);
+        assert!(cli.is_ok());
+        if let Ok(cli) = cli {
+            if let Commands::Send { raw_event_log } = cli.command {
+                assert!(raw_event_log.is_none());
+            } else {
+                panic!("Expected Send command");
+            }
         }
     }
 

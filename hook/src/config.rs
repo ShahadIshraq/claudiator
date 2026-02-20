@@ -48,6 +48,9 @@ pub struct Config {
     /// Number of rotated log files to retain. Defaults to 2.
     #[serde(default = "default_max_log_backups")]
     pub max_log_backups: u32,
+    /// Path to append raw hook events (JSONL). If absent, raw logging is disabled.
+    #[serde(default)]
+    pub raw_event_log_path: Option<String>,
 }
 
 impl Config {
@@ -152,6 +155,34 @@ platform = "mac"
             assert_eq!(config.max_log_size_bytes, 1_048_576);
             assert_eq!(config.max_log_backups, 2);
         }
+    }
+
+    #[test]
+    fn test_load_from_valid_toml_with_raw_event_log_path() {
+        let toml = r#"
+server_url = "https://example.com"
+api_key = "test-key-123"
+device_name = "test-machine"
+device_id = "550e8400-e29b-41d4-a716-446655440000"
+platform = "mac"
+raw_event_log_path = "/tmp/events.jsonl"
+"#;
+        let temp_file = NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut temp_file.as_file(), toml.as_bytes()).unwrap();
+        let config = Config::load_from(temp_file.path()).unwrap();
+        assert_eq!(
+            config.raw_event_log_path,
+            Some("/tmp/events.jsonl".to_string())
+        );
+    }
+
+    #[test]
+    fn test_load_from_valid_toml_raw_event_log_defaults_to_none() {
+        // Existing configs without raw_event_log_path must still parse fine.
+        let temp_file = NamedTempFile::new().unwrap();
+        std::io::Write::write_all(&mut temp_file.as_file(), VALID_TOML.as_bytes()).unwrap();
+        let config = Config::load_from(temp_file.path()).unwrap();
+        assert!(config.raw_event_log_path.is_none());
     }
 
     #[test]
