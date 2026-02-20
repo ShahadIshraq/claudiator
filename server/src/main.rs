@@ -100,7 +100,7 @@ async fn main() {
     };
 
     let state = Arc::new(AppState {
-        api_key: config.api_key.clone(),
+        master_key: config.api_key.clone(),
         db_pool,
         version: AtomicU64::new(data_version),
         notification_version: AtomicU64::new(notification_version),
@@ -124,10 +124,13 @@ async fn main() {
 
     tracing::info!("Server ready, waiting for events...");
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .expect("Server error");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .expect("Server error");
 }
 
 #[allow(clippy::expect_used)]

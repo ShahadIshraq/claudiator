@@ -1,11 +1,16 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use axum::http::HeaderMap;
+use chrono::{SecondsFormat, Utc};
 
+use crate::db::queries;
 use crate::error::AppError;
+use crate::router::AppState;
 
 /// Maximum number of failed auth attempts before rate-limiting an IP.
 const MAX_FAILURES: u32 = 10;
@@ -24,7 +29,6 @@ pub type AuthFailureMap = Mutex<HashMap<IpAddr, (u32, Instant)>>;
 /// that unknown clients share a single rate-limit bucket rather than being
 /// exempt from limiting.
 pub fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
-    // X-Forwarded-For may contain a comma-separated list; take the first.
     if let Some(forwarded) = headers.get("X-Forwarded-For").and_then(|v| v.to_str().ok()) {
         let first = forwarded.split(',').next().unwrap_or("").trim();
         if let Ok(ip) = first.parse::<IpAddr>() {
@@ -38,19 +42,16 @@ pub fn extract_client_ip(headers: &HeaderMap) -> IpAddr {
         }
     }
 
-    // Sentinel: all unknown-origin requests share one bucket.
     IpAddr::from([0u8, 0, 0, 0])
 }
 
 /// Returns `Err(AppError::RateLimited)` if the IP has exceeded `MAX_FAILURES`
-/// within `FAILURE_WINDOW`. Cleans up expired entries for other IPs while
-/// holding the lock.
+/// within `FAILURE_WINDOW`.
 pub fn check_rate_limit(map: &AuthFailureMap, ip: IpAddr) -> Result<(), AppError> {
     let mut guard = map
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
 
-    // Opportunistic sweep: remove entries whose window has expired.
     let now = Instant::now();
     guard.retain(|_, (_, start)| now.duration_since(*start) < FAILURE_WINDOW);
 
@@ -76,7 +77,6 @@ pub fn record_auth_failure(map: &AuthFailureMap, ip: IpAddr) {
 
     let entry = guard.entry(ip).or_insert((0, now));
 
-    // If the existing window has expired, start a fresh one.
     if now.duration_since(entry.1) >= FAILURE_WINDOW {
         *entry = (0, now);
     }
@@ -84,17 +84,212 @@ pub fn record_auth_failure(map: &AuthFailureMap, ip: IpAddr) {
     entry.0 = entry.0.saturating_add(1);
 }
 
-pub fn check_auth(headers: &HeaderMap, api_key: &str) -> Result<(), AppError> {
-    let auth_header = headers
+// ── Scope & AuthenticatedKey ──────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Scope {
+    Read,
+    Write,
+}
+
+impl Scope {
+    fn from_str(s: &str) -> Option<Self> {
+        match s.trim() {
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
+            _ => None,
+        }
+    }
+}
+
+pub fn parse_scopes(s: &str) -> Vec<Scope> {
+    s.split(',').filter_map(Scope::from_str).collect()
+}
+
+pub fn format_scopes(scopes: &[Scope]) -> String {
+    scopes
+        .iter()
+        .map(|s| match s {
+            Scope::Read => "read",
+            Scope::Write => "write",
+        })
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+pub struct AuthenticatedKey {
+    pub id: Option<String>,
+    pub name: String,
+    pub scopes: Vec<Scope>,
+}
+
+// ── Typed extractors ──────────────────────────────────────────────────────────
+
+/// Extractor that requires a valid key with `read` scope.
+pub struct ReadAuth(pub AuthenticatedKey);
+
+/// Extractor that requires a valid key with `write` scope.
+pub struct WriteAuth(pub AuthenticatedKey);
+
+/// Extractor for admin endpoints: requires localhost origin + master key.
+pub struct AdminAuth(pub AuthenticatedKey);
+
+// ── Core resolution logic ─────────────────────────────────────────────────────
+
+fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
+    headers
         .get("Authorization")
         .and_then(|v| v.to_str().ok())
-        .ok_or(AppError::Unauthorized)?;
+        .and_then(|v| v.strip_prefix("Bearer "))
+}
 
-    let expected = format!("Bearer {api_key}");
-    if auth_header == expected {
-        Ok(())
-    } else {
-        Err(AppError::Unauthorized)
+/// Resolves and validates the bearer token, checking the required scope.
+/// Updates `last_used` for DB keys on successful auth.
+fn resolve_auth(
+    headers: &HeaderMap,
+    state: &Arc<AppState>,
+    required_scope: Scope,
+) -> Result<AuthenticatedKey, AppError> {
+    let ip = extract_client_ip(headers);
+    check_rate_limit(&state.auth_failures, ip)?;
+
+    let token = match extract_bearer_token(headers) {
+        Some(t) => t,
+        None => {
+            record_auth_failure(&state.auth_failures, ip);
+            return Err(AppError::Unauthorized);
+        }
+    };
+
+    // Master key — always read+write
+    if token == state.master_key {
+        return Ok(AuthenticatedKey {
+            id: None,
+            name: "master".to_string(),
+            scopes: vec![Scope::Read, Scope::Write],
+        });
+    }
+
+    // DB key lookup
+    let conn = state
+        .db_pool
+        .get()
+        .map_err(|e| AppError::Internal(format!("DB pool error: {e}")))?;
+
+    match queries::find_api_key_by_key(&conn, token)? {
+        Some(row) => {
+            let scopes = parse_scopes(&row.scopes);
+
+            if !scopes.contains(&required_scope) {
+                return Err(AppError::Forbidden);
+            }
+
+            let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+            let _ = queries::update_api_key_last_used(&conn, &row.id, &now);
+
+            Ok(AuthenticatedKey {
+                id: Some(row.id),
+                name: row.name,
+                scopes,
+            })
+        }
+        None => {
+            record_auth_failure(&state.auth_failures, ip);
+            Err(AppError::Unauthorized)
+        }
+    }
+}
+
+// ── FromRequestParts implementations ─────────────────────────────────────────
+
+impl FromRequestParts<Arc<AppState>> for ReadAuth {
+    type Rejection = AppError;
+
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        state: &'life1 Arc<AppState>,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send + 'async_trait>,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        Box::pin(async move { resolve_auth(&parts.headers, state, Scope::Read).map(ReadAuth) })
+    }
+}
+
+impl FromRequestParts<Arc<AppState>> for WriteAuth {
+    type Rejection = AppError;
+
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        state: &'life1 Arc<AppState>,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send + 'async_trait>,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        Box::pin(async move { resolve_auth(&parts.headers, state, Scope::Write).map(WriteAuth) })
+    }
+}
+
+impl FromRequestParts<Arc<AppState>> for AdminAuth {
+    type Rejection = AppError;
+
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        state: &'life1 Arc<AppState>,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self, AppError>> + Send + 'async_trait>,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        Box::pin(async move {
+            use axum::extract::ConnectInfo;
+            use std::net::SocketAddr;
+
+            // Require localhost origin
+            let addr = parts
+                .extensions
+                .get::<ConnectInfo<SocketAddr>>()
+                .map(|ci| ci.0)
+                .ok_or(AppError::Forbidden)?;
+
+            if !addr.ip().is_loopback() {
+                return Err(AppError::Forbidden);
+            }
+
+            // Require master key
+            let ip = extract_client_ip(&parts.headers);
+            check_rate_limit(&state.auth_failures, ip)?;
+
+            let token = match extract_bearer_token(&parts.headers) {
+                Some(t) => t,
+                None => {
+                    record_auth_failure(&state.auth_failures, ip);
+                    return Err(AppError::Unauthorized);
+                }
+            };
+
+            if token != state.master_key {
+                record_auth_failure(&state.auth_failures, ip);
+                return Err(AppError::Unauthorized);
+            }
+
+            Ok(AdminAuth(AuthenticatedKey {
+                id: None,
+                name: "master".to_string(),
+                scopes: vec![Scope::Read, Scope::Write],
+            }))
+        })
     }
 }
 
@@ -102,7 +297,6 @@ pub fn check_auth(headers: &HeaderMap, api_key: &str) -> Result<(), AppError> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use axum::http::HeaderMap;
     use std::net::Ipv4Addr;
 
     fn make_map() -> AuthFailureMap {
@@ -111,42 +305,6 @@ mod tests {
 
     fn test_ip() -> IpAddr {
         IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4))
-    }
-
-    #[test]
-    fn test_check_auth_valid() {
-        let mut headers = HeaderMap::new();
-        headers.insert("Authorization", "Bearer test-key".parse().unwrap());
-        assert!(check_auth(&headers, "test-key").is_ok());
-    }
-
-    #[test]
-    fn test_check_auth_invalid() {
-        let mut headers = HeaderMap::new();
-        headers.insert("Authorization", "Bearer wrong-key".parse().unwrap());
-        assert!(matches!(
-            check_auth(&headers, "test-key"),
-            Err(AppError::Unauthorized)
-        ));
-    }
-
-    #[test]
-    fn test_check_auth_missing() {
-        let headers = HeaderMap::new();
-        assert!(matches!(
-            check_auth(&headers, "test-key"),
-            Err(AppError::Unauthorized)
-        ));
-    }
-
-    #[test]
-    fn test_check_auth_malformed() {
-        let mut headers = HeaderMap::new();
-        headers.insert("Authorization", "InvalidFormat".parse().unwrap());
-        assert!(matches!(
-            check_auth(&headers, "test-key"),
-            Err(AppError::Unauthorized)
-        ));
     }
 
     #[test]
@@ -186,7 +344,6 @@ mod tests {
             record_auth_failure(&map, ip_a);
         }
 
-        // ip_b should not be affected.
         assert!(check_rate_limit(&map, ip_b).is_ok());
     }
 
@@ -211,5 +368,29 @@ mod tests {
         let headers = HeaderMap::new();
         let ip = extract_client_ip(&headers);
         assert_eq!(ip, IpAddr::from([0u8, 0, 0, 0]));
+    }
+
+    #[test]
+    fn test_parse_scopes_read() {
+        let scopes = parse_scopes("read");
+        assert_eq!(scopes, vec![Scope::Read]);
+    }
+
+    #[test]
+    fn test_parse_scopes_write() {
+        let scopes = parse_scopes("write");
+        assert_eq!(scopes, vec![Scope::Write]);
+    }
+
+    #[test]
+    fn test_parse_scopes_both() {
+        let scopes = parse_scopes("read,write");
+        assert_eq!(scopes, vec![Scope::Read, Scope::Write]);
+    }
+
+    #[test]
+    fn test_format_scopes() {
+        let scopes = vec![Scope::Read, Scope::Write];
+        assert_eq!(format_scopes(&scopes), "read,write");
     }
 }

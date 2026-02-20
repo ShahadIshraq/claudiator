@@ -96,6 +96,18 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
         [],
     );
 
+    // Add api_keys table (idempotent)
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS api_keys (
+            id         TEXT PRIMARY KEY,
+            name       TEXT NOT NULL,
+            key        TEXT NOT NULL UNIQUE,
+            scopes     TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            last_used  TEXT
+        );",
+    )?;
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

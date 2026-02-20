@@ -1,11 +1,10 @@
 use axum::extract::State;
-use axum::http::HeaderMap;
 use axum::Json;
 use chrono::{SecondsFormat, Utc};
 use std::sync::Arc;
 
 use crate::apns::ApnsClient;
-use crate::auth::{check_auth, check_rate_limit, extract_client_ip, record_auth_failure};
+use crate::auth::WriteAuth;
 use crate::db::pool::DbPool;
 use crate::db::queries;
 use crate::error::AppError;
@@ -191,16 +190,9 @@ fn schedule_retention_cleanup(state: &Arc<AppState>) {
 #[allow(clippy::too_many_lines)]
 pub async fn events_handler(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
+    _auth: WriteAuth,
     Json(payload): Json<EventPayload>,
 ) -> Result<Json<StatusOk>, AppError> {
-    let ip = extract_client_ip(&headers);
-    check_rate_limit(&state.auth_failures, ip)?;
-    if let Err(e) = check_auth(&headers, &state.api_key) {
-        record_auth_failure(&state.auth_failures, ip);
-        return Err(e);
-    }
-
     validate_event_payload(&payload)?;
 
     let received_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);

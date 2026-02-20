@@ -523,3 +523,104 @@ pub fn acknowledge_notifications(conn: &Connection, ids: &[String]) -> Result<()
 
     Ok(())
 }
+
+pub struct ApiKeyRow {
+    pub id: String,
+    pub name: String,
+    pub key: String,
+    pub scopes: String,
+    pub created_at: String,
+    pub last_used: Option<String>,
+}
+
+pub fn insert_api_key(
+    conn: &Connection,
+    id: &str,
+    name: &str,
+    key: &str,
+    scopes: &str,
+    created_at: &str,
+) -> Result<(), AppError> {
+    conn.execute(
+        "INSERT INTO api_keys (id, name, key, scopes, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![id, name, key, scopes, created_at],
+    )
+    .map_err(|e| AppError::Internal(format!("Failed to insert api key: {e}")))?;
+    Ok(())
+}
+
+pub fn list_api_keys(conn: &Connection) -> Result<Vec<ApiKeyRow>, AppError> {
+    let mut stmt = conn
+        .prepare("SELECT id, name, key, scopes, created_at, last_used FROM api_keys ORDER BY created_at ASC")
+        .map_err(|e| AppError::Internal(format!("Failed to prepare api_keys query: {e}")))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ApiKeyRow {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                key: row.get(2)?,
+                scopes: row.get(3)?,
+                created_at: row.get(4)?,
+                last_used: row.get(5)?,
+            })
+        })
+        .map_err(|e| AppError::Internal(format!("Failed to query api_keys: {e}")))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Internal(format!("Failed to collect api_keys: {e}")))?;
+
+    Ok(rows)
+}
+
+pub fn find_api_key_by_key(conn: &Connection, key: &str) -> Result<Option<ApiKeyRow>, AppError> {
+    let mut stmt = conn
+        .prepare("SELECT id, name, key, scopes, created_at, last_used FROM api_keys WHERE key = ?1")
+        .map_err(|e| AppError::Internal(format!("Failed to prepare api_key lookup: {e}")))?;
+
+    let mut rows = stmt
+        .query(rusqlite::params![key])
+        .map_err(|e| AppError::Internal(format!("Failed to query api_key: {e}")))?;
+
+    if let Some(row) = rows
+        .next()
+        .map_err(|e| AppError::Internal(format!("Failed to fetch api_key row: {e}")))?
+    {
+        Ok(Some(ApiKeyRow {
+            id: row
+                .get(0)
+                .map_err(|e| AppError::Internal(format!("Failed to get api_key id: {e}")))?,
+            name: row
+                .get(1)
+                .map_err(|e| AppError::Internal(format!("Failed to get api_key name: {e}")))?,
+            key: row
+                .get(2)
+                .map_err(|e| AppError::Internal(format!("Failed to get api_key key: {e}")))?,
+            scopes: row
+                .get(3)
+                .map_err(|e| AppError::Internal(format!("Failed to get api_key scopes: {e}")))?,
+            created_at: row.get(4).map_err(|e| {
+                AppError::Internal(format!("Failed to get api_key created_at: {e}"))
+            })?,
+            last_used: row
+                .get(5)
+                .map_err(|e| AppError::Internal(format!("Failed to get api_key last_used: {e}")))?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn delete_api_key(conn: &Connection, id: &str) -> Result<(), AppError> {
+    conn.execute("DELETE FROM api_keys WHERE id = ?1", rusqlite::params![id])
+        .map_err(|e| AppError::Internal(format!("Failed to delete api_key: {e}")))?;
+    Ok(())
+}
+
+pub fn update_api_key_last_used(conn: &Connection, id: &str, now: &str) -> Result<(), AppError> {
+    conn.execute(
+        "UPDATE api_keys SET last_used = ?1 WHERE id = ?2",
+        rusqlite::params![now, id],
+    )
+    .map_err(|e| AppError::Internal(format!("Failed to update api_key last_used: {e}")))?;
+    Ok(())
+}

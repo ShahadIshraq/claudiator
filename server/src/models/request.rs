@@ -50,6 +50,12 @@ pub struct AckRequest {
     pub ids: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CreateApiKeyRequest {
+    pub name: String,
+    pub scopes: Vec<String>,
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {

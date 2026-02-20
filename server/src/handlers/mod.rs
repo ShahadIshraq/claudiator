@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod devices;
 pub mod events;
 pub mod notifications;

@@ -1,6 +1,6 @@
 use axum::error_handling::HandleErrorLayer;
 use axum::http::StatusCode;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use crate::db::pool::DbPool;
 use crate::handlers;
 
 pub struct AppState {
-    pub api_key: String,
+    pub master_key: String,
     pub db_pool: DbPool,
     pub version: AtomicU64,
     pub notification_version: AtomicU64,
@@ -37,6 +37,17 @@ async fn handle_timeout_error(err: tower::BoxError) -> (StatusCode, &'static str
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
+    let admin_router = Router::new()
+        .route(
+            "/api-keys",
+            post(handlers::admin::create_api_key_handler)
+                .get(handlers::admin::list_api_keys_handler),
+        )
+        .route(
+            "/api-keys/:id",
+            delete(handlers::admin::delete_api_key_handler),
+        );
+
     Router::new()
         .route("/api/v1/ping", get(handlers::ping::ping_handler))
         .route("/api/v1/events", post(handlers::events::events_handler))
@@ -68,6 +79,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/api/v1/notifications/ack",
             post(handlers::notifications::acknowledge_notifications_handler),
         )
+        .nest("/admin", admin_router)
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(handle_timeout_error))

@@ -11,7 +11,7 @@ fn test_server() -> TestServer {
     db::migrations::run(&db_pool).unwrap();
 
     let state = Arc::new(router::AppState {
-        api_key: "test-key".to_string(),
+        master_key: "test-key".to_string(),
         db_pool,
         version: AtomicU64::new(0),
         notification_version: AtomicU64::new(0),

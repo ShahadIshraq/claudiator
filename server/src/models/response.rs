@@ -122,6 +122,30 @@ pub struct NotificationListResponse {
     pub notifications: Vec<NotificationResponse>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ApiKeyCreatedResponse {
+    pub id: String,
+    pub name: String,
+    pub key: String,
+    pub scopes: Vec<String>,
+    pub created_at: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApiKeyListItem {
+    pub id: String,
+    pub name: String,
+    pub key_prefix: String,
+    pub scopes: Vec<String>,
+    pub created_at: String,
+    pub last_used: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ApiKeyListResponse {
+    pub keys: Vec<ApiKeyListItem>,
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
