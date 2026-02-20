@@ -11,11 +11,13 @@ STAGED_RS=$(git diff --cached --name-only -z --diff-filter=ACM | tr '\0' '\n' | 
 if [ -n "$STAGED_SWIFT" ]; then
   echo "Running SwiftFormat on staged files..."
   printf '%s\0' $STAGED_SWIFT | xargs -0 swiftformat --config ios/.swiftformat
+  printf '%s\0' $STAGED_SWIFT | xargs -0 git add
+
+  echo "Running SwiftFormat lint on ios/..."
+  (cd "$REPO_ROOT" && swiftformat --lint --config ios/.swiftformat ios/Claudiator/)
 
   echo "Running SwiftLint on staged files..."
   printf '%s\0' $STAGED_SWIFT | xargs -0 swiftlint lint --strict --config ios/.swiftlint.yml --quiet
-
-  printf '%s\0' $STAGED_SWIFT | xargs -0 git add
 fi
 
 # --- Rust checks ---
