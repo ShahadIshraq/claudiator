@@ -38,7 +38,7 @@ use clap::Parser;
 use crate::error::ConfigError;
 use cli::{Cli, Commands};
 use config::Config;
-use event::HookEvent;
+use event::RawHookEvent;
 use logger::{log_debug, log_error, log_info, LogLevel};
 use payload::EventPayload;
 use sender::{send_event, test_connection};
@@ -122,7 +122,7 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
         config.server_url
     ));
 
-    let event = match HookEvent::from_stdin() {
+    let raw = match RawHookEvent::from_stdin() {
         Ok(e) => e,
         Err(e) => {
             log_error(&format!("Event parse error: {e}"));
@@ -130,7 +130,7 @@ fn cmd_send(config_result: Result<Config, ConfigError>) {
         }
     };
 
-    let payload = EventPayload::new(&config, event);
+    let payload = EventPayload::new(&config, raw);
 
     if let Err(e) = send_event(&config, &payload) {
         log_error(&format!("Send error: {e}"));

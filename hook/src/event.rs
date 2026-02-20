@@ -5,9 +5,13 @@
 //! `PostToolUse`, `Stop`, `Notification`, etc.) and may gain new fields as
 //! Claude Code evolves.
 //!
-//! [`HookEvent`] covers all known fields as `Option<_>` and uses
-//! `#[serde(flatten)]` to capture any unknown fields in [`HookEvent::extra`],
+//! [`RawHookEvent`] covers all known fields as `Option<_>` and uses
+//! `#[serde(flatten)]` to capture any unknown fields in [`RawHookEvent::extra`],
 //! ensuring forward-compatibility without requiring a hook update.
+//!
+//! [`HookEvent`] is the trimmed send DTO — only the 7 fields the server
+//! actually reads. It is produced from a [`RawHookEvent`] via [`From`] and
+//! is the only thing that ever leaves this machine.
 
 use std::collections::HashMap;
 use std::io;
@@ -16,119 +20,76 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::EventError;
 
-/// A hook event payload emitted by Claude Code.
+/// A hook event payload emitted by Claude Code, deserialized verbatim from stdin.
 ///
 /// Every field except `session_id` and `hook_event_name` is optional because
-/// different event types carry different fields. For example, `tool_name` is
-/// only present for `PreToolUse`/`PostToolUse`, while `message` and
-/// `notification_type` are only present for `Notification` events.
+/// different event types carry different fields.
 ///
 /// # Forward-compatibility
 ///
-/// The `#[serde(flatten)]` attribute on [`extra`](HookEvent::extra) collects
+/// The `#[serde(flatten)]` attribute on [`extra`](RawHookEvent::extra) collects
 /// any JSON keys that don't match a known field into a `HashMap`. This means
 /// the hook will not fail to parse if Claude Code adds new fields in a future
-/// version — those fields are preserved and forwarded to the server as-is.
-#[derive(Debug, Deserialize, Serialize)]
+/// version.
+///
+/// This type is never serialized — it is only read from stdin and converted
+/// into the trimmed [`HookEvent`] DTO before transmission.
+#[derive(Debug, Deserialize)]
 #[allow(clippy::struct_field_names)]
-pub struct HookEvent {
+pub struct RawHookEvent {
     /// Identifies the Claude Code session that fired this event.
     pub session_id: String,
     /// The name of the hook point, e.g. `"PreToolUse"`, `"Stop"`, `"Notification"`.
     pub hook_event_name: String,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub permission_mode: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_input: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_output: Option<serde_json::Value>,
-    // Claude Code sends `tool_response` for PostToolUse (distinct from tool_output)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_response: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_use_id: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub notification_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
-    // Session/model fields
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_hook_active: Option<bool>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub subagent_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub subagent_type: Option<String>,
-    // Agent fields (distinct from subagent_id/subagent_type)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_transcript_path: Option<String>,
 
-    // Error fields
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_interrupt: Option<bool>,
 
-    // Team fields
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub teammate_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub team_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub task_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub task_subject: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub task_description: Option<String>,
 
-    // Compact fields
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub trigger: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_instructions: Option<String>,
 
-    // Permission fields
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub permission_suggestions: Option<serde_json::Value>,
 
-    /// Any JSON fields not matched by a named field above.
-    ///
-    /// Using `#[serde(flatten)]` here is the key to forward-compatibility:
-    /// if Claude Code adds a new field that this crate does not yet know
-    /// about, it lands here rather than causing a deserialization error. The
-    /// server receives it anyway because `HookEvent` is re-serialized into
-    /// the outbound `EventPayload`.
+    /// Any JSON fields not matched by a named field above (forward-compat capture).
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-impl HookEvent {
-    /// Parse a [`HookEvent`] from the process's stdin.
+impl RawHookEvent {
+    /// Parse a [`RawHookEvent`] from the process's stdin.
     ///
     /// This is the normal production path: Claude Code pipes the event JSON
     /// to the hook binary's stdin before invoking it.
@@ -138,12 +99,50 @@ impl HookEvent {
         Self::from_reader(reader)
     }
 
-    /// Parse a [`HookEvent`] from any `Read` source.
+    /// Parse a [`RawHookEvent`] from any `Read` source.
     ///
     /// Separated from [`from_stdin`](Self::from_stdin) to allow unit tests to
     /// pass a byte slice instead of touching actual stdin.
     pub fn from_reader<R: io::Read>(reader: R) -> Result<Self, EventError> {
         serde_json::from_reader(reader).map_err(EventError::ParseFailed)
+    }
+}
+
+/// The trimmed event DTO sent over the wire to the Claudiator server.
+///
+/// Contains only the 7 fields the server actually reads. All high-sensitivity
+/// fields (`tool_input`, `tool_output`, `tool_response`, `custom_instructions`,
+/// `transcript_path`, etc.) are intentionally absent — they never leave the
+/// client machine.
+///
+/// Produced from a [`RawHookEvent`] via `HookEvent::from(raw)`.
+#[derive(Debug, Serialize)]
+pub struct HookEvent {
+    pub session_id: String,
+    pub hook_event_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notification_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl From<RawHookEvent> for HookEvent {
+    fn from(raw: RawHookEvent) -> Self {
+        Self {
+            session_id: raw.session_id,
+            hook_event_name: raw.hook_event_name,
+            cwd: raw.cwd,
+            prompt: raw.prompt,
+            notification_type: raw.notification_type,
+            tool_name: raw.tool_name,
+            message: raw.message,
+        }
     }
 }
 
@@ -171,7 +170,7 @@ mod tests {
             "subagent_type": "coder"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -205,7 +204,7 @@ mod tests {
             "another_unknown": 42
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -230,7 +229,7 @@ mod tests {
             "hook_event_name": "minimal"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -278,7 +277,7 @@ mod tests {
             "stop_hook_active": false
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -298,7 +297,7 @@ mod tests {
             "tool_use_id": "tu-789"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -320,7 +319,7 @@ mod tests {
             "permission_mode": "default"
         }"#;
 
-        let event = HookEvent::from_reader(json.as_bytes());
+        let event = RawHookEvent::from_reader(json.as_bytes());
         assert!(event.is_ok());
         let Ok(event) = event else { return };
 
@@ -329,5 +328,38 @@ mod tests {
         assert_eq!(event.source, Some("vscode".to_string()));
         assert_eq!(event.agent_type, Some("main".to_string()));
         assert!(event.extra.is_empty());
+    }
+
+    #[test]
+    fn test_hook_event_from_raw_maps_only_seven_fields() {
+        let json = r#"{
+            "session_id": "sess-abc",
+            "hook_event_name": "Notification",
+            "cwd": "/workspace",
+            "prompt": "Do the thing",
+            "notification_type": "info",
+            "tool_name": "bash",
+            "message": "All done",
+            "tool_input": {"command": "rm -rf /"},
+            "custom_instructions": "super secret",
+            "transcript_path": "/private/transcript.json"
+        }"#;
+
+        let raw = RawHookEvent::from_reader(json.as_bytes()).unwrap();
+        let dto = HookEvent::from(raw);
+
+        assert_eq!(dto.session_id, "sess-abc");
+        assert_eq!(dto.hook_event_name, "Notification");
+        assert_eq!(dto.cwd, Some("/workspace".to_string()));
+        assert_eq!(dto.prompt, Some("Do the thing".to_string()));
+        assert_eq!(dto.notification_type, Some("info".to_string()));
+        assert_eq!(dto.tool_name, Some("bash".to_string()));
+        assert_eq!(dto.message, Some("All done".to_string()));
+
+        // Verify the trimmed DTO serializes without sensitive fields
+        let serialized = serde_json::to_string(&dto).unwrap();
+        assert!(!serialized.contains("tool_input"));
+        assert!(!serialized.contains("custom_instructions"));
+        assert!(!serialized.contains("transcript_path"));
     }
 }

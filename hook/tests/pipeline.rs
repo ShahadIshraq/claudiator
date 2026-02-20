@@ -1,13 +1,13 @@
 //! Integration tests for the full hook pipeline.
 //!
 //! These tests exercise the path that production code takes:
-//!   raw JSON (stdin) → HookEvent → EventPayload → serialized JSON body
+//!   raw JSON (stdin) → RawHookEvent → HookEvent (trimmed DTO) → EventPayload → serialized JSON body
 //!
 //! No real HTTP server is needed; we verify that the intermediate structs
 //! are correctly built and that the final JSON body has the expected shape.
 
 use claudiator_hook::config::Config;
-use claudiator_hook::event::HookEvent;
+use claudiator_hook::event::RawHookEvent;
 use claudiator_hook::payload::EventPayload;
 
 // ---------------------------------------------------------------------------
@@ -27,8 +27,8 @@ fn make_config(server_url: &str) -> Config {
     }
 }
 
-fn parse_event(json: &str) -> HookEvent {
-    HookEvent::from_reader(json.as_bytes()).expect("JSON should parse into HookEvent")
+fn parse_event(json: &str) -> RawHookEvent {
+    RawHookEvent::from_reader(json.as_bytes()).expect("JSON should parse into RawHookEvent")
 }
 
 // ---------------------------------------------------------------------------
@@ -116,13 +116,18 @@ fn test_pipeline_notification_event() {
     assert_eq!(body_value["event"]["hook_event_name"], "Notification");
     assert_eq!(body_value["event"]["notification_type"], "progress");
     assert_eq!(body_value["event"]["message"], "Compiling…");
-    assert_eq!(body_value["event"]["title"], "Build");
+    // title is not in the trimmed HookEvent DTO so it must not appear
+    assert!(
+        body_value["event"].get("title").is_none(),
+        "title must not appear in trimmed DTO"
+    );
 }
 
 #[test]
-fn test_pipeline_unknown_fields_forwarded_to_server() {
-    // Claude Code may add new fields the hook doesn't know about yet.
-    // They must survive the parse → payload → serialize round-trip.
+fn test_pipeline_unknown_fields_not_forwarded_to_server() {
+    // Unknown fields are captured in RawHookEvent::extra but are intentionally
+    // dropped when the trimmed HookEvent DTO is produced — they must not appear
+    // in the outbound payload.
     let raw = r#"{
         "session_id": "sess-forward",
         "hook_event_name": "FutureEvent",
@@ -132,7 +137,7 @@ fn test_pipeline_unknown_fields_forwarded_to_server() {
 
     let event = parse_event(raw);
 
-    // Extra fields are captured in the `extra` map.
+    // Extra fields are captured in the `extra` map on the raw event.
     assert_eq!(
         event.extra.get("brand_new_field"),
         Some(&serde_json::Value::String("preserved".to_string()))
@@ -143,9 +148,15 @@ fn test_pipeline_unknown_fields_forwarded_to_server() {
     let body = serde_json::to_string(&payload).expect("payload must serialize");
     let body_value: serde_json::Value = serde_json::from_str(&body).expect("must be valid JSON");
 
-    // Unknown fields must appear in the serialized event (flattened).
-    assert_eq!(body_value["event"]["brand_new_field"], "preserved");
-    assert_eq!(body_value["event"]["numeric_extra"], 99);
+    // Unknown fields must NOT appear in the serialized trimmed DTO.
+    assert!(
+        body_value["event"].get("brand_new_field").is_none(),
+        "unknown fields must not appear in trimmed DTO"
+    );
+    assert!(
+        body_value["event"].get("numeric_extra").is_none(),
+        "unknown fields must not appear in trimmed DTO"
+    );
 }
 
 #[test]
@@ -164,8 +175,15 @@ fn test_pipeline_stop_event() {
     let body_value: serde_json::Value = serde_json::from_str(&body).expect("must be valid JSON");
 
     assert_eq!(body_value["event"]["hook_event_name"], "Stop");
-    assert_eq!(body_value["event"]["stop_hook_active"], false);
-    assert_eq!(body_value["event"]["reason"], "user_cancelled");
+    // stop_hook_active and reason are not in the trimmed DTO
+    assert!(
+        body_value["event"].get("stop_hook_active").is_none(),
+        "stop_hook_active must not appear in trimmed DTO"
+    );
+    assert!(
+        body_value["event"].get("reason").is_none(),
+        "reason must not appear in trimmed DTO"
+    );
 }
 
 #[test]
@@ -190,7 +208,7 @@ fn test_pipeline_timestamp_is_rfc3339_with_millis() {
 #[test]
 fn test_pipeline_invalid_json_returns_error() {
     let bad_json = "{ not valid json }";
-    let result = HookEvent::from_reader(bad_json.as_bytes());
+    let result = RawHookEvent::from_reader(bad_json.as_bytes());
     assert!(result.is_err(), "invalid JSON must return an error");
 }
 
@@ -198,7 +216,7 @@ fn test_pipeline_invalid_json_returns_error() {
 fn test_pipeline_missing_required_fields_returns_error() {
     // session_id and hook_event_name are required (not Option<>).
     let missing_fields = r#"{"cwd": "/tmp"}"#;
-    let result = HookEvent::from_reader(missing_fields.as_bytes());
+    let result = RawHookEvent::from_reader(missing_fields.as_bytes());
     assert!(
         result.is_err(),
         "missing required fields must return an error"

@@ -1,7 +1,7 @@
 //! The outbound event payload sent to the Claudiator server.
 //!
-//! [`EventPayload`] wraps the raw [`HookEvent`] with device metadata and a
-//! server-side timestamp. The server uses the device fields to associate
+//! [`EventPayload`] wraps the trimmed [`HookEvent`] DTO with device metadata
+//! and a server-side timestamp. The server uses the device fields to associate
 //! events with a specific registered device, and the timestamp for accurate
 //! ordering of events that arrive out of order due to network delays.
 
@@ -9,7 +9,7 @@ use chrono::{SecondsFormat, Utc};
 use serde::Serialize;
 
 use crate::config::Config;
-use crate::event::HookEvent;
+use crate::event::{HookEvent, RawHookEvent};
 
 /// Device identity fields included with every event.
 ///
@@ -27,15 +27,19 @@ pub struct DeviceInfo {
 pub struct EventPayload {
     /// Device that produced this event.
     pub device: DeviceInfo,
-    /// The raw hook event from Claude Code, forwarded as-is.
+    /// The trimmed hook event DTO — only server-used fields, no sensitive data.
     pub event: HookEvent,
     /// RFC 3339 timestamp (millisecond precision) of when this payload was created.
     pub timestamp: String,
 }
 
 impl EventPayload {
-    /// Build a payload from the loaded config and a parsed hook event.
-    pub fn new(config: &Config, event: HookEvent) -> Self {
+    /// Build a payload from the loaded config and a raw parsed hook event.
+    ///
+    /// The raw event is converted to the trimmed [`HookEvent`] DTO via
+    /// [`From`] before being wrapped, ensuring sensitive fields are dropped
+    /// at this boundary.
+    pub fn new(config: &Config, raw: RawHookEvent) -> Self {
         let device = DeviceInfo {
             device_id: config.device_id.clone(),
             device_name: config.device_name.clone(),
@@ -46,7 +50,7 @@ impl EventPayload {
 
         Self {
             device,
-            event,
+            event: HookEvent::from(raw),
             timestamp,
         }
     }
@@ -55,7 +59,7 @@ impl EventPayload {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event::HookEvent;
+    use crate::event::RawHookEvent;
     use std::collections::HashMap;
 
     fn create_test_config() -> Config {
@@ -71,8 +75,8 @@ mod tests {
         }
     }
 
-    fn create_test_event() -> HookEvent {
-        HookEvent {
+    fn create_test_raw_event() -> RawHookEvent {
+        RawHookEvent {
             session_id: "sess-123".to_string(),
             hook_event_name: "test_event".to_string(),
             cwd: None,
@@ -113,9 +117,9 @@ mod tests {
     #[test]
     fn test_new_payload_device_fields() {
         let config = create_test_config();
-        let event = create_test_event();
+        let raw = create_test_raw_event();
 
-        let payload = EventPayload::new(&config, event);
+        let payload = EventPayload::new(&config, raw);
 
         assert_eq!(
             payload.device.device_id,
@@ -128,9 +132,9 @@ mod tests {
     #[test]
     fn test_new_payload_timestamp_valid_rfc3339() {
         let config = create_test_config();
-        let event = create_test_event();
+        let raw = create_test_raw_event();
 
-        let payload = EventPayload::new(&config, event);
+        let payload = EventPayload::new(&config, raw);
 
         // Parse the timestamp back to verify it's valid RFC3339
         let parsed = chrono::DateTime::parse_from_rfc3339(&payload.timestamp);
@@ -147,13 +151,31 @@ mod tests {
     #[test]
     fn test_new_payload_event_preserved() {
         let config = create_test_config();
-        let event = create_test_event();
-        let original_session_id = event.session_id.clone();
-        let original_event_name = event.hook_event_name.clone();
+        let raw = create_test_raw_event();
+        let original_session_id = raw.session_id.clone();
+        let original_event_name = raw.hook_event_name.clone();
 
-        let payload = EventPayload::new(&config, event);
+        let payload = EventPayload::new(&config, raw);
 
         assert_eq!(payload.event.session_id, original_session_id);
         assert_eq!(payload.event.hook_event_name, original_event_name);
+    }
+
+    #[test]
+    fn test_new_payload_drops_sensitive_fields() {
+        let config = create_test_config();
+        let mut raw = create_test_raw_event();
+        raw.tool_input = Some(serde_json::json!({"command": "secret"}));
+        raw.custom_instructions = Some("very secret instructions".to_string());
+        raw.transcript_path = Some("/private/transcript.json".to_string());
+
+        let payload = EventPayload::new(&config, raw);
+
+        // Serialize and verify sensitive fields are absent
+        let json = serde_json::to_string(&payload).unwrap();
+        assert!(!json.contains("tool_input"));
+        assert!(!json.contains("custom_instructions"));
+        assert!(!json.contains("transcript_path"));
+        assert!(!json.contains("secret"));
     }
 }
