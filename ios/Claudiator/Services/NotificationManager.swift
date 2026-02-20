@@ -117,7 +117,7 @@ class NotificationManager {
     }
 
     func markAllRead(apiClient: APIClient) async {
-        let ids = unreadNotifications.map { $0.notificationId }
+        let ids = unreadNotifications.map(\.notificationId)
         guard !ids.isEmpty else { return }
 
         // Update read IDs
