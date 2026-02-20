@@ -89,7 +89,9 @@ The hook automatically:
 - Runs `cargo clippy` with the same flags as CI — blocks the commit on warnings
 
 **iOS (Swift):**
-- Runs SwiftFormat (auto-fix) and SwiftLint (strict) on staged `.swift` files
+- Runs SwiftFormat (auto-fix) on staged `.swift` files and re-stages them
+- Runs SwiftFormat lint on the whole `ios/Claudiator/` tree — blocks on any violation in any file
+- Runs SwiftLint (strict) on staged `.swift` files
 
 ### Dependency Auditing
 
