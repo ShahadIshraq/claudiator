@@ -74,28 +74,22 @@ See [ios/README.md](ios/README.md) for the iOS app build instructions and archit
 
 ### Pre-commit Hooks
 
-This repository includes pre-commit hooks to ensure code quality across all components. To enable them:
+This repository includes a pre-commit hook to enforce code quality. Install it once after cloning:
 
 ```bash
-git config core.hooksPath .githooks
+./install-hooks.sh
 ```
 
-The pre-commit hook automatically runs the following checks:
+This symlinks `.githooks/pre-commit` into `.git/hooks/` — the default location git checks on every commit with no extra config required.
 
-**Hook (Rust):**
-- Format check: `cargo fmt --check`
-- Linting: `cargo clippy --all-targets -- -D warnings`
-- Tests: `cargo test --quiet`
+The hook automatically:
 
-**Server (Rust):**
-- Format check: `cargo fmt --check`
-- Linting: `cargo clippy --all-targets -- -D warnings`
-- Tests: `cargo test --quiet`
+**Rust (hook/ and server/):**
+- Runs `cargo fmt` and re-stages any reformatted files
+- Formatting is fixed in place; the commit proceeds with clean code
 
 **iOS (Swift):**
-- SwiftFormat and SwiftLint checks (when implemented)
-
-All checks must pass before you can commit. If formatting fails, run `cargo fmt` in the respective directory to fix it automatically.
+- Runs SwiftFormat (auto-fix) and SwiftLint (strict) on staged `.swift` files
 
 ### Dependency Auditing
 
