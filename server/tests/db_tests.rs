@@ -1071,6 +1071,7 @@ fn test_api_key_insert_and_list() {
     assert_eq!(keys[0].scopes, "write");
     assert_eq!(keys[0].created_at, now);
     assert!(keys[0].last_used.is_none());
+    assert!(keys[0].rate_limit.is_none());
 }
 
 #[test]
@@ -1219,4 +1220,50 @@ fn test_api_key_scopes_comma_separated() {
         .unwrap()
         .unwrap();
     assert_eq!(row.scopes, "read,write");
+}
+
+#[test]
+fn test_api_key_rate_limit_persists() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(
+        &conn,
+        "rl-1",
+        "limited",
+        "claud_limited",
+        "read",
+        &now,
+        Some(500),
+    )
+    .unwrap();
+
+    let row = queries::find_api_key_by_key(&conn, "claud_limited")
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.rate_limit, Some(500));
+}
+
+#[test]
+fn test_api_key_rate_limit_null_when_not_set() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(
+        &conn,
+        "rl-2",
+        "unlimited",
+        "claud_unlimited",
+        "read",
+        &now,
+        None,
+    )
+    .unwrap();
+
+    let row = queries::find_api_key_by_key(&conn, "claud_unlimited")
+        .unwrap()
+        .unwrap();
+    assert!(row.rate_limit.is_none());
 }

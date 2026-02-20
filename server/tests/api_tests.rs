@@ -1436,3 +1436,111 @@ async fn test_lifecycle_write_only_key() {
         .await;
     read_resp.assert_status(StatusCode::FORBIDDEN);
 }
+
+// ── Rate limiting tests ──────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_create_key_with_rate_limit_reflected_in_response() {
+    let state = make_state();
+    let server = admin_test_server_from_state(state);
+
+    let payload = serde_json::json!({"name": "limited", "scopes": ["read"], "rate_limit": 5});
+    let response = server
+        .post("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&payload)
+        .await;
+
+    response.assert_status(StatusCode::CREATED);
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["rate_limit"], 5);
+}
+
+#[tokio::test]
+async fn test_create_key_without_rate_limit_omitted_from_response() {
+    let state = make_state();
+    let server = admin_test_server_from_state(state);
+
+    let payload = serde_json::json!({"name": "default-limited", "scopes": ["read"]});
+    let response = server
+        .post("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&payload)
+        .await;
+
+    response.assert_status(StatusCode::CREATED);
+    let json: serde_json::Value = response.json();
+    // rate_limit not set — should be absent from response
+    assert!(json.get("rate_limit").is_none() || json["rate_limit"].is_null());
+}
+
+#[tokio::test]
+async fn test_key_rate_limit_enforced() {
+    let state = make_state();
+    let server = admin_test_server_from_state(state);
+
+    // Create a key with a rate_limit of 3
+    let payload = serde_json::json!({"name": "tight", "scopes": ["read"], "rate_limit": 3});
+    let create_resp: serde_json::Value = server
+        .post("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&payload)
+        .await
+        .json();
+    let key = create_resp["key"].as_str().unwrap().to_string();
+
+    // Requests 1-3 should succeed
+    for _ in 0..3 {
+        let resp = server
+            .get("/api/v1/ping")
+            .add_header("Authorization", &format!("Bearer {}", key))
+            .await;
+        resp.assert_status_ok();
+    }
+
+    // Request 4 should be rate-limited
+    let resp = server
+        .get("/api/v1/ping")
+        .add_header("Authorization", &format!("Bearer {}", key))
+        .await;
+    resp.assert_status(StatusCode::TOO_MANY_REQUESTS);
+    let json: serde_json::Value = resp.json();
+    assert_eq!(json["error"], "rate_limited");
+}
+
+#[tokio::test]
+async fn test_list_keys_shows_rate_limit() {
+    let state = make_state();
+    let server = admin_test_server_from_state(state);
+
+    // Create one key with rate_limit and one without
+    let p1 = serde_json::json!({"name": "with-limit", "scopes": ["read"], "rate_limit": 100});
+    server
+        .post("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&p1)
+        .await;
+
+    let p2 = serde_json::json!({"name": "no-limit", "scopes": ["read"]});
+    server
+        .post("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&p2)
+        .await;
+
+    let response = server
+        .get("/admin/api-keys")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let keys = json["keys"].as_array().unwrap();
+    assert_eq!(keys.len(), 2);
+
+    let with_limit = keys.iter().find(|k| k["name"] == "with-limit").unwrap();
+    assert_eq!(with_limit["rate_limit"], 100);
+
+    let no_limit = keys.iter().find(|k| k["name"] == "no-limit").unwrap();
+    assert!(no_limit.get("rate_limit").is_none() || no_limit["rate_limit"].is_null());
+}

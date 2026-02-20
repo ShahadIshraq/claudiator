@@ -527,4 +527,31 @@ mod tests {
 
         assert!(check_key_rate_limit(&map, "key-b", limit).is_ok());
     }
+
+    #[test]
+    fn test_key_rate_limit_window_reset() {
+        let map = make_key_rate_map();
+        let key_id = "reset-key";
+        let limit = 3u32;
+
+        // Exhaust the limit
+        for _ in 0..=limit {
+            let _ = check_key_rate_limit(&map, key_id, limit);
+        }
+        assert!(matches!(
+            check_key_rate_limit(&map, key_id, limit),
+            Err(AppError::RateLimited)
+        ));
+
+        // Backdate window_start past KEY_RATE_WINDOW to simulate expiry
+        {
+            let mut guard = map.lock().unwrap();
+            if let Some(entry) = guard.get_mut(key_id) {
+                entry.1 = Instant::now() - KEY_RATE_WINDOW - Duration::from_secs(1);
+            }
+        }
+
+        // Counter should reset; request should be allowed again
+        assert!(check_key_rate_limit(&map, key_id, limit).is_ok());
+    }
 }
