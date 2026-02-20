@@ -52,6 +52,15 @@ struct NotificationListView: View {
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if !notificationManager.unreadNotifications.isEmpty {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Mark All Read") {
+                            Task {
+                                await notificationManager.markAllRead(apiClient: apiClient)
+                            }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         dismiss()

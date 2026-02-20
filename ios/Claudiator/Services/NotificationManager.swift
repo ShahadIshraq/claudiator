@@ -116,6 +116,22 @@ class NotificationManager {
         try? await apiClient.acknowledgeNotifications(ids: [notificationId])
     }
 
+    func markAllRead(apiClient: APIClient) async {
+        let ids = unreadNotifications.map { $0.notificationId }
+        guard !ids.isEmpty else { return }
+
+        // Update read IDs
+        var readIds = getReadNotificationIds()
+        readIds.formUnion(ids)
+        saveReadNotificationIds(readIds)
+
+        // Update unread notifications
+        unreadNotifications.removeAll()
+
+        // Acknowledge on server
+        try? await apiClient.acknowledgeNotifications(ids: ids)
+    }
+
     // MARK: - Private Methods
 
     private func fireLocalNotification(_ notif: AppNotification) async {

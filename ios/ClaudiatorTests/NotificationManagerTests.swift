@@ -137,6 +137,53 @@ struct NotificationManagerTests {
         #expect(manager.unreadNotifications.count == 1)
     }
 
+    // MARK: - markAllRead Tests
+
+    @Test("markAllRead clears all unread notifications")
+    func testMarkAllRead() async {
+        let manager = NotificationManager()
+        let mockClient = MockAPIClient()
+
+        let notif1 = createTestNotification(id: "notif1", sessionId: "sess1")
+        let notif2 = createTestNotification(id: "notif2", sessionId: "sess2")
+        let notif3 = createTestNotification(id: "notif3", sessionId: "sess2")
+
+        manager.allNotifications = [notif1, notif2, notif3]
+        manager.unreadNotifications = [notif1, notif2, notif3]
+
+        await manager.markAllRead(apiClient: mockClient)
+
+        #expect(manager.unreadNotifications.isEmpty)
+        #expect(manager.unreadCount == 0)
+    }
+
+    @Test("markAllRead when empty is a no-op")
+    func testMarkAllReadEmpty() async {
+        let manager = NotificationManager()
+        let mockClient = MockAPIClient()
+
+        await manager.markAllRead(apiClient: mockClient)
+
+        #expect(manager.unreadNotifications.isEmpty)
+        #expect(manager.unreadCount == 0)
+    }
+
+    @Test("sessionsWithNotifications is empty after markAllRead")
+    func testSessionsWithNotificationsAfterMarkAllRead() async {
+        let manager = NotificationManager()
+        let mockClient = MockAPIClient()
+
+        let notif1 = createTestNotification(id: "notif1", sessionId: "sess1")
+        let notif2 = createTestNotification(id: "notif2", sessionId: "sess2")
+
+        manager.allNotifications = [notif1, notif2]
+        manager.unreadNotifications = [notif1, notif2]
+
+        await manager.markAllRead(apiClient: mockClient)
+
+        #expect(manager.sessionsWithNotifications.isEmpty)
+    }
+
     // MARK: - sessionsWithNotifications Tests
 
     @Test("sessionsWithNotifications returns unique session IDs")
