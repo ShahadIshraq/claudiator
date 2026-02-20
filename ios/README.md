@@ -28,11 +28,13 @@ ios/
 │   │   ├── Device.swift               — Device data model
 │   │   ├── Session.swift              — Session data model (includes title)
 │   │   ├── Event.swift                — Event data model
+│   │   ├── AppNotification.swift      — Notification data model
 │   │   └── Extensions.swift           — Codable/Hashable extensions
 │   ├── Services/
 │   │   ├── APIClient.swift            — REST API client (URLSession, async/await)
 │   │   ├── KeychainService.swift      — Secure credential storage
 │   │   ├── NotificationService.swift  — Push notification permission and remote notification registration
+│   │   ├── NotificationManager.swift  — Notification deduplication, local banners, acknowledgement
 │   │   └── VersionMonitor.swift       — Notification version tracking for polling fallback
 │   ├── Theme/
 │   │   ├── AppTheme.swift             — Theme protocol and color definitions
@@ -44,15 +46,25 @@ ios/
 │   │   ├── EventListViewModel.swift   — Event timeline state
 │   │   ├── SessionListViewModel.swift — Per-device session state
 │   │   └── SetupViewModel.swift       — Onboarding/setup flow state
+│   ├── Utilities/
+│   │   └── URLValidator.swift         — URL validation
 │   └── Views/
 │       ├── SetupView.swift            — Server URL + API key onboarding
 │       ├── DeviceListView.swift       — Device list tab
 │       ├── DeviceDetailView.swift     — Device sessions view
-│       ├── AllSessionsView.swift      — Cross-device sessions tab
+│       ├── AllSessionsView.swift      — Cross-device sessions tab (with optional device grouping)
+│       ├── AllSessionRow.swift        — Session row for all-sessions view
+│       ├── DeviceGroupHeader.swift    — Collapsible group header (grouped sessions view)
+│       ├── DeviceGroupCard.swift      — Device group card (grouped sessions view)
 │       ├── SessionDetailView.swift    — Session detail with event timeline
 │       ├── SessionRow.swift           — Session list row component
 │       ├── EventRow.swift             — Event timeline row component
+│       ├── NotificationListView.swift — Full-screen notification list sheet
 │       ├── SettingsView.swift         — Settings tab (theme, server config)
+│       ├── Settings/
+│       │   ├── AppearanceSection.swift   — Theme and appearance controls
+│       │   ├── ServerConfigSection.swift — Server URL and API key settings
+│       │   └── DangerZoneSection.swift   — Disconnect / reset options
 │       └── Helpers.swift              — Shared display utilities
 ```
 
@@ -191,9 +203,10 @@ Authorization: Bearer <api_key>
 - `GET /api/v1/ping` — Health check and version info
 - `GET /api/v1/devices` — List all devices
 - `GET /api/v1/devices/:device_id/sessions` — Sessions for a device
+- `GET /api/v1/sessions` — All sessions across all devices
 - `GET /api/v1/sessions/:session_id/events` — Events for a session
 - `GET /api/v1/notifications?after={uuid}&limit={n}` — Fetch notifications
-- `POST /api/v1/notifications/:id/ack` — Mark notification as acknowledged
+- `POST /api/v1/notifications/ack` — Bulk acknowledge notifications
 - `POST /api/v1/push/register` — Register APNs token (includes `sandbox` boolean)
 
 See the [server API documentation](../server/API.md) for full request/response schemas.
