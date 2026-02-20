@@ -25,6 +25,22 @@ Claudiator is a lightweight system that captures Claude Code hook events and for
 4. The server sends push notifications to your iOS device when sessions need attention (stopped, waiting for permission, idle)
 5. You see all active sessions across devices in the iOS app and orchestrate parallel agent work
 
+## Data Sent to the Server
+
+`claudiator-hook` trims every event to exactly 7 fields before transmission. Everything else — including `tool_input`, `tool_output`, `tool_response`, `custom_instructions`, and `transcript_path` — is discarded on the client machine and never leaves it.
+
+| Field | Purpose |
+|---|---|
+| `session_id` | Identifies the session |
+| `hook_event_name` | Event type (e.g. `Stop`, `Notification`) |
+| `cwd` | Working directory shown in the app |
+| `prompt` | Session title (from `UserPromptSubmit`) |
+| `notification_type` | Notification routing |
+| `tool_name` | Shown in notification body |
+| `message` | Notification message text |
+
+This is what gets stored in the server database. No file contents, no conversation data, no instructions.
+
 ## Architecture
 
 See [plans/ARCHITECTURE.md](plans/ARCHITECTURE.md) for the full architecture diagram and data flow.
