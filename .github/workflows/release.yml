@@ -41,6 +41,63 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }} --manifest-path hook/Cargo.toml
 
+      - name: Sign binary (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          # Import certificate into a temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 20)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$APPLE_CERTIFICATE" | base64 --decode -o "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Sign the binary
+          BINARY=hook/target/${{ matrix.target }}/release/claudiator-hook
+          codesign --options runtime --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            "$BINARY"
+          codesign --verify --verbose "$BINARY"
+
+      - name: Notarize binary (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          BINARY=hook/target/${{ matrix.target }}/release/claudiator-hook
+          SUBMIT_ZIP=$RUNNER_TEMP/claudiator-hook-notarize.zip
+
+          # Apple notarytool requires a zip for plain binary submission
+          ditto -c -k --keepParent "$BINARY" "$SUBMIT_ZIP"
+
+          xcrun notarytool submit "$SUBMIT_ZIP" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait \
+            --timeout 30m
+
+          # Note: stapling to a plain binary is not supported by Apple.
+          # The notarization ticket is stored in Apple's database.
+          # Gatekeeper checks it online on first run.
+
+          rm "$SUBMIT_ZIP"
+
       - name: Package (Unix)
         if: runner.os != 'Windows'
         run: tar czf claudiator-hook-${{ matrix.target }}.tar.gz -C hook/target/${{ matrix.target }}/release claudiator-hook
