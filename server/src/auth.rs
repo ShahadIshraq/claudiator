@@ -393,4 +393,78 @@ mod tests {
         let scopes = vec![Scope::Read, Scope::Write];
         assert_eq!(format_scopes(&scopes), "read,write");
     }
+
+    #[test]
+    fn test_parse_scopes_invalid_values_skipped() {
+        let scopes = parse_scopes("read,foo,write");
+        assert_eq!(scopes, vec![Scope::Read, Scope::Write]);
+    }
+
+    #[test]
+    fn test_parse_scopes_empty_string() {
+        let scopes = parse_scopes("");
+        assert!(scopes.is_empty());
+    }
+
+    #[test]
+    fn test_parse_scopes_with_whitespace() {
+        let scopes = parse_scopes(" read , write ");
+        assert_eq!(scopes, vec![Scope::Read, Scope::Write]);
+    }
+
+    #[test]
+    fn test_format_scopes_read_only() {
+        assert_eq!(format_scopes(&[Scope::Read]), "read");
+    }
+
+    #[test]
+    fn test_format_scopes_write_only() {
+        assert_eq!(format_scopes(&[Scope::Write]), "write");
+    }
+
+    #[test]
+    fn test_format_scopes_empty() {
+        assert_eq!(format_scopes(&[]), "");
+    }
+
+    #[test]
+    fn test_extract_bearer_token_valid() {
+        let mut headers = HeaderMap::new();
+        headers.insert("Authorization", "Bearer abc123".parse().unwrap());
+        assert_eq!(extract_bearer_token(&headers), Some("abc123"));
+    }
+
+    #[test]
+    fn test_extract_bearer_token_missing_header() {
+        let headers = HeaderMap::new();
+        assert_eq!(extract_bearer_token(&headers), None);
+    }
+
+    #[test]
+    fn test_extract_bearer_token_wrong_scheme() {
+        let mut headers = HeaderMap::new();
+        headers.insert("Authorization", "Basic abc123".parse().unwrap());
+        assert_eq!(extract_bearer_token(&headers), None);
+    }
+
+    #[test]
+    fn test_extract_bearer_token_empty_after_bearer() {
+        let mut headers = HeaderMap::new();
+        headers.insert("Authorization", "Bearer ".parse().unwrap());
+        assert_eq!(extract_bearer_token(&headers), Some(""));
+    }
+
+    #[test]
+    fn test_extract_bearer_token_no_space() {
+        let mut headers = HeaderMap::new();
+        headers.insert("Authorization", "Bearerabc123".parse().unwrap());
+        assert_eq!(extract_bearer_token(&headers), None);
+    }
+
+    #[test]
+    fn test_scope_equality() {
+        assert_eq!(Scope::Read, Scope::Read);
+        assert_eq!(Scope::Write, Scope::Write);
+        assert_ne!(Scope::Read, Scope::Write);
+    }
 }

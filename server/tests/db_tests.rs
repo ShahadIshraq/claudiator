@@ -1045,3 +1045,160 @@ fn test_full_retention_cascade() {
     let events = queries::list_events(&conn, "new-session", 10).unwrap();
     assert_eq!(events.len(), 1);
 }
+
+#[test]
+fn test_api_key_insert_and_list() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(
+        &conn,
+        "key-id-1",
+        "hook-client",
+        "claud_abc123",
+        "write",
+        &now,
+    )
+    .unwrap();
+
+    let keys = queries::list_api_keys(&conn).unwrap();
+    assert_eq!(keys.len(), 1);
+    assert_eq!(keys[0].id, "key-id-1");
+    assert_eq!(keys[0].name, "hook-client");
+    assert_eq!(keys[0].key, "claud_abc123");
+    assert_eq!(keys[0].scopes, "write");
+    assert_eq!(keys[0].created_at, now);
+    assert!(keys[0].last_used.is_none());
+}
+
+#[test]
+fn test_api_key_list_empty() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let keys = queries::list_api_keys(&conn).unwrap();
+    assert!(keys.is_empty());
+}
+
+#[test]
+fn test_api_key_list_multiple_ordered_by_created_at() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    let t1 = "2024-01-01T10:00:00Z";
+    let t2 = "2024-01-01T11:00:00Z";
+    let t3 = "2024-01-01T12:00:00Z";
+
+    // Insert in non-sequential order
+    queries::insert_api_key(&conn, "id-2", "second", "claud_key2", "read", t2).unwrap();
+    queries::insert_api_key(&conn, "id-1", "first", "claud_key1", "write", t1).unwrap();
+    queries::insert_api_key(&conn, "id-3", "third", "claud_key3", "read,write", t3).unwrap();
+
+    let keys = queries::list_api_keys(&conn).unwrap();
+    assert_eq!(keys.len(), 3);
+    assert_eq!(keys[0].id, "id-1");
+    assert_eq!(keys[1].id, "id-2");
+    assert_eq!(keys[2].id, "id-3");
+}
+
+#[test]
+fn test_api_key_find_by_key_existing() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(&conn, "id-1", "ios-app", "claud_findme", "read", &now).unwrap();
+
+    let result = queries::find_api_key_by_key(&conn, "claud_findme").unwrap();
+    assert!(result.is_some());
+    let row = result.unwrap();
+    assert_eq!(row.id, "id-1");
+    assert_eq!(row.name, "ios-app");
+    assert_eq!(row.scopes, "read");
+}
+
+#[test]
+fn test_api_key_find_by_key_not_found() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    let result = queries::find_api_key_by_key(&conn, "claud_doesnotexist").unwrap();
+    assert!(result.is_none());
+}
+
+#[test]
+fn test_api_key_delete() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(&conn, "id-1", "to-delete", "claud_deleteme", "read", &now).unwrap();
+
+    let keys_before = queries::list_api_keys(&conn).unwrap();
+    assert_eq!(keys_before.len(), 1);
+
+    queries::delete_api_key(&conn, "id-1").unwrap();
+
+    let keys_after = queries::list_api_keys(&conn).unwrap();
+    assert!(keys_after.is_empty());
+}
+
+#[test]
+fn test_api_key_delete_nonexistent_is_ok() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    // Should not error
+    queries::delete_api_key(&conn, "nonexistent-id").unwrap();
+}
+
+#[test]
+fn test_api_key_update_last_used() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(&conn, "id-1", "test", "claud_key", "read,write", &now).unwrap();
+
+    // Initially null
+    let row = queries::find_api_key_by_key(&conn, "claud_key")
+        .unwrap()
+        .unwrap();
+    assert!(row.last_used.is_none());
+
+    // Update
+    let used_at = "2024-06-01T12:00:00Z";
+    queries::update_api_key_last_used(&conn, "id-1", used_at).unwrap();
+
+    let row = queries::find_api_key_by_key(&conn, "claud_key")
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.last_used.as_deref(), Some(used_at));
+}
+
+#[test]
+fn test_api_key_unique_key_constraint() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(&conn, "id-1", "first", "claud_sameval", "read", &now).unwrap();
+
+    // Inserting a second key with the same `key` value should fail
+    let result = queries::insert_api_key(&conn, "id-2", "second", "claud_sameval", "write", &now);
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_api_key_scopes_comma_separated() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::insert_api_key(&conn, "id-1", "rw", "claud_rw", "read,write", &now).unwrap();
+
+    let row = queries::find_api_key_by_key(&conn, "claud_rw")
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.scopes, "read,write");
+}
