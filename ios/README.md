@@ -6,7 +6,7 @@ A SwiftUI iOS app for monitoring Claude Code sessions across devices in real-tim
 
 Claudiator is a pure SwiftUI mobile client that connects to a Claudiator server to display live session monitoring across all your development machines. It provides a device-centric view of active sessions, event timelines, and customizable themes with automatic refresh and direct APNs push notification support.
 
-The app requires iOS 17.0+ and has zero external dependencies, using only iOS SDK frameworks.
+The app requires iOS 18.0+ and has zero external dependencies, using only iOS SDK frameworks.
 
 ## Directory Layout
 
@@ -71,7 +71,7 @@ ios/
 ## Prerequisites
 
 - Xcode 16+
-- iOS 17.0+ (target device or simulator)
+- iOS 18.0+ (target device or simulator)
 - XcodeGen (for project generation)
 
 ### Installing XcodeGen

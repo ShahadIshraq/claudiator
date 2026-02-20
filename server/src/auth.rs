@@ -84,7 +84,7 @@ pub fn record_auth_failure(map: &AuthFailureMap, ip: IpAddr) {
     entry.0 = entry.0.saturating_add(1);
 }
 
-// ── Scope & AuthenticatedKey ──────────────────────────────────────────────────
+// ── Scope ─────────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Scope {
@@ -106,33 +106,16 @@ pub fn parse_scopes(s: &str) -> Vec<Scope> {
     s.split(',').filter_map(Scope::from_str).collect()
 }
 
-pub fn format_scopes(scopes: &[Scope]) -> String {
-    scopes
-        .iter()
-        .map(|s| match s {
-            Scope::Read => "read",
-            Scope::Write => "write",
-        })
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
-pub struct AuthenticatedKey {
-    pub id: Option<String>,
-    pub name: String,
-    pub scopes: Vec<Scope>,
-}
-
 // ── Typed extractors ──────────────────────────────────────────────────────────
 
 /// Extractor that requires a valid key with `read` scope.
-pub struct ReadAuth(pub AuthenticatedKey);
+pub struct ReadAuth;
 
 /// Extractor that requires a valid key with `write` scope.
-pub struct WriteAuth(pub AuthenticatedKey);
+pub struct WriteAuth;
 
 /// Extractor for admin endpoints: requires localhost origin + master key.
-pub struct AdminAuth(pub AuthenticatedKey);
+pub struct AdminAuth;
 
 // ── Core resolution logic ─────────────────────────────────────────────────────
 
@@ -148,26 +131,19 @@ fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
 fn resolve_auth(
     headers: &HeaderMap,
     state: &Arc<AppState>,
-    required_scope: Scope,
-) -> Result<AuthenticatedKey, AppError> {
+    required_scope: &Scope,
+) -> Result<(), AppError> {
     let ip = extract_client_ip(headers);
     check_rate_limit(&state.auth_failures, ip)?;
 
-    let token = match extract_bearer_token(headers) {
-        Some(t) => t,
-        None => {
-            record_auth_failure(&state.auth_failures, ip);
-            return Err(AppError::Unauthorized);
-        }
+    let Some(token) = extract_bearer_token(headers) else {
+        record_auth_failure(&state.auth_failures, ip);
+        return Err(AppError::Unauthorized);
     };
 
     // Master key — always read+write
     if token == state.master_key {
-        return Ok(AuthenticatedKey {
-            id: None,
-            name: "master".to_string(),
-            scopes: vec![Scope::Read, Scope::Write],
-        });
+        return Ok(());
     }
 
     // DB key lookup
@@ -176,27 +152,20 @@ fn resolve_auth(
         .get()
         .map_err(|e| AppError::Internal(format!("DB pool error: {e}")))?;
 
-    match queries::find_api_key_by_key(&conn, token)? {
-        Some(row) => {
-            let scopes = parse_scopes(&row.scopes);
+    if let Some(row) = queries::find_api_key_by_key(&conn, token)? {
+        let scopes = parse_scopes(&row.scopes);
 
-            if !scopes.contains(&required_scope) {
-                return Err(AppError::Forbidden);
-            }
-
-            let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-            let _ = queries::update_api_key_last_used(&conn, &row.id, &now);
-
-            Ok(AuthenticatedKey {
-                id: Some(row.id),
-                name: row.name,
-                scopes,
-            })
+        if !scopes.contains(required_scope) {
+            return Err(AppError::Forbidden);
         }
-        None => {
-            record_auth_failure(&state.auth_failures, ip);
-            Err(AppError::Unauthorized)
-        }
+
+        let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+        let _ = queries::update_api_key_last_used(&conn, &row.id, &now);
+
+        Ok(())
+    } else {
+        record_auth_failure(&state.auth_failures, ip);
+        Err(AppError::Unauthorized)
     }
 }
 
@@ -216,7 +185,7 @@ impl FromRequestParts<Arc<AppState>> for ReadAuth {
         'life1: 'async_trait,
         Self: 'async_trait,
     {
-        Box::pin(async move { resolve_auth(&parts.headers, state, Scope::Read).map(ReadAuth) })
+        Box::pin(async move { resolve_auth(&parts.headers, state, &Scope::Read).map(|()| Self) })
     }
 }
 
@@ -234,7 +203,7 @@ impl FromRequestParts<Arc<AppState>> for WriteAuth {
         'life1: 'async_trait,
         Self: 'async_trait,
     {
-        Box::pin(async move { resolve_auth(&parts.headers, state, Scope::Write).map(WriteAuth) })
+        Box::pin(async move { resolve_auth(&parts.headers, state, &Scope::Write).map(|()| Self) })
     }
 }
 
@@ -271,12 +240,9 @@ impl FromRequestParts<Arc<AppState>> for AdminAuth {
             let ip = extract_client_ip(&parts.headers);
             check_rate_limit(&state.auth_failures, ip)?;
 
-            let token = match extract_bearer_token(&parts.headers) {
-                Some(t) => t,
-                None => {
-                    record_auth_failure(&state.auth_failures, ip);
-                    return Err(AppError::Unauthorized);
-                }
+            let Some(token) = extract_bearer_token(&parts.headers) else {
+                record_auth_failure(&state.auth_failures, ip);
+                return Err(AppError::Unauthorized);
             };
 
             if token != state.master_key {
@@ -284,11 +250,7 @@ impl FromRequestParts<Arc<AppState>> for AdminAuth {
                 return Err(AppError::Unauthorized);
             }
 
-            Ok(AdminAuth(AuthenticatedKey {
-                id: None,
-                name: "master".to_string(),
-                scopes: vec![Scope::Read, Scope::Write],
-            }))
+            Ok(Self)
         })
     }
 }
@@ -305,6 +267,17 @@ mod tests {
 
     fn test_ip() -> IpAddr {
         IpAddr::V4(Ipv4Addr::new(1, 2, 3, 4))
+    }
+
+    fn format_scopes(scopes: &[Scope]) -> String {
+        scopes
+            .iter()
+            .map(|s| match s {
+                Scope::Read => "read",
+                Scope::Write => "write",
+            })
+            .collect::<Vec<_>>()
+            .join(",")
     }
 
     #[test]

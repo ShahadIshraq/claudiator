@@ -40,8 +40,7 @@ pub async fn create_api_key_handler(
             }
             other => {
                 return Err(AppError::BadRequest(format!(
-                    "invalid scope '{}': must be 'read' or 'write'",
-                    other
+                    "invalid scope '{other}': must be 'read' or 'write'"
                 )));
             }
         }

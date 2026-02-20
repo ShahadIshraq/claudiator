@@ -28,11 +28,20 @@ if [ -n "$STAGED_RS" ]; then
     echo "Running cargo fmt on hook/..."
     (cd "$REPO_ROOT/hook" && cargo fmt)
     echo "$HOOK_RS" | tr '\n' '\0' | xargs -0 -I{} git add "$REPO_ROOT/{}"
+    echo "Running cargo clippy on hook/..."
+    (cd "$REPO_ROOT/hook" && cargo clippy --all-targets -- -D warnings)
   fi
 
   if [ -n "$SERVER_RS" ]; then
     echo "Running cargo fmt on server/..."
     (cd "$REPO_ROOT/server" && cargo fmt)
     echo "$SERVER_RS" | tr '\n' '\0' | xargs -0 -I{} git add "$REPO_ROOT/{}"
+    echo "Running cargo clippy on server/..."
+    (cd "$REPO_ROOT/server" && cargo clippy -- \
+        -D warnings \
+        -A missing_docs \
+        -A clippy::missing_errors_doc \
+        -A clippy::redundant_pub_crate \
+        -A unreachable_pub)
   fi
 fi

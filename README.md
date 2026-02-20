@@ -86,7 +86,7 @@ The hook automatically:
 
 **Rust (hook/ and server/):**
 - Runs `cargo fmt` and re-stages any reformatted files
-- Formatting is fixed in place; the commit proceeds with clean code
+- Runs `cargo clippy` with the same flags as CI — blocks the commit on warnings
 
 **iOS (Swift):**
 - Runs SwiftFormat (auto-fix) and SwiftLint (strict) on staged `.swift` files
