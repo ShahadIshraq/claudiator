@@ -36,7 +36,11 @@ impl EventPayload {
             platform: config.platform.clone(),
         };
         let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-        Self { device, event, timestamp }
+        Self {
+            device,
+            event,
+            timestamp,
+        }
     }
 }
 
@@ -74,7 +78,10 @@ mod tests {
     #[test]
     fn test_device_fields() {
         let payload = EventPayload::new(&make_config(), make_event());
-        assert_eq!(payload.device.device_id, "550e8400-e29b-41d4-a716-446655440000");
+        assert_eq!(
+            payload.device.device_id,
+            "550e8400-e29b-41d4-a716-446655440000"
+        );
         assert_eq!(payload.device.device_name, "test-machine");
         assert_eq!(payload.device.platform, "mac");
     }

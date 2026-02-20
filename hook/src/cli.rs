@@ -50,7 +50,10 @@ mod tests {
     #[test]
     fn test_parse_send_with_raw_event_log() {
         let cli = Cli::try_parse_from([
-            "claudiator-hook", "send", "--raw-event-log", "/tmp/events.jsonl",
+            "claudiator-hook",
+            "send",
+            "--raw-event-log",
+            "/tmp/events.jsonl",
         ]);
         assert!(cli.is_ok());
         if let Ok(cli) = cli {
