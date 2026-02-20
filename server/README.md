@@ -23,7 +23,7 @@ server/
 │   ├── db/
 │   │   ├── mod.rs
 │   │   ├── pool.rs         — r2d2 connection pool setup
-│   │   ├── migrations.rs   — Schema creation (devices, sessions, events, push_tokens, notifications)
+│   │   ├── migrations.rs   — Schema creation (devices, sessions, events, push_tokens, notifications, api_keys)
 │   │   └── queries.rs      — SQL query functions
 │   ├── models/
 │   │   ├── mod.rs
@@ -36,7 +36,8 @@ server/
 │       ├── devices.rs       — GET /api/v1/devices, GET /api/v1/devices/:id/sessions
 │       ├── sessions.rs      — GET /api/v1/sessions/:id/events
 │       ├── push.rs          — POST /api/v1/push/register
-│       └── notifications.rs — GET /api/v1/notifications
+│       ├── notifications.rs — GET /api/v1/notifications, POST /api/v1/notifications/ack
+│       └── admin.rs         — POST/GET /admin/api-keys, DELETE /admin/api-keys/:id
 └── scripts/
     ├── install.sh           — Linux/systemd installer
     ├── update.sh            — Non-interactive updater
@@ -106,19 +107,29 @@ The database file and WAL files are created automatically on first run.
 
 ## API Endpoints
 
-All endpoints require `Authorization: Bearer <api_key>`.
+All endpoints require `Authorization: Bearer <key>`. The `CLAUDIATOR_API_KEY` master key has full access. Additional scoped keys can be created via the admin API.
+
+| Method | Path | Scope | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/ping` | read | Health check, returns server version, data_version, and notification_version |
+| `POST` | `/api/v1/events` | write | Ingest a hook event from a device |
+| `GET` | `/api/v1/devices` | read | List all devices with active session counts |
+| `GET` | `/api/v1/devices/:device_id/sessions` | read | List sessions for a device |
+| `GET` | `/api/v1/sessions` | read | List all sessions across all devices |
+| `GET` | `/api/v1/sessions/:session_id/events` | read | List events for a session |
+| `POST` | `/api/v1/push/register` | write | Register a mobile push notification token |
+| `GET` | `/api/v1/notifications` | read | List notifications (with optional `after` and `limit` params) |
+| `POST` | `/api/v1/notifications/ack` | write | Bulk acknowledge notifications (accepts `ids` array) |
+
+### Admin API
+
+Admin endpoints manage API keys. They require a **localhost connection** and the **master key**.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/v1/ping` | Health check, returns server version, data_version, and notification_version |
-| `POST` | `/api/v1/events` | Ingest a hook event from a device |
-| `GET` | `/api/v1/devices` | List all devices with active session counts |
-| `GET` | `/api/v1/devices/:device_id/sessions` | List sessions for a device |
-| `GET` | `/api/v1/sessions` | List all sessions across all devices |
-| `GET` | `/api/v1/sessions/:session_id/events` | List events for a session |
-| `POST` | `/api/v1/push/register` | Register a mobile push notification token |
-| `GET` | `/api/v1/notifications` | List notifications (with optional `after` and `limit` params) |
-| `POST` | `/api/v1/notifications/ack` | Bulk acknowledge notifications (accepts `ids` array) |
+| `POST` | `/admin/api-keys` | Create a new scoped API key; body: `{ "name": string, "scopes": ["read"\|"write"] }`; returns 201 with full key |
+| `GET` | `/admin/api-keys` | List all keys (returns `key_prefix` only, not full key) |
+| `DELETE` | `/admin/api-keys/:id` | Delete a key by UUID |
 
 See [API.md](API.md) for full request/response schemas and query parameters.
 
@@ -133,6 +144,7 @@ SQLite with WAL mode enabled. The schema is created automatically on startup.
 - **events** — All hook events with full JSON storage
 - **push_tokens** — Mobile push notification tokens (APNs/FCM) with sandbox tracking
 - **notifications** — Push notification records (UUID primary key, 24h TTL auto-cleanup, acknowledged boolean column)
+- **api_keys** — Scoped API keys (id, name, key, scopes, created_at, last_used)
 - **metadata** — Key-value store for persistent counters (data_version, notification_version)
 
 ### Session Status Values

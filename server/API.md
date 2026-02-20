@@ -9,10 +9,15 @@ All endpoints require authentication via Bearer token in the `Authorization` hea
 Every request must include:
 
 ```
-Authorization: Bearer {api_key}
+Authorization: Bearer {key}
 ```
 
-Requests with a missing or invalid token receive a `401 Unauthorized` response:
+Two key types are accepted:
+
+- **Master key** (`CLAUDIATOR_API_KEY`): Always has full read+write access.
+- **Scoped keys**: Created via the admin API. Each key has one or more scopes (`read`, `write`). Using a key for an endpoint that requires a different scope returns `403 Forbidden`.
+
+Requests with a missing or invalid token receive `401 Unauthorized`. A valid key used on an endpoint requiring a different scope receives `403 Forbidden`.
 
 ```json
 {
@@ -123,7 +128,7 @@ Ingest a hook event from a device.
 | `subagent_id`      | string         | no       | Sub-agent identifier                                 |
 | `subagent_type`    | string         | no       | Sub-agent type                                       |
 
-Unknown fields in the event object are preserved as-is (the hook uses a catch-all for forward compatibility).
+The server stores only the 7 declared fields (`session_id`, `hook_event_name`, `cwd`, `prompt`, `notification_type`, `tool_name`, `message`). All other fields are silently dropped.
 
 `timestamp` — RFC 3339 timestamp with millisecond precision, e.g. `"2025-01-15T10:30:00.123Z"`.
 
@@ -369,13 +374,91 @@ Bulk acknowledge notifications.
 }
 ```
 
+## Admin Endpoints
+
+Admin endpoints manage API keys. They require:
+- A connection from localhost (`127.0.0.1` or `::1`)
+- The master key in the `Authorization` header
+
+Base path: `/admin`
+
+### POST /admin/api-keys
+
+Create a new API key.
+
+**Request Body**
+
+```json
+{
+  "name": "string",
+  "scopes": ["read", "write"]
+}
+```
+
+**Response: 201 Created**
+
+```json
+{
+  "id": "string (UUID)",
+  "name": "string",
+  "key": "string",
+  "scopes": ["string"],
+  "created_at": "string (RFC 3339)"
+}
+```
+
+The `key` field contains the full API key (`claud_<32-hex-chars>`). Store it securely — it is not retrievable after creation.
+
+---
+
+### GET /admin/api-keys
+
+List all API keys.
+
+**Response: 200 OK**
+
+```json
+{
+  "keys": [
+    {
+      "id": "string (UUID)",
+      "name": "string",
+      "key_prefix": "string",
+      "scopes": ["string"],
+      "created_at": "string (RFC 3339)",
+      "last_used": "string (RFC 3339) | null"
+    }
+  ]
+}
+```
+
+`key_prefix` is the first 12 characters of the key (e.g. `claud_a1b2c3`).
+
+---
+
+### DELETE /admin/api-keys/:id
+
+Delete an API key by its UUID.
+
+**Response: 200 OK**
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
 ## Error Responses
 
-| Status | Meaning                                  |
-|--------|------------------------------------------|
-| 401    | Missing or invalid `Authorization` token |
-| 4xx    | Client error (malformed request, etc.)   |
-| 5xx    | Server error                             |
+| Status | Meaning                                      |
+|--------|----------------------------------------------|
+| 401    | Missing or invalid `Authorization` token     |
+| 403    | Valid key but insufficient scope; or non-localhost request to admin endpoint |
+| 429    | Too many failed auth attempts (rate-limited) |
+| 4xx    | Client error (malformed request, etc.)       |
+| 5xx    | Server error                                 |
 
 The hook client treats any non-200 response as an error and logs the status code and response body.
 
@@ -400,18 +483,6 @@ curl -X POST https://your-server.com/api/v1/events \
     "timestamp": "2025-01-15T10:30:00.123Z"
   }'
 ```
-
-# List notifications
-curl -s -H "Authorization: Bearer test-key" http://localhost:3000/api/v1/notifications
-
-# List notifications after a specific ID
-curl -s -H "Authorization: Bearer test-key" "http://localhost:3000/api/v1/notifications?after=<uuid>&limit=10"
-
-# Acknowledge notifications
-curl -s -X POST -H "Authorization: Bearer test-key" \
-  -H "Content-Type: application/json" \
-  -d '{"ids": ["<uuid>"]}' \
-  http://localhost:3000/api/v1/notifications/ack
 
 ## Timeouts
 
