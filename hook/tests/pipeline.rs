@@ -29,7 +29,7 @@ fn make_config(server_url: &str) -> Config {
 }
 
 fn parse_event(json: &str) -> HookEvent {
-    HookEvent::from_reader(json.as_bytes()).expect("JSON should parse into HookEvent")
+    serde_json::from_str(json).expect("JSON should parse into HookEvent")
 }
 
 // ---------------------------------------------------------------------------
@@ -202,7 +202,7 @@ fn test_pipeline_timestamp_is_rfc3339_with_millis() {
 #[test]
 fn test_pipeline_invalid_json_returns_error() {
     let bad_json = "{ not valid json }";
-    let result = HookEvent::from_reader(bad_json.as_bytes());
+    let result = serde_json::from_str::<HookEvent>(bad_json);
     assert!(result.is_err(), "invalid JSON must return an error");
 }
 
@@ -210,7 +210,7 @@ fn test_pipeline_invalid_json_returns_error() {
 fn test_pipeline_missing_required_fields_returns_error() {
     // session_id and hook_event_name are required (not Option<>).
     let missing_fields = r#"{"cwd": "/tmp"}"#;
-    let result = HookEvent::from_reader(missing_fields.as_bytes());
+    let result = serde_json::from_str::<HookEvent>(missing_fields);
     assert!(
         result.is_err(),
         "missing required fields must return an error"

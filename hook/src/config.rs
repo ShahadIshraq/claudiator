@@ -72,6 +72,7 @@ impl Config {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use std::path::PathBuf;
 

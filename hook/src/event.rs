@@ -6,10 +6,12 @@
 //! JSON payload are silently ignored by serde's default behaviour — no explicit
 //! catch-all is needed.
 
+#[cfg(test)]
 use std::io;
 
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
 use crate::error::EventError;
 
 /// A hook event received from Claude Code and forwarded to the server.
@@ -17,6 +19,7 @@ use crate::error::EventError;
 /// Only the 7 fields the server reads are declared. Unknown fields in the
 /// incoming JSON are silently discarded by serde.
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(clippy::struct_field_names)]
 pub struct HookEvent {
     pub session_id: String,
     pub hook_event_name: String,
@@ -36,12 +39,14 @@ impl HookEvent {
     /// Parse a [`HookEvent`] from any `Read` source.
     ///
     /// Used by tests to pass a byte slice instead of touching actual stdin.
+    #[cfg(test)]
     pub fn from_reader<R: io::Read>(reader: R) -> Result<Self, EventError> {
         serde_json::from_reader(reader).map_err(EventError::ParseFailed)
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -103,6 +108,6 @@ mod tests {
 
     #[test]
     fn test_from_reader_invalid_json_errors() {
-        assert!(HookEvent::from_reader("{ not json }".as_bytes()).is_err());
+        assert!(HookEvent::from_reader(&b"{ not json }"[..]).is_err());
     }
 }

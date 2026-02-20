@@ -33,12 +33,14 @@ impl std::fmt::Display for ConfigError {
 }
 
 /// Errors that can occur while parsing a hook event from stdin.
+#[cfg(test)]
 #[derive(Debug)]
 pub enum EventError {
     /// The stdin payload was not valid JSON or did not match the expected shape.
     ParseFailed(serde_json::Error),
 }
 
+#[cfg(test)]
 impl std::fmt::Display for EventError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
