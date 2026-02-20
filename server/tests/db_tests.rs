@@ -1059,6 +1059,7 @@ fn test_api_key_insert_and_list() {
         "claud_abc123",
         "write",
         &now,
+        None,
     )
     .unwrap();
 
@@ -1090,9 +1091,9 @@ fn test_api_key_list_multiple_ordered_by_created_at() {
     let t3 = "2024-01-01T12:00:00Z";
 
     // Insert in non-sequential order
-    queries::insert_api_key(&conn, "id-2", "second", "claud_key2", "read", t2).unwrap();
-    queries::insert_api_key(&conn, "id-1", "first", "claud_key1", "write", t1).unwrap();
-    queries::insert_api_key(&conn, "id-3", "third", "claud_key3", "read,write", t3).unwrap();
+    queries::insert_api_key(&conn, "id-2", "second", "claud_key2", "read", t2, None).unwrap();
+    queries::insert_api_key(&conn, "id-1", "first", "claud_key1", "write", t1, None).unwrap();
+    queries::insert_api_key(&conn, "id-3", "third", "claud_key3", "read,write", t3, None).unwrap();
 
     let keys = queries::list_api_keys(&conn).unwrap();
     assert_eq!(keys.len(), 3);
@@ -1107,7 +1108,7 @@ fn test_api_key_find_by_key_existing() {
     let conn = pool.get().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
 
-    queries::insert_api_key(&conn, "id-1", "ios-app", "claud_findme", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "id-1", "ios-app", "claud_findme", "read", &now, None).unwrap();
 
     let result = queries::find_api_key_by_key(&conn, "claud_findme").unwrap();
     assert!(result.is_some());
@@ -1132,7 +1133,16 @@ fn test_api_key_delete() {
     let conn = pool.get().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
 
-    queries::insert_api_key(&conn, "id-1", "to-delete", "claud_deleteme", "read", &now).unwrap();
+    queries::insert_api_key(
+        &conn,
+        "id-1",
+        "to-delete",
+        "claud_deleteme",
+        "read",
+        &now,
+        None,
+    )
+    .unwrap();
 
     let keys_before = queries::list_api_keys(&conn).unwrap();
     assert_eq!(keys_before.len(), 1);
@@ -1158,7 +1168,7 @@ fn test_api_key_update_last_used() {
     let conn = pool.get().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
 
-    queries::insert_api_key(&conn, "id-1", "test", "claud_key", "read,write", &now).unwrap();
+    queries::insert_api_key(&conn, "id-1", "test", "claud_key", "read,write", &now, None).unwrap();
 
     // Initially null
     let row = queries::find_api_key_by_key(&conn, "claud_key")
@@ -1182,10 +1192,18 @@ fn test_api_key_unique_key_constraint() {
     let conn = pool.get().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
 
-    queries::insert_api_key(&conn, "id-1", "first", "claud_sameval", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "id-1", "first", "claud_sameval", "read", &now, None).unwrap();
 
     // Inserting a second key with the same `key` value should fail
-    let result = queries::insert_api_key(&conn, "id-2", "second", "claud_sameval", "write", &now);
+    let result = queries::insert_api_key(
+        &conn,
+        "id-2",
+        "second",
+        "claud_sameval",
+        "write",
+        &now,
+        None,
+    );
     assert!(result.is_err());
 }
 
@@ -1195,7 +1213,7 @@ fn test_api_key_scopes_comma_separated() {
     let conn = pool.get().unwrap();
     let now = chrono::Utc::now().to_rfc3339();
 
-    queries::insert_api_key(&conn, "id-1", "rw", "claud_rw", "read,write", &now).unwrap();
+    queries::insert_api_key(&conn, "id-1", "rw", "claud_rw", "read,write", &now, None).unwrap();
 
     let row = queries::find_api_key_by_key(&conn, "claud_rw")
         .unwrap()

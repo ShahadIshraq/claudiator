@@ -108,6 +108,9 @@ pub fn run(pool: &DbPool) -> Result<(), Box<dyn std::error::Error>> {
         );",
     )?;
 
+    // Add rate_limit column to api_keys (idempotent)
+    let _ = conn.execute("ALTER TABLE api_keys ADD COLUMN rate_limit INTEGER", []);
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

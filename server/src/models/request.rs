@@ -54,6 +54,8 @@ pub struct AckRequest {
 pub struct CreateApiKeyRequest {
     pub name: String,
     pub scopes: Vec<String>,
+    #[serde(default)]
+    pub rate_limit: Option<u32>,
 }
 
 #[cfg(test)]

@@ -129,6 +129,8 @@ pub struct ApiKeyCreatedResponse {
     pub key: String,
     pub scopes: Vec<String>,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limit: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -139,6 +141,8 @@ pub struct ApiKeyListItem {
     pub scopes: Vec<String>,
     pub created_at: String,
     pub last_used: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limit: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]

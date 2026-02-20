@@ -531,6 +531,7 @@ pub struct ApiKeyRow {
     pub scopes: String,
     pub created_at: String,
     pub last_used: Option<String>,
+    pub rate_limit: Option<i64>,
 }
 
 pub fn insert_api_key(
@@ -540,10 +541,11 @@ pub fn insert_api_key(
     key: &str,
     scopes: &str,
     created_at: &str,
+    rate_limit: Option<i64>,
 ) -> Result<(), AppError> {
     conn.execute(
-        "INSERT INTO api_keys (id, name, key, scopes, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![id, name, key, scopes, created_at],
+        "INSERT INTO api_keys (id, name, key, scopes, created_at, rate_limit) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![id, name, key, scopes, created_at, rate_limit],
     )
     .map_err(|e| AppError::Internal(format!("Failed to insert api key: {e}")))?;
     Ok(())
@@ -551,7 +553,7 @@ pub fn insert_api_key(
 
 pub fn list_api_keys(conn: &Connection) -> Result<Vec<ApiKeyRow>, AppError> {
     let mut stmt = conn
-        .prepare("SELECT id, name, key, scopes, created_at, last_used FROM api_keys ORDER BY created_at ASC")
+        .prepare("SELECT id, name, key, scopes, created_at, last_used, rate_limit FROM api_keys ORDER BY created_at ASC")
         .map_err(|e| AppError::Internal(format!("Failed to prepare api_keys query: {e}")))?;
 
     let rows = stmt
@@ -563,6 +565,7 @@ pub fn list_api_keys(conn: &Connection) -> Result<Vec<ApiKeyRow>, AppError> {
                 scopes: row.get(3)?,
                 created_at: row.get(4)?,
                 last_used: row.get(5)?,
+                rate_limit: row.get(6)?,
             })
         })
         .map_err(|e| AppError::Internal(format!("Failed to query api_keys: {e}")))?
@@ -574,7 +577,7 @@ pub fn list_api_keys(conn: &Connection) -> Result<Vec<ApiKeyRow>, AppError> {
 
 pub fn find_api_key_by_key(conn: &Connection, key: &str) -> Result<Option<ApiKeyRow>, AppError> {
     let mut stmt = conn
-        .prepare("SELECT id, name, key, scopes, created_at, last_used FROM api_keys WHERE key = ?1")
+        .prepare("SELECT id, name, key, scopes, created_at, last_used, rate_limit FROM api_keys WHERE key = ?1")
         .map_err(|e| AppError::Internal(format!("Failed to prepare api_key lookup: {e}")))?;
 
     let mut rows = stmt
@@ -604,6 +607,9 @@ pub fn find_api_key_by_key(conn: &Connection, key: &str) -> Result<Option<ApiKey
             last_used: row
                 .get(5)
                 .map_err(|e| AppError::Internal(format!("Failed to get api_key last_used: {e}")))?,
+            rate_limit: row.get(6).map_err(|e| {
+                AppError::Internal(format!("Failed to get api_key rate_limit: {e}"))
+            })?,
         }))
     } else {
         Ok(None)

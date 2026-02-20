@@ -10,7 +10,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use crate::apns::ApnsClient;
-use crate::auth::AuthFailureMap;
+use crate::auth::{AuthFailureMap, KeyRateLimitMap};
 use crate::db::pool::DbPool;
 use crate::handlers;
 
@@ -25,6 +25,7 @@ pub struct AppState {
     pub retention_sessions_days: u64,
     pub retention_devices_days: u64,
     pub auth_failures: Arc<AuthFailureMap>,
+    pub key_rate_limits: Arc<KeyRateLimitMap>,
 }
 
 /// Converts a tower timeout error into an HTTP 408 Request Timeout response.

@@ -56,6 +56,8 @@ pub async fn create_api_key_handler(
         .get()
         .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
+    let rate_limit = payload.rate_limit.map(i64::from);
+
     queries::insert_api_key(
         &conn,
         &id,
@@ -63,6 +65,7 @@ pub async fn create_api_key_handler(
         &key,
         &scopes_str,
         &created_at,
+        rate_limit,
     )?;
 
     tracing::info!(name = %payload.name.trim(), scopes = %scopes_str, "API key created");
@@ -75,6 +78,7 @@ pub async fn create_api_key_handler(
             key,
             scopes: validated,
             created_at,
+            rate_limit: payload.rate_limit,
         }),
     ))
 }
@@ -106,6 +110,7 @@ pub async fn list_api_keys_handler(
                 scopes,
                 created_at: row.created_at,
                 last_used: row.last_used,
+                rate_limit: row.rate_limit.and_then(|v| u32::try_from(v).ok()),
             }
         })
         .collect();

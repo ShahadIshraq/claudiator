@@ -19,8 +19,17 @@ const MAX_FAILURES: u32 = 10;
 /// counter resets automatically.
 const FAILURE_WINDOW: Duration = Duration::from_secs(5 * 60);
 
+/// Default maximum requests per key per minute when no per-key limit is set.
+const DEFAULT_KEY_RATE_LIMIT: u32 = 1000;
+
+/// Time window for per-key rate limiting.
+const KEY_RATE_WINDOW: Duration = Duration::from_secs(60);
+
 /// Per-IP state: (`failure_count`, `window_start`).
 pub type AuthFailureMap = Mutex<HashMap<IpAddr, (u32, Instant)>>;
+
+/// Per-key state: (`request_count`, `window_start`).
+pub type KeyRateLimitMap = Mutex<HashMap<String, (u32, Instant)>>;
 
 /// Extracts the client IP from request headers.
 ///
@@ -82,6 +91,36 @@ pub fn record_auth_failure(map: &AuthFailureMap, ip: IpAddr) {
     }
 
     entry.0 = entry.0.saturating_add(1);
+}
+
+/// Checks and increments the request counter for `key_id`.
+/// Returns `Err(AppError::RateLimited)` if the counter exceeds `limit` within `KEY_RATE_WINDOW`.
+#[allow(clippy::significant_drop_tightening)]
+pub fn check_key_rate_limit(
+    map: &KeyRateLimitMap,
+    key_id: &str,
+    limit: u32,
+) -> Result<(), AppError> {
+    let mut guard = map
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let now = Instant::now();
+
+    guard.retain(|_, (_, start)| now.duration_since(*start) < KEY_RATE_WINDOW);
+
+    let entry = guard.entry(key_id.to_string()).or_insert((0, now));
+
+    if now.duration_since(entry.1) >= KEY_RATE_WINDOW {
+        *entry = (0, now);
+    }
+
+    entry.0 = entry.0.saturating_add(1);
+
+    if entry.0 > limit {
+        return Err(AppError::RateLimited);
+    }
+
+    Ok(())
 }
 
 // ── Scope ─────────────────────────────────────────────────────────────────────
@@ -158,6 +197,11 @@ fn resolve_auth(
         if !scopes.contains(required_scope) {
             return Err(AppError::Forbidden);
         }
+
+        let effective_limit = row.rate_limit.map_or(DEFAULT_KEY_RATE_LIMIT, |v| {
+            u32::try_from(v).unwrap_or(DEFAULT_KEY_RATE_LIMIT)
+        });
+        check_key_rate_limit(&state.key_rate_limits, &row.id, effective_limit)?;
 
         let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
         let _ = queries::update_api_key_last_used(&conn, &row.id, &now);
@@ -439,5 +483,48 @@ mod tests {
         assert_eq!(Scope::Read, Scope::Read);
         assert_eq!(Scope::Write, Scope::Write);
         assert_ne!(Scope::Read, Scope::Write);
+    }
+
+    fn make_key_rate_map() -> KeyRateLimitMap {
+        Mutex::new(HashMap::new())
+    }
+
+    #[test]
+    fn test_key_rate_limit_allows_under_threshold() {
+        let map = make_key_rate_map();
+        let key_id = "test-key-id";
+        let limit = 5u32;
+
+        for _ in 0..limit {
+            assert!(check_key_rate_limit(&map, key_id, limit).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_key_rate_limit_blocks_over_threshold() {
+        let map = make_key_rate_map();
+        let key_id = "test-key-id";
+        let limit = 3u32;
+
+        for _ in 0..limit {
+            let _ = check_key_rate_limit(&map, key_id, limit);
+        }
+
+        assert!(matches!(
+            check_key_rate_limit(&map, key_id, limit),
+            Err(AppError::RateLimited)
+        ));
+    }
+
+    #[test]
+    fn test_key_rate_limit_different_keys_independent() {
+        let map = make_key_rate_map();
+        let limit = 2u32;
+
+        for _ in 0..=limit {
+            let _ = check_key_rate_limit(&map, "key-a", limit);
+        }
+
+        assert!(check_key_rate_limit(&map, "key-b", limit).is_ok());
     }
 }

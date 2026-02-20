@@ -25,6 +25,7 @@ fn make_state() -> Arc<router::AppState> {
         retention_sessions_days: 7,
         retention_devices_days: 30,
         auth_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        key_rate_limits: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     })
 }
 
@@ -741,7 +742,7 @@ async fn test_read_key_allowed_on_get_ping() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest1", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest1", "read", &now, None).unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -757,7 +758,7 @@ async fn test_read_key_forbidden_on_post_events() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest2", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest2", "read", &now, None).unwrap();
     drop(conn);
 
     let payload = serde_json::json!({
@@ -782,7 +783,7 @@ async fn test_read_key_forbidden_on_post_push_register() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest3", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest3", "read", &now, None).unwrap();
     drop(conn);
 
     let payload = serde_json::json!({"platform": "ios", "push_token": "tok123"});
@@ -800,7 +801,7 @@ async fn test_read_key_forbidden_on_post_notifications_ack() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest4", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "reader", "claud_readtest4", "read", &now, None).unwrap();
     drop(conn);
 
     let payload = serde_json::json!({"ids": []});
@@ -818,7 +819,16 @@ async fn test_write_key_allowed_on_post_events() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "writer", "claud_writetest1", "write", &now).unwrap();
+    queries::insert_api_key(
+        &conn,
+        "k1",
+        "writer",
+        "claud_writetest1",
+        "write",
+        &now,
+        None,
+    )
+    .unwrap();
     drop(conn);
 
     let payload = serde_json::json!({
@@ -840,7 +850,16 @@ async fn test_write_key_forbidden_on_get_devices() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "writer", "claud_writetest2", "write", &now).unwrap();
+    queries::insert_api_key(
+        &conn,
+        "k1",
+        "writer",
+        "claud_writetest2",
+        "write",
+        &now,
+        None,
+    )
+    .unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -858,7 +877,16 @@ async fn test_write_key_forbidden_on_get_sessions() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "writer", "claud_writetest3", "write", &now).unwrap();
+    queries::insert_api_key(
+        &conn,
+        "k1",
+        "writer",
+        "claud_writetest3",
+        "write",
+        &now,
+        None,
+    )
+    .unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -874,7 +902,16 @@ async fn test_write_key_forbidden_on_get_notifications() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "writer", "claud_writetest4", "write", &now).unwrap();
+    queries::insert_api_key(
+        &conn,
+        "k1",
+        "writer",
+        "claud_writetest4",
+        "write",
+        &now,
+        None,
+    )
+    .unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -890,7 +927,7 @@ async fn test_rw_key_allowed_on_get_and_post() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "rw", "claud_rwtest1", "read,write", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "rw", "claud_rwtest1", "read,write", &now, None).unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -931,7 +968,7 @@ async fn test_master_key_still_works_after_db_keys_added() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "other", "claud_other", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "other", "claud_other", "read", &now, None).unwrap();
     drop(conn);
 
     let server = test_server_from_state(state);
@@ -947,7 +984,7 @@ async fn test_last_used_updated_after_successful_auth() {
     let state = make_state();
     let conn = state.db_pool.get().unwrap();
     let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
-    queries::insert_api_key(&conn, "k1", "tracker", "claud_trackme", "read", &now).unwrap();
+    queries::insert_api_key(&conn, "k1", "tracker", "claud_trackme", "read", &now, None).unwrap();
 
     // Verify last_used is initially null
     let row_before = queries::find_api_key_by_key(&conn, "claud_trackme")
@@ -1298,6 +1335,7 @@ async fn test_admin_db_key_cannot_access_admin_endpoints() {
         "claud_rwkey",
         "read,write",
         &now,
+        None,
     )
     .unwrap();
     drop(conn);
