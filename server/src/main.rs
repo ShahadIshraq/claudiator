@@ -7,6 +7,7 @@ mod db;
 mod error;
 mod handlers;
 mod models;
+mod notif_dedup;
 mod router;
 mod utils;
 
@@ -111,6 +112,7 @@ async fn main() {
         retention_devices_days: config.retention_devices_days,
         auth_failures: Arc::new(Mutex::new(HashMap::new())),
         key_rate_limits: Arc::new(Mutex::new(HashMap::new())),
+        notif_cooldown: Arc::new(Mutex::new(HashMap::new())),
     });
 
     let app = router::build_router(state);

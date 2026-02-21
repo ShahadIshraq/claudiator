@@ -26,6 +26,7 @@ fn make_state() -> Arc<router::AppState> {
         retention_devices_days: 30,
         auth_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         key_rate_limits: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        notif_cooldown: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     })
 }
 
@@ -1543,4 +1544,315 @@ async fn test_list_keys_shows_rate_limit() {
 
     let no_limit = keys.iter().find(|k| k["name"] == "no-limit").unwrap();
     assert!(no_limit.get("rate_limit").is_none() || no_limit["rate_limit"].is_null());
+}
+
+// ── Notification cooldown (dedup) tests ──────────────────────────────────────
+
+/// Sends two Stop events for the same session in rapid succession.
+/// Only the first should produce a notification row.
+#[tokio::test]
+async fn test_stop_notification_suppressed_within_cooldown() {
+    let server = test_server();
+
+    let stop = |ts: &str| {
+        serde_json::json!({
+            "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+            "event": {"session_id": "sess-cool-stop", "hook_event_name": "Stop", "message": "done"},
+            "timestamp": ts
+        })
+    };
+
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop("2024-01-01T00:00:00Z"))
+        .await
+        .assert_status_ok();
+
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop("2024-01-01T00:00:01Z"))
+        .await
+        .assert_status_ok();
+
+    let response = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let notifications = json["notifications"].as_array().unwrap();
+    // Second Stop must be suppressed — only 1 notification row.
+    assert_eq!(
+        notifications.len(),
+        1,
+        "expected exactly 1 notification for rapid Stop burst"
+    );
+    assert_eq!(notifications[0]["notification_type"], "stop");
+}
+
+/// Sends two `idle_prompt` Notification events for the same session in rapid succession.
+/// Only the first should produce a notification row.
+#[tokio::test]
+async fn test_idle_prompt_notification_suppressed_within_cooldown() {
+    let server = test_server();
+
+    let idle = |ts: &str| {
+        serde_json::json!({
+            "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+            "event": {
+                "session_id": "sess-cool-idle",
+                "hook_event_name": "Notification",
+                "notification_type": "idle_prompt",
+                "message": "waiting"
+            },
+            "timestamp": ts
+        })
+    };
+
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&idle("2024-01-01T00:00:00Z"))
+        .await
+        .assert_status_ok();
+
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&idle("2024-01-01T00:00:01Z"))
+        .await
+        .assert_status_ok();
+
+    let json: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(
+        notifications.len(),
+        1,
+        "expected exactly 1 notification for rapid idle_prompt burst"
+    );
+    assert_eq!(notifications[0]["notification_type"], "idle_prompt");
+}
+
+/// Sends multiple `PermissionRequest` events for the same session in rapid succession.
+/// All should produce notification rows (high-priority, never suppressed).
+#[tokio::test]
+async fn test_permission_prompt_never_suppressed() {
+    let server = test_server();
+
+    let perm = |ts: &str| {
+        serde_json::json!({
+            "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+            "event": {
+                "session_id": "sess-cool-perm",
+                "hook_event_name": "PermissionRequest",
+                "tool_name": "Bash",
+                "message": "run tests"
+            },
+            "timestamp": ts
+        })
+    };
+
+    for ts in &[
+        "2024-01-01T00:00:00Z",
+        "2024-01-01T00:00:01Z",
+        "2024-01-01T00:00:02Z",
+    ] {
+        server
+            .post("/api/v1/events")
+            .add_header("Authorization", "Bearer test-key")
+            .json(&perm(ts))
+            .await
+            .assert_status_ok();
+    }
+
+    let json: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(
+        notifications.len(),
+        3,
+        "permission_prompt must never be suppressed"
+    );
+    for n in notifications {
+        assert_eq!(n["notification_type"], "permission_prompt");
+    }
+}
+
+/// Cooldown is per-session: two different sessions each get their own first Stop notification.
+#[tokio::test]
+async fn test_cooldown_is_independent_per_session() {
+    let server = test_server();
+
+    let stop = |session: &str, ts: &str| {
+        serde_json::json!({
+            "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+            "event": {"session_id": session, "hook_event_name": "Stop", "message": "done"},
+            "timestamp": ts
+        })
+    };
+
+    // Two different sessions, each fires a Stop.
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop("sess-a", "2024-01-01T00:00:00Z"))
+        .await
+        .assert_status_ok();
+
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop("sess-b", "2024-01-01T00:00:01Z"))
+        .await
+        .assert_status_ok();
+
+    let json: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+
+    let notifications = json["notifications"].as_array().unwrap();
+    // Each session must have produced exactly one notification.
+    assert_eq!(
+        notifications.len(),
+        2,
+        "each session should get its own first notification"
+    );
+
+    let session_ids: Vec<&str> = notifications
+        .iter()
+        .map(|n| n["session_id"].as_str().unwrap())
+        .collect();
+    assert!(session_ids.contains(&"sess-a"));
+    assert!(session_ids.contains(&"sess-b"));
+}
+
+/// Cooldown is per-type: Stop and `idle_prompt` for the same session are tracked independently.
+#[tokio::test]
+async fn test_cooldown_is_independent_per_type() {
+    let server = test_server();
+
+    // Send Stop first.
+    let stop_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+        "event": {"session_id": "sess-types", "hook_event_name": "Stop", "message": "done"},
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop_event)
+        .await
+        .assert_status_ok();
+
+    // Then send idle_prompt for the same session — must not be suppressed by Stop's cooldown.
+    let idle_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+        "event": {
+            "session_id": "sess-types",
+            "hook_event_name": "Notification",
+            "notification_type": "idle_prompt",
+            "message": "still waiting"
+        },
+        "timestamp": "2024-01-01T00:00:01Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&idle_event)
+        .await
+        .assert_status_ok();
+
+    let json: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+
+    let notifications = json["notifications"].as_array().unwrap();
+    assert_eq!(
+        notifications.len(),
+        2,
+        "stop and idle_prompt must have independent cooldown buckets"
+    );
+
+    let types: Vec<&str> = notifications
+        .iter()
+        .map(|n| n["notification_type"].as_str().unwrap())
+        .collect();
+    assert!(types.contains(&"stop"));
+    assert!(types.contains(&"idle_prompt"));
+}
+
+/// After suppression, an ack of the first notification does not affect the cooldown —
+/// a duplicate fired immediately after ack is still suppressed.
+#[tokio::test]
+async fn test_ack_does_not_reset_cooldown() {
+    let server = test_server();
+
+    let stop_event = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+        "event": {"session_id": "sess-ack", "hook_event_name": "Stop", "message": "done"},
+        "timestamp": "2024-01-01T00:00:00Z"
+    });
+
+    // First Stop fires.
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop_event)
+        .await
+        .assert_status_ok();
+
+    // Get notification ID and ack it.
+    let list_json: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+    let notifications = list_json["notifications"].as_array().unwrap();
+    assert_eq!(notifications.len(), 1);
+    let notif_id = notifications[0]["id"].as_str().unwrap();
+
+    server
+        .post("/api/v1/notifications/ack")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&serde_json::json!({"ids": [notif_id]}))
+        .await
+        .assert_status_ok();
+
+    // Fire another Stop immediately — must still be suppressed despite the ack.
+    let stop_event2 = serde_json::json!({
+        "device": {"device_id": "dev-1", "device_name": "D", "platform": "macos"},
+        "event": {"session_id": "sess-ack", "hook_event_name": "Stop", "message": "again"},
+        "timestamp": "2024-01-01T00:00:01Z"
+    });
+    server
+        .post("/api/v1/events")
+        .add_header("Authorization", "Bearer test-key")
+        .json(&stop_event2)
+        .await
+        .assert_status_ok();
+
+    let list_json2: serde_json::Value = server
+        .get("/api/v1/notifications")
+        .add_header("Authorization", "Bearer test-key")
+        .await
+        .json();
+    let notifications2 = list_json2["notifications"].as_array().unwrap();
+    // Still only 1 notification total (second was suppressed).
+    assert_eq!(notifications2.len(), 1, "ack must not reset the cooldown");
 }

@@ -10,6 +10,7 @@ use crate::db::queries;
 use crate::error::AppError;
 use crate::models::request::EventPayload;
 use crate::models::response::StatusOk;
+use crate::notif_dedup;
 use crate::router::AppState;
 use crate::utils::truncate_at_char_boundary;
 
@@ -278,46 +279,60 @@ pub async fn events_handler(
         session_title.as_deref(),
         payload.event.tool_name.as_deref(),
     ) {
-        let notification_id = uuid::Uuid::new_v4().to_string();
-
-        let _ = queries::insert_notification(
-            &conn,
-            &notification_id,
-            event_id,
+        // Gate low-priority types through the per-(session, type) cooldown.
+        // High-priority types (permission_prompt) always pass through.
+        if notif_dedup::should_send_notification(
+            &state.notif_cooldown,
             &payload.event.session_id,
-            &payload.device.device_id,
-            &notif_title,
-            &notif_body,
             &notif_type,
-            None,
-            &received_at,
-        );
+        ) {
+            let notification_id = uuid::Uuid::new_v4().to_string();
 
-        // Persist notification version bump
-        let new_notif_version = state
-            .notification_version
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-            + 1;
-        let _ = queries::set_metadata(
-            &conn,
-            "notification_version",
-            &new_notif_version.to_string(),
-        );
+            let _ = queries::insert_notification(
+                &conn,
+                &notification_id,
+                event_id,
+                &payload.event.session_id,
+                &payload.device.device_id,
+                &notif_title,
+                &notif_body,
+                &notif_type,
+                None,
+                &received_at,
+            );
 
-        // APNs push dispatch
-        if let Some(ref apns_client) = state.apns_client {
-            // Use session_id as collapse_id with 64-byte truncation guard
-            let collapse_id = truncate_at_char_boundary(&payload.event.session_id, 64);
+            // Persist notification version bump
+            let new_notif_version = state
+                .notification_version
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                + 1;
+            let _ = queries::set_metadata(
+                &conn,
+                "notification_version",
+                &new_notif_version.to_string(),
+            );
 
-            dispatch_push_notifications(
-                apns_client.clone(),
-                state.db_pool.clone(),
-                notif_title,
-                notif_body,
-                collapse_id,
-                notification_id,
-                payload.event.session_id.clone(),
-                payload.device.device_id.clone(),
+            // APNs push dispatch
+            if let Some(ref apns_client) = state.apns_client {
+                // Use session_id as collapse_id with 64-byte truncation guard
+                let collapse_id = truncate_at_char_boundary(&payload.event.session_id, 64);
+
+                dispatch_push_notifications(
+                    apns_client.clone(),
+                    state.db_pool.clone(),
+                    notif_title,
+                    notif_body,
+                    collapse_id,
+                    notification_id,
+                    payload.event.session_id.clone(),
+                    payload.device.device_id.clone(),
+                );
+            }
+        } else {
+            tracing::debug!(
+                session_id = %payload.event.session_id,
+                notif_type = %notif_type,
+                "Notification suppressed by cooldown"
             );
         }
     }

@@ -22,6 +22,7 @@ fn test_server() -> TestServer {
         retention_devices_days: 30,
         auth_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
         key_rate_limits: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        notif_cooldown: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     });
 
     let app = router::build_router(state);

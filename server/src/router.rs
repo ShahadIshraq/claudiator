@@ -13,6 +13,7 @@ use crate::apns::ApnsClient;
 use crate::auth::{AuthFailureMap, KeyRateLimitMap};
 use crate::db::pool::DbPool;
 use crate::handlers;
+use crate::notif_dedup::NotifCooldownMap;
 
 pub struct AppState {
     pub master_key: String,
@@ -26,6 +27,7 @@ pub struct AppState {
     pub retention_devices_days: u64,
     pub auth_failures: Arc<AuthFailureMap>,
     pub key_rate_limits: Arc<KeyRateLimitMap>,
+    pub notif_cooldown: Arc<NotifCooldownMap>,
 }
 
 /// Converts a tower timeout error into an HTTP 408 Request Timeout response.
