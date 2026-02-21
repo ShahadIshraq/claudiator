@@ -391,9 +391,14 @@ Create a new API key.
 ```json
 {
   "name": "string",
-  "scopes": ["read", "write"]
+  "scopes": ["read", "write"],
+  "rate_limit": 1000
 }
 ```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `rate_limit` | number | no | Maximum requests per minute for this key (default: 1000) |
 
 **Response: 201 Created**
 
@@ -403,7 +408,8 @@ Create a new API key.
   "name": "string",
   "key": "string",
   "scopes": ["string"],
-  "created_at": "string (RFC 3339)"
+  "created_at": "string (RFC 3339)",
+  "rate_limit": null
 }
 ```
 
@@ -426,7 +432,8 @@ List all API keys.
       "key_prefix": "string",
       "scopes": ["string"],
       "created_at": "string (RFC 3339)",
-      "last_used": "string (RFC 3339) | null"
+      "last_used": "string (RFC 3339) | null",
+      "rate_limit": null
     }
   ]
 }
