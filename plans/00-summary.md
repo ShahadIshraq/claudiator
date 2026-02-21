@@ -54,7 +54,8 @@ Production-ready Rust HTTP server:
 
 - Built with Axum framework
 - Endpoints: `GET /api/v1/ping`, `POST /api/v1/events`, `GET /api/v1/devices`, `GET /api/v1/devices/:id/sessions`, `GET /api/v1/sessions`, `GET /api/v1/sessions/:id/events`, `POST /api/v1/push/register`, `GET /api/v1/notifications`, `POST /api/v1/notifications/ack`
-- Bearer token authentication on all endpoints
+- Admin API (localhost + master key): `POST /admin/api-keys`, `GET /admin/api-keys`, `DELETE /admin/api-keys/:id`
+- Bearer token authentication on all endpoints; scoped API keys managed via Admin API (`/admin/api-keys`)
 - SQLite database with r2d2 connection pooling (WAL mode enabled)
 - Database schema:
   - `devices` table: device metadata and last-seen tracking
@@ -62,12 +63,16 @@ Production-ready Rust HTTP server:
   - `events` table: all hook events with proper indexes
   - `push_tokens` table: mobile push notification tokens, sandbox
   - `notifications` table: UUID primary key, 24h TTL auto-cleanup
+  - `api_keys` table: scoped API keys with name, scopes, rate_limit, and last_used tracking
+  - `metadata` table: persistent counters (data_version, notification_version)
   - Foreign keys and indexes for query performance
 - Configuration via CLI args or environment variables:
   - `CLAUDIATOR_API_KEY`: Server authentication token
   - `CLAUDIATOR_PORT`: HTTP port (default: 3000)
   - `CLAUDIATOR_BIND`: Bind address (default: 0.0.0.0)
   - `CLAUDIATOR_DB_PATH`: SQLite database path
+  - `CLAUDIATOR_LOG_LEVEL`: Log level (default: info)
+  - `CLAUDIATOR_LOG_DIR`: Directory for log files (default: logs)
   - `CLAUDIATOR_APNS_KEY_PATH`: Path to APNs .p8 key file
   - `CLAUDIATOR_APNS_KEY_ID`: APNs key identifier
   - `CLAUDIATOR_APNS_TEAM_ID`: Apple Developer Team ID
@@ -162,6 +167,8 @@ Additional server functionality for mobile apps:
   - [x] Direct APNs push from server (JWT ES256, HTTP/2, per-token sandbox routing)
   - [x] Device token registration with sandbox flag
   - [x] Install script APNs configuration prompts
+  - [x] Type-aware notification cooldown — 30s per-session-per-type for `stop` and `idle_prompt`; `permission_prompt` always fires immediately
+  - [x] Per-key rate limiting — 1,000 req/min default per API key; configurable per key via `rate_limit` in `api_keys` table
 
 ### 🚧 In Progress / Planned
 

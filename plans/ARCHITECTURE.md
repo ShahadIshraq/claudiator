@@ -87,6 +87,7 @@ Hook stdin (from Claude Code)        Outbound payload (to Server)
 - **push_tokens** — id (PK), platform, push_token (UNIQUE), sandbox, created_at, updated_at
 - **notifications** — id (TEXT PK, UUID), event_id (FK), session_id (FK), device_id (FK), title, body, notification_type, payload_json, acknowledged (BOOLEAN), created_at (24h TTL auto-cleanup)
 - **metadata** — key (PK), value (TEXT) — stores persistent counters (data_version, notification_version)
+- **api_keys** — id (PK), name, key (UNIQUE), scopes (comma-separated), created_at, last_used, rate_limit (optional)
 
 ### Server Configuration
 
@@ -95,6 +96,8 @@ Environment variables (stored in `/opt/claudiator/.env`):
 - `CLAUDIATOR_PORT` — HTTP listen port (default: 3000)
 - `CLAUDIATOR_BIND` — Bind address (default: 0.0.0.0)
 - `CLAUDIATOR_DB_PATH` — Path to SQLite database (default: /opt/claudiator/claudiator.db)
+- `CLAUDIATOR_LOG_LEVEL` — Log level: debug/info/warn/error (default: info)
+- `CLAUDIATOR_LOG_DIR` — Directory for log files with daily rotation (default: logs)
 - `CLAUDIATOR_APNS_KEY_PATH` — Path to .p8 key file (optional)
 - `CLAUDIATOR_APNS_KEY_ID` — APNs Key ID (optional)
 - `CLAUDIATOR_APNS_TEAM_ID` — Apple Team ID (optional)
@@ -112,6 +115,9 @@ Environment variables (stored in `/opt/claudiator/.env`):
 - `GET /api/v1/notifications?after=<timestamp>&limit=N` — List notifications after a given RFC3339 timestamp
 - `POST /api/v1/notifications/ack` — Bulk acknowledge notifications (accepts `ids` array in request body)
 - `POST /api/v1/push/register` — Register mobile push notification token with sandbox flag for APNs routing
+- `POST /admin/api-keys` — Create a scoped API key (requires localhost + master key)
+- `GET /admin/api-keys` — List all API keys (key_prefix only)
+- `DELETE /admin/api-keys/:id` — Delete an API key by UUID
 
 ### Deployment
 
@@ -144,6 +150,7 @@ The server is deployed as a systemd service on Linux:
 - **Direct APNs push** — Server sends push notifications directly via HTTP/2 with ES256 JWT authentication
 - **Per-token sandbox routing** — Each push token tracks whether it's sandbox or production for correct APNs endpoint routing
 - **24h TTL** — Expired notifications are auto-cleaned on each new notification insert
+- **Type-aware cooldown** — `stop` and `idle_prompt` notifications are suppressed for 30 seconds per session per type after one fires; `permission_prompt` always fires immediately bypassing the cooldown
 
 ### Future Work
 - **Android app** — Native Android (Kotlin) client to consume the server API
