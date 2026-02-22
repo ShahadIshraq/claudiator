@@ -232,7 +232,7 @@ pub fn list_all_sessions_paginated(
     limit: i64,
     offset: i64,
 ) -> Result<PaginatedSessions, AppError> {
-    let fetch_limit = limit + 1;
+    let fetch_limit = limit.saturating_add(1);
 
     let mut sql = "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
              FROM sessions s
