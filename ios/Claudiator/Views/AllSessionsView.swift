@@ -51,17 +51,35 @@ struct AllSessionsView: View {
                 )
             } else if !viewModel.isGroupedByDevice {
                 // Ungrouped flat list
-                List(viewModel.sessions) { session in
-                    let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
-                    NavigationLink(value: session) {
-                        AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
+                List {
+                    ForEach(viewModel.sessions) { session in
+                        let hasNotification = notificationManager.sessionsWithNotifications.contains(session.sessionId)
+                        NavigationLink(value: session) {
+                            AllSessionRow(session: session, deviceName: session.deviceName ?? "Unknown", platform: session.platform ?? "unknown")
+                        }
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(themeManager.current.cardBackground)
+                                .brightness(sessionCardBrightness(hasNotification))
+                                .animation(.easeInOut(duration: 1.2), value: notificationPulse)
+                        )
                     }
-                    .listRowBackground(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(themeManager.current.cardBackground)
-                            .brightness(sessionCardBrightness(hasNotification))
-                            .animation(.easeInOut(duration: 1.2), value: notificationPulse)
-                    )
+                    if viewModel.hasMore || viewModel.isLoadingMore {
+                        HStack {
+                            Spacer()
+                            if viewModel.isLoadingMore {
+                                ProgressView()
+                            } else {
+                                Color.clear
+                            }
+                            Spacer()
+                        }
+                        .frame(height: 44)
+                        .listRowBackground(Color.clear)
+                        .onAppear {
+                            Task { await viewModel.loadMore(apiClient: apiClient) }
+                        }
+                    }
                 }
                 .scrollContentBackground(.hidden)
             } else if !useWideLayout {

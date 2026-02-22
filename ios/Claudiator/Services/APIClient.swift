@@ -1,6 +1,12 @@
 import Foundation
 import Observation
 
+struct SessionListPage: Decodable {
+    let sessions: [Session]
+    let hasMore: Bool
+    let nextOffset: Int
+}
+
 enum APIError: LocalizedError {
     case notConfigured
     case invalidURL
@@ -137,6 +143,21 @@ class APIClient {
         let data = try await request(path)
         struct Wrapper: Decodable { let sessions: [Session] }
         return try Self.decoder.decode(Wrapper.self, from: data).sessions
+    }
+
+    func fetchAllSessionsPage(
+        excludeEnded: Bool = false,
+        limit: Int = 50,
+        offset: Int = 0
+    ) async throws -> SessionListPage {
+        var path = "/api/v1/sessions"
+        var params: [String] = []
+        if excludeEnded { params.append("exclude_ended=true") }
+        params.append("limit=\(limit)")
+        params.append("offset=\(offset)")
+        if !params.isEmpty { path += "?" + params.joined(separator: "&") }
+        let data = try await request(path)
+        return try Self.decoder.decode(SessionListPage.self, from: data)
     }
 
     func fetchEvents(sessionId: String, limit: Int? = nil) async throws -> [Event] {
