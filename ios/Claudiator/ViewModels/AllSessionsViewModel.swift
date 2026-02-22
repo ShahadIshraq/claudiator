@@ -6,6 +6,9 @@ import Observation
 class AllSessionsViewModel {
     var sessions: [Session] = []
     var isLoading = false
+    var isLoadingMore = false
+    var hasMore = false
+    var currentOffset = 0
     var errorMessage: String?
     var filter: SessionFilter = .active
 
@@ -25,7 +28,6 @@ class AllSessionsViewModel {
 
     init(apiClient: APIClient? = nil) {
         self.apiClient = apiClient
-        // Load persisted grouping preference
         isGroupedByDevice = UserDefaults.standard.bool(forKey: Self.groupingKey)
     }
 
@@ -37,15 +39,13 @@ class AllSessionsViewModel {
     func refresh(apiClient: APIClient) async {
         if sessions.isEmpty { isLoading = true }
         do {
-            let allSessions = try await apiClient.fetchAllSessions()
-            if filter == .active {
-                sessions = allSessions.filter { $0.status != "ended" }
-            } else {
-                sessions = allSessions
-            }
+            let excludeEnded = (filter == .active)
+            let result = try await apiClient.fetchAllSessionsPage(excludeEnded: excludeEnded, limit: 50, offset: 0)
+            sessions = result.sessions
+            hasMore = result.hasMore
+            currentOffset = result.nextOffset
             errorMessage = nil
 
-            // Only group when grouping is enabled
             if isGroupedByDevice {
                 groupSessions()
             }
@@ -53,6 +53,29 @@ class AllSessionsViewModel {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func loadMore(apiClient: APIClient) async {
+        guard hasMore, !isLoadingMore else { return }
+        isLoadingMore = true
+        do {
+            let excludeEnded = (filter == .active)
+            let result = try await apiClient.fetchAllSessionsPage(excludeEnded: excludeEnded, limit: 50, offset: currentOffset)
+            // Deduplicate by sessionId to guard against list drift
+            let existingIds = Set(sessions.map(\.sessionId))
+            let newSessions = result.sessions.filter { !existingIds.contains($0.sessionId) }
+            sessions.append(contentsOf: newSessions)
+            hasMore = result.hasMore
+            currentOffset = result.nextOffset
+            errorMessage = nil
+
+            if isGroupedByDevice {
+                groupSessions()
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingMore = false
     }
 
     func toggleGrouping() {
@@ -76,7 +99,6 @@ class AllSessionsViewModel {
             session.deviceId
         }
 
-        // Auto-expand devices with active sessions when grouping is enabled
         if isGroupedByDevice {
             expandedDevices = Set(
                 groupedSessions.compactMap { deviceId, sessions in
