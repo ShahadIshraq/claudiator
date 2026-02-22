@@ -170,6 +170,7 @@ pub fn list_sessions(
     Ok(sessions)
 }
 
+#[allow(dead_code)]
 pub fn list_all_sessions(
     conn: &Connection,
     status: Option<&str>,
@@ -216,6 +217,82 @@ pub fn list_all_sessions(
         .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {e}")))?;
 
     Ok(sessions)
+}
+
+pub struct PaginatedSessions {
+    pub sessions: Vec<SessionResponse>,
+    pub has_more: bool,
+    pub next_offset: i64,
+}
+
+pub fn list_all_sessions_paginated(
+    conn: &Connection,
+    status: Option<&str>,
+    exclude_ended: bool,
+    limit: i64,
+    offset: i64,
+) -> Result<PaginatedSessions, AppError> {
+    let fetch_limit = limit + 1;
+
+    let mut sql = "SELECT s.session_id, s.device_id, s.started_at, s.last_event, s.status, s.cwd, s.title, d.device_name, d.platform
+             FROM sessions s
+             LEFT JOIN devices d ON d.device_id = s.device_id
+             WHERE 1=1".to_string();
+
+    let mut params: Vec<(&str, Box<dyn rusqlite::types::ToSql>)> = vec![];
+
+    if let Some(s) = status {
+        sql.push_str(" AND s.status = :status");
+        params.push((":status", Box::new(s.to_string())));
+    }
+
+    if exclude_ended {
+        sql.push_str(" AND s.status != 'ended'");
+    }
+
+    sql.push_str(" ORDER BY CASE WHEN s.status != 'ended' THEN 0 ELSE 1 END ASC, s.last_event DESC LIMIT :limit OFFSET :offset");
+    params.push((":limit", Box::new(fetch_limit)));
+    params.push((":offset", Box::new(offset)));
+
+    let mut stmt = conn
+        .prepare(&sql)
+        .map_err(|e| AppError::Internal(format!("Failed to prepare sessions query: {e}")))?;
+
+    let params_refs: Vec<(&str, &dyn rusqlite::types::ToSql)> =
+        params.iter().map(|(k, v)| (*k, v.as_ref())).collect();
+
+    let mut rows = stmt
+        .query_map(params_refs.as_slice(), |row| {
+            Ok(SessionResponse {
+                session_id: row.get(0)?,
+                device_id: row.get(1)?,
+                started_at: row.get(2)?,
+                last_event: row.get(3)?,
+                status: row.get(4)?,
+                cwd: row.get(5)?,
+                title: row.get(6)?,
+                device_name: row.get(7)?,
+                platform: row.get(8)?,
+            })
+        })
+        .map_err(|e| AppError::Internal(format!("Failed to query sessions: {e}")))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::Internal(format!("Failed to collect sessions: {e}")))?;
+
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    let limit_usize = limit as usize;
+    let has_more = rows.len() > limit_usize;
+    if has_more {
+        rows.truncate(limit_usize);
+    }
+    #[allow(clippy::cast_possible_wrap)]
+    let next_offset = offset + rows.len() as i64;
+
+    Ok(PaginatedSessions {
+        sessions: rows,
+        has_more,
+        next_offset,
+    })
 }
 
 pub fn list_events(

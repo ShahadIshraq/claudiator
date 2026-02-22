@@ -1797,6 +1797,150 @@ async fn test_cooldown_is_independent_per_type() {
     assert!(types.contains(&"idle_prompt"));
 }
 
+// ── Sessions pagination tests ─────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_list_all_sessions_pagination_has_more_field() {
+    let state = make_state();
+    let server = test_server_from_state(state.clone());
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+
+    {
+        let conn = state.db_pool.get().unwrap();
+        queries::upsert_device(&conn, "device-1", "Test Device", "macos", &now).unwrap();
+        for i in 1..=3 {
+            queries::upsert_session(
+                &conn,
+                &format!("session-{i}"),
+                "device-1",
+                &now,
+                Some("ended"),
+                None,
+                None,
+            )
+            .unwrap();
+        }
+    }
+
+    let response = server
+        .get("/api/v1/sessions?limit=2&offset=0")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["sessions"].as_array().unwrap().len(), 2);
+    assert_eq!(json["has_more"], true);
+    assert_eq!(json["next_offset"], 2);
+}
+
+#[tokio::test]
+async fn test_list_all_sessions_exclude_ended_param() {
+    let state = make_state();
+    let server = test_server_from_state(state.clone());
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+
+    {
+        let conn = state.db_pool.get().unwrap();
+        queries::upsert_device(&conn, "device-1", "Test Device", "macos", &now).unwrap();
+        queries::upsert_session(
+            &conn,
+            "session-active",
+            "device-1",
+            &now,
+            Some("active"),
+            None,
+            None,
+        )
+        .unwrap();
+        queries::upsert_session(
+            &conn,
+            "session-ended",
+            "device-1",
+            &now,
+            Some("ended"),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+
+    let response = server
+        .get("/api/v1/sessions?exclude_ended=true")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    let sessions = json["sessions"].as_array().unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0]["session_id"], "session-active");
+}
+
+#[tokio::test]
+async fn test_list_all_sessions_response_always_has_has_more_and_next_offset() {
+    let state = make_state();
+    let server = test_server_from_state(state.clone());
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+
+    {
+        let conn = state.db_pool.get().unwrap();
+        queries::upsert_device(&conn, "device-1", "Test Device", "macos", &now).unwrap();
+        queries::upsert_session(
+            &conn,
+            "session-1",
+            "device-1",
+            &now,
+            Some("ended"),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+
+    let response = server
+        .get("/api/v1/sessions")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    assert!(json["has_more"].is_boolean());
+    assert!(json["next_offset"].is_number());
+    assert!(json["sessions"].is_array());
+}
+
+#[tokio::test]
+async fn test_list_all_sessions_backward_compat_old_limit_param() {
+    let state = make_state();
+    let server = test_server_from_state(state.clone());
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+
+    {
+        let conn = state.db_pool.get().unwrap();
+        queries::upsert_device(&conn, "device-1", "Test Device", "macos", &now).unwrap();
+        for i in 1..=5 {
+            queries::upsert_session(
+                &conn,
+                &format!("session-{i}"),
+                "device-1",
+                &now,
+                Some("ended"),
+                None,
+                None,
+            )
+            .unwrap();
+        }
+    }
+
+    // Old clients passing limit still works
+    let response = server
+        .get("/api/v1/sessions?limit=3")
+        .add_header("Authorization", "Bearer test-key")
+        .await;
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["sessions"].as_array().unwrap().len(), 3);
+    assert_eq!(json["has_more"], true);
+}
+
 /// After suppression, an ack of the first notification does not affect the cooldown —
 /// a duplicate fired immediately after ack is still suppressed.
 #[tokio::test]

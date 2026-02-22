@@ -1267,3 +1267,144 @@ fn test_api_key_rate_limit_null_when_not_set() {
         .unwrap();
     assert!(row.rate_limit.is_none());
 }
+
+#[test]
+fn test_list_all_sessions_paginated_basic() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
+
+    // Create 3 sessions
+    for i in 1..=3 {
+        queries::upsert_session(
+            &conn,
+            &format!("session-{i}"),
+            "device-1",
+            &now,
+            Some("ended"),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+
+    // Page 1: limit=2
+    let page1 = queries::list_all_sessions_paginated(&conn, None, false, 2, 0).unwrap();
+    assert_eq!(page1.sessions.len(), 2);
+    assert!(page1.has_more);
+    assert_eq!(page1.next_offset, 2);
+
+    // Page 2
+    let page2 = queries::list_all_sessions_paginated(&conn, None, false, 2, 2).unwrap();
+    assert_eq!(page2.sessions.len(), 1);
+    assert!(!page2.has_more);
+    assert_eq!(page2.next_offset, 3);
+}
+
+#[test]
+fn test_list_all_sessions_paginated_exclude_ended() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
+
+    queries::upsert_session(
+        &conn,
+        "session-active",
+        "device-1",
+        &now,
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
+    queries::upsert_session(
+        &conn,
+        "session-ended",
+        "device-1",
+        &now,
+        Some("ended"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    let result = queries::list_all_sessions_paginated(&conn, None, true, 50, 0).unwrap();
+    assert_eq!(result.sessions.len(), 1);
+    assert_eq!(result.sessions[0].session_id, "session-active");
+    assert!(!result.has_more);
+}
+
+#[test]
+fn test_list_all_sessions_paginated_priority_ordering() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+
+    queries::upsert_device(
+        &conn,
+        "device-1",
+        "My Device",
+        "macos",
+        "2024-01-01T00:00:00Z",
+    )
+    .unwrap();
+
+    // Ended session with recent last_event
+    queries::upsert_session(
+        &conn,
+        "session-ended-recent",
+        "device-1",
+        "2024-01-02T00:00:00Z",
+        Some("ended"),
+        None,
+        None,
+    )
+    .unwrap();
+    // Active session with older last_event
+    queries::upsert_session(
+        &conn,
+        "session-active-old",
+        "device-1",
+        "2024-01-01T00:00:00Z",
+        Some("active"),
+        None,
+        None,
+    )
+    .unwrap();
+
+    let result = queries::list_all_sessions_paginated(&conn, None, false, 50, 0).unwrap();
+    assert_eq!(result.sessions.len(), 2);
+    // Active should come first despite older last_event
+    assert_eq!(result.sessions[0].session_id, "session-active-old");
+    assert_eq!(result.sessions[1].session_id, "session-ended-recent");
+}
+
+#[test]
+fn test_list_all_sessions_paginated_has_more_boundary() {
+    let pool = test_pool();
+    let conn = pool.get().unwrap();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    queries::upsert_device(&conn, "device-1", "My Device", "macos", &now).unwrap();
+
+    // Exactly 2 sessions, limit=2
+    for i in 1..=2 {
+        queries::upsert_session(
+            &conn,
+            &format!("session-{i}"),
+            "device-1",
+            &now,
+            Some("ended"),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+
+    let result = queries::list_all_sessions_paginated(&conn, None, false, 2, 0).unwrap();
+    assert_eq!(result.sessions.len(), 2);
+    assert!(!result.has_more); // Exactly limit, no more
+}
