@@ -85,6 +85,8 @@ pub struct SessionResponse {
 #[derive(Debug, Serialize)]
 pub struct SessionListResponse {
     pub sessions: Vec<SessionResponse>,
+    pub has_more: bool,
+    pub next_offset: i64,
 }
 
 #[derive(Debug, Serialize)]

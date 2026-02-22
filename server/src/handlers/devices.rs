@@ -27,6 +27,8 @@ pub async fn list_devices_handler(
 pub struct SessionQueryParams {
     pub status: Option<String>,
     pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub exclude_ended: Option<bool>,
 }
 
 pub async fn list_device_sessions_handler(
@@ -44,5 +46,9 @@ pub async fn list_device_sessions_handler(
 
     let sessions = queries::list_sessions(&conn, &device_id, params.status.as_deref(), limit)?;
 
-    Ok(Json(SessionListResponse { sessions }))
+    Ok(Json(SessionListResponse {
+        sessions,
+        has_more: false,
+        next_offset: 0,
+    }))
 }

@@ -37,14 +37,26 @@ pub async fn list_all_sessions_handler(
     _auth: ReadAuth,
     Query(params): Query<super::devices::SessionQueryParams>,
 ) -> Result<Json<SessionListResponse>, AppError> {
-    let limit = params.limit.unwrap_or(200);
+    let limit = params.limit.unwrap_or(50).min(200);
+    let offset = params.offset.unwrap_or(0).max(0);
+    let exclude_ended = params.exclude_ended.unwrap_or(false);
 
     let conn = state
         .db_pool
         .get()
         .map_err(|e| AppError::Internal(format!("Database pool error: {e}")))?;
 
-    let sessions = queries::list_all_sessions(&conn, params.status.as_deref(), limit)?;
+    let result = queries::list_all_sessions_paginated(
+        &conn,
+        params.status.as_deref(),
+        exclude_ended,
+        limit,
+        offset,
+    )?;
 
-    Ok(Json(SessionListResponse { sessions }))
+    Ok(Json(SessionListResponse {
+        sessions: result.sessions,
+        has_more: result.has_more,
+        next_offset: result.next_offset,
+    }))
 }
