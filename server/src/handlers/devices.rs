@@ -27,8 +27,6 @@ pub async fn list_devices_handler(
 pub struct SessionQueryParams {
     pub status: Option<String>,
     pub limit: Option<i64>,
-    pub offset: Option<i64>,
-    pub exclude_ended: Option<bool>,
 }
 
 pub async fn list_device_sessions_handler(
@@ -37,7 +35,7 @@ pub async fn list_device_sessions_handler(
     Path(device_id): Path<String>,
     Query(params): Query<SessionQueryParams>,
 ) -> Result<Json<SessionListResponse>, AppError> {
-    let limit = params.limit.unwrap_or(50);
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
 
     let conn = state
         .db_pool

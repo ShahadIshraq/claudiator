@@ -14,6 +14,14 @@ pub struct EventQueryParams {
     pub limit: Option<i64>,
 }
 
+#[derive(Deserialize)]
+pub struct AllSessionsQueryParams {
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub exclude_ended: Option<bool>,
+}
+
 pub async fn list_session_events_handler(
     State(state): State<Arc<AppState>>,
     _auth: ReadAuth,
@@ -35,9 +43,9 @@ pub async fn list_session_events_handler(
 pub async fn list_all_sessions_handler(
     State(state): State<Arc<AppState>>,
     _auth: ReadAuth,
-    Query(params): Query<super::devices::SessionQueryParams>,
+    Query(params): Query<AllSessionsQueryParams>,
 ) -> Result<Json<SessionListResponse>, AppError> {
-    let limit = params.limit.unwrap_or(50).min(200);
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
     let offset = params.offset.unwrap_or(0).max(0);
     let exclude_ended = params.exclude_ended.unwrap_or(false);
 
