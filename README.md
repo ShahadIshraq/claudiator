@@ -25,6 +25,13 @@ Claudiator is a lightweight system that captures Claude Code hook events and for
 4. The server sends push notifications to your iOS device when sessions need attention (stopped, waiting for permission, idle)
 5. You see all active sessions across devices in the iOS app and orchestrate parallel agent work
 
+## Using the iOS App
+
+The iOS app's push notifications are powered by APNs credentials tied to my own Apple Developer account. If you want push notification support, you have two options:
+
+1. **Build it yourself** — Clone the repo, set up your own APNs credentials (see [server/APNS_SETUP.md](server/APNS_SETUP.md)), and build via Xcode.
+2. **Reach out to me** — I can help set up a dedicated server instance that you control, using my APNs config. Your data stays yours.
+
 ## Data Sent to the Server
 
 `claudiator-hook` trims every event to exactly 7 fields before transmission. Everything else — including `tool_input`, `tool_output`, `tool_response`, `custom_instructions`, and `transcript_path` — is discarded on the client machine and never leaves it.
