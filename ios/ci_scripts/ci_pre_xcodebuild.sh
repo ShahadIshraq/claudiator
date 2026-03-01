@@ -3,7 +3,8 @@ set -e
 
 # Extract version from git tag (e.g. ios-v1.2.3 → 1.2.3)
 if [ -n "$CI_TAG" ]; then
-    VERSION=$(echo "$CI_TAG" | sed 's/ios-v//')
+    # Strip 'ios-v' prefix and any pre-release suffix (e.g. ios-v1.0.0-beta.1 → 1.0.0)
+    VERSION=$(echo "$CI_TAG" | sed 's/ios-v//' | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
     BUILD_NUMBER=$(git rev-list --count HEAD)
 
     # Update project.yml with tag version
