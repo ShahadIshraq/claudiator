@@ -157,7 +157,7 @@ struct AllSessionsView: View {
             } else {
                 // Grouped wide: Grid with device cards
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    LazyVGrid(columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 16) {
                         ForEach(sortedDeviceIds, id: \.self) { deviceId in
                             DeviceGroupCard(
                                 deviceId: deviceId,
