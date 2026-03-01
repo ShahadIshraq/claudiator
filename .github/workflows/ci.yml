@@ -90,6 +90,9 @@ jobs:
   audit-server:
     name: Security Audit - Server
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
     defaults:
       run:
         working-directory: server
