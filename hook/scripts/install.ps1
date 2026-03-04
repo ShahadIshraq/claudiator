@@ -116,7 +116,27 @@ $HooksConfigured = $false
 if ($ConfigureHooks -match "^[Yy]$") {
     $SettingsFile = "$env:USERPROFILE\.claude\settings.json"
     $HookCommand = "~/.claude/claudiator/claudiator-hook send"
+    $HookHttpUrl = ($ServerUrl.TrimEnd('/') + "/api/v1/hooks/http")
     $Events = @("SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest", "TeammateIdle", "TaskCompleted")
+
+    Write-Host ""
+    $HookTransport = Read-Host "Hook transport (command/http/both) [command]"
+    if ([string]::IsNullOrWhiteSpace($HookTransport)) {
+        $HookTransport = "command"
+    }
+    $HookTransport = $HookTransport.ToLower()
+
+    $UseCommand = $false
+    $UseHttp = $false
+    switch ($HookTransport) {
+        "command" { $UseCommand = $true }
+        "http" { $UseHttp = $true }
+        "both" { $UseCommand = $true; $UseHttp = $true }
+        default {
+            Write-Host "Unknown option '$HookTransport' — defaulting to 'command'." -ForegroundColor Yellow
+            $UseCommand = $true
+        }
+    }
 
     # Create settings directory if it doesn't exist
     $SettingsDir = Split-Path -Parent $SettingsFile
@@ -148,19 +168,44 @@ if ($ConfigureHooks -match "^[Yy]$") {
             $Settings.hooks | Add-Member -NotePropertyName $Event -NotePropertyValue @() -Force
         }
 
-        # Check if hook already exists
-        $Existing = $Settings.hooks.$Event | Where-Object { $_.hooks | Where-Object { $_.command -eq $HookCommand } }
+        if ($UseCommand) {
+            # Check if command hook already exists
+            $ExistingCommand = $Settings.hooks.$Event | Where-Object { $_.hooks | Where-Object { $_.type -eq "command" -and $_.command -eq $HookCommand } }
 
-        if (-not $Existing) {
-            # Add the hook
-            $NewHook = [PSCustomObject]@{
-                matcher = ""
-                hooks = @([PSCustomObject]@{
-                    type = "command"
-                    command = $HookCommand
-                })
+            if (-not $ExistingCommand) {
+                # Add the command hook
+                $NewHook = [PSCustomObject]@{
+                    matcher = ""
+                    hooks = @([PSCustomObject]@{
+                        type = "command"
+                        command = $HookCommand
+                    })
+                }
+                $Settings.hooks.$Event += $NewHook
             }
-            $Settings.hooks.$Event += $NewHook
+        }
+
+        if ($UseHttp) {
+            # Check if HTTP hook already exists
+            $ExistingHttp = $Settings.hooks.$Event | Where-Object { $_.hooks | Where-Object { $_.type -eq "http" -and $_.url -eq $HookHttpUrl } }
+
+            if (-not $ExistingHttp) {
+                # Add the HTTP hook
+                $NewHook = [PSCustomObject]@{
+                    matcher = ""
+                    hooks = @([PSCustomObject]@{
+                        type = "http"
+                        url = $HookHttpUrl
+                        headers = [PSCustomObject]@{
+                            Authorization = "Bearer $ApiKey"
+                            "X-Claudiator-Device-Id" = $DeviceId
+                            "X-Claudiator-Device-Name" = $DeviceName
+                            "X-Claudiator-Platform" = $Platform
+                        }
+                    })
+                }
+                $Settings.hooks.$Event += $NewHook
+            }
         }
     }
 

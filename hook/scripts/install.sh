@@ -119,6 +119,31 @@ HOOKS_CONFIGURED=false
 if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
     SETTINGS_FILE="$HOME/.claude/settings.json"
     HOOK_COMMAND="~/.claude/claudiator/claudiator-hook send"
+    HOOK_HTTP_URL="${SERVER_URL%/}/api/v1/hooks/http"
+
+    echo ""
+    read -r -p "Hook transport (command/http/both) [command]: " HOOK_TRANSPORT
+    HOOK_TRANSPORT=${HOOK_TRANSPORT:-command}
+    HOOK_TRANSPORT=$(echo "$HOOK_TRANSPORT" | tr '[:upper:]' '[:lower:]')
+
+    USE_COMMAND=false
+    USE_HTTP=false
+    case "$HOOK_TRANSPORT" in
+        command)
+            USE_COMMAND=true
+            ;;
+        http)
+            USE_HTTP=true
+            ;;
+        both)
+            USE_COMMAND=true
+            USE_HTTP=true
+            ;;
+        *)
+            echo "Unknown option '$HOOK_TRANSPORT' — defaulting to 'command'."
+            USE_COMMAND=true
+            ;;
+    esac
 
     # Create settings directory if it doesn't exist
     mkdir -p "$HOME/.claude"
@@ -144,28 +169,63 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
 
         # For each hook event, add if not already present
         for EVENT in SessionStart SessionEnd Stop Notification UserPromptSubmit PermissionRequest TeammateIdle TaskCompleted; do
-            # Check if hook already exists
-            EXISTING=$(jq -r --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
-                '.hooks[$event] // [] | map(select(.hooks[]? | select(.command == $cmd))) | length' \
-                "$SETTINGS_FILE")
+            if [ "$USE_COMMAND" = true ]; then
+                # Check if command hook already exists
+                EXISTING_CMD=$(jq -r --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
+                    '.hooks[$event] // [] | map(select(.hooks[]? | select(.command == $cmd))) | length' \
+                    "$SETTINGS_FILE")
 
-            if [ "$EXISTING" -eq 0 ]; then
-                # Add the hook
-                jq --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
-                    '.hooks[$event] = (.hooks[$event] // []) + [{"matcher": "", "hooks": [{"type": "command", "command": $cmd}]}]' \
-                    "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+                if [ "$EXISTING_CMD" -eq 0 ]; then
+                    # Add the command hook
+                    jq --arg event "$EVENT" --arg cmd "$HOOK_COMMAND" \
+                        '.hooks[$event] = (.hooks[$event] // []) + [{"matcher": "", "hooks": [{"type": "command", "command": $cmd}]}]' \
+                        "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+                fi
+            fi
+
+            if [ "$USE_HTTP" = true ]; then
+                # Check if HTTP hook already exists
+                EXISTING_HTTP=$(jq -r --arg event "$EVENT" --arg url "$HOOK_HTTP_URL" \
+                    '.hooks[$event] // [] | map(select(.hooks[]? | select(.type == "http" and .url == $url))) | length' \
+                    "$SETTINGS_FILE")
+
+                if [ "$EXISTING_HTTP" -eq 0 ]; then
+                    # Add the HTTP hook
+                    jq --arg event "$EVENT" \
+                        --arg url "$HOOK_HTTP_URL" \
+                        --arg auth "Bearer $API_KEY" \
+                        --arg device_id "$DEVICE_ID" \
+                        --arg device_name "$DEVICE_NAME" \
+                        --arg platform "$PLATFORM" \
+                        '.hooks[$event] = (.hooks[$event] // []) + [{"matcher": "", "hooks": [{"type": "http", "url": $url, "headers": {"Authorization": $auth, "X-Claudiator-Device-Id": $device_id, "X-Claudiator-Device-Name": $device_name, "X-Claudiator-Platform": $platform}}]}]' \
+                        "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+                fi
             fi
         done
         HOOKS_CONFIGURED=true
 
     elif command -v python3 &> /dev/null; then
         # Use Python for JSON manipulation
+        CLAUDIATOR_HTTP_URL="$HOOK_HTTP_URL" \
+        CLAUDIATOR_USE_COMMAND="$USE_COMMAND" \
+        CLAUDIATOR_USE_HTTP="$USE_HTTP" \
+        CLAUDIATOR_API_KEY="$API_KEY" \
+        CLAUDIATOR_DEVICE_ID="$DEVICE_ID" \
+        CLAUDIATOR_DEVICE_NAME="$DEVICE_NAME" \
+        CLAUDIATOR_PLATFORM="$PLATFORM" \
         python3 << 'PYEOF'
 import json
 import os
 
 settings_file = os.path.expanduser("~/.claude/settings.json")
 hook_command = "~/.claude/claudiator/claudiator-hook send"
+hook_http_url = os.environ.get("CLAUDIATOR_HTTP_URL", "")
+use_command = os.environ.get("CLAUDIATOR_USE_COMMAND") == "true"
+use_http = os.environ.get("CLAUDIATOR_USE_HTTP") == "true"
+api_key = os.environ.get("CLAUDIATOR_API_KEY", "")
+device_id = os.environ.get("CLAUDIATOR_DEVICE_ID", "")
+device_name = os.environ.get("CLAUDIATOR_DEVICE_NAME", "")
+platform = os.environ.get("CLAUDIATOR_PLATFORM", "")
 events = ["SessionStart", "SessionEnd", "Stop", "Notification", "UserPromptSubmit", "PermissionRequest", "TeammateIdle", "TaskCompleted"]
 
 # Load or create settings
@@ -184,17 +244,40 @@ for event in events:
     if event not in settings['hooks']:
         settings['hooks'][event] = []
 
-    # Check if hook already exists
-    existing = any(
-        any(h.get('command') == hook_command for h in hook.get('hooks', []))
-        for hook in settings['hooks'][event]
-    )
+    if use_command:
+        # Check if command hook already exists
+        existing_command = any(
+            any(h.get('command') == hook_command for h in hook.get('hooks', []))
+            for hook in settings['hooks'][event]
+        )
 
-    if not existing:
-        settings['hooks'][event].append({
-            "matcher": "",
-            "hooks": [{"type": "command", "command": hook_command}]
-        })
+        if not existing_command:
+            settings['hooks'][event].append({
+                "matcher": "",
+                "hooks": [{"type": "command", "command": hook_command}]
+            })
+
+    if use_http:
+        # Check if HTTP hook already exists
+        existing_http = any(
+            any(h.get('type') == 'http' and h.get('url') == hook_http_url for h in hook.get('hooks', []))
+            for hook in settings['hooks'][event]
+        )
+
+        if not existing_http:
+            settings['hooks'][event].append({
+                "matcher": "",
+                "hooks": [{
+                    "type": "http",
+                    "url": hook_http_url,
+                    "headers": {
+                        "Authorization": f"Bearer {api_key}",
+                        "X-Claudiator-Device-Id": device_id,
+                        "X-Claudiator-Device-Name": device_name,
+                        "X-Claudiator-Platform": platform
+                    }
+                }]
+            })
 
 # Write back
 with open(settings_file, 'w') as f:
@@ -207,7 +290,142 @@ PYEOF
         echo ""
         echo "Neither jq nor python3 found. Please manually add the following to ~/.claude/settings.json:"
         echo ""
-        cat << 'JSONEOF'
+        if [ "$USE_COMMAND" = true ] && [ "$USE_HTTP" = true ]; then
+            cat << JSONEOF
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
+          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+        ]
+      }
+    ]
+  }
+}
+JSONEOF
+        elif [ "$USE_HTTP" = true ]; then
+            cat << JSONEOF
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+      }
+    ]
+  }
+}
+JSONEOF
+        else
+            cat << 'JSONEOF'
 {
   "hooks": {
     "SessionStart": [
@@ -261,6 +479,7 @@ PYEOF
   }
 }
 JSONEOF
+        fi
         echo ""
     fi
 fi
