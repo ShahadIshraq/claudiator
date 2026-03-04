@@ -133,7 +133,7 @@ if ($ConfigureHooks -match "^[Yy]$") {
         "http" { $UseHttp = $true }
         "both" { $UseCommand = $true; $UseHttp = $true }
         default {
-            Write-Host "Unknown option '$HookTransport' — defaulting to 'command'." -ForegroundColor Yellow
+            Write-Host "Unknown option '$HookTransport' - defaulting to 'command'." -ForegroundColor Yellow
             $UseCommand = $true
         }
     }
@@ -186,8 +186,22 @@ if ($ConfigureHooks -match "^[Yy]$") {
         }
 
         if ($UseHttp) {
-            # Check if HTTP hook already exists
-            $ExistingHttp = $Settings.hooks.$Event | Where-Object { $_.hooks | Where-Object { $_.type -eq "http" -and $_.url -eq $HookHttpUrl } }
+            # Update existing HTTP hook headers so reinstall refreshes credentials/device identity.
+            $ExistingHttp = @()
+            foreach ($HookGroup in $Settings.hooks.$Event) {
+                if ($null -eq $HookGroup.hooks) { continue }
+                foreach ($InnerHook in $HookGroup.hooks) {
+                    if ($InnerHook.type -eq "http" -and $InnerHook.url -eq $HookHttpUrl) {
+                        $InnerHook.headers = [PSCustomObject]@{
+                            Authorization = "Bearer $ApiKey"
+                            "X-Claudiator-Device-Id" = $DeviceId
+                            "X-Claudiator-Device-Name" = $DeviceName
+                            "X-Claudiator-Platform" = $Platform
+                        }
+                        $ExistingHttp += $InnerHook
+                    }
+                }
+            }
 
             if (-not $ExistingHttp) {
                 # Add the HTTP hook

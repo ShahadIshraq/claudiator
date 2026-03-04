@@ -140,7 +140,7 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
             USE_HTTP=true
             ;;
         *)
-            echo "Unknown option '$HOOK_TRANSPORT' — defaulting to 'command'."
+            echo "Unknown option '$HOOK_TRANSPORT' - defaulting to 'command'."
             USE_COMMAND=true
             ;;
     esac
@@ -184,6 +184,28 @@ if [[ "$CONFIGURE_HOOKS" =~ ^[Yy]$ ]] || [[ -z "$CONFIGURE_HOOKS" ]]; then
             fi
 
             if [ "$USE_HTTP" = true ]; then
+                # Update headers for matching HTTP hooks (if present) so reruns refresh credentials.
+                jq --arg event "$EVENT" \
+                    --arg url "$HOOK_HTTP_URL" \
+                    --arg auth "Bearer $API_KEY" \
+                    --arg device_id "$DEVICE_ID" \
+                    --arg device_name "$DEVICE_NAME" \
+                    --arg platform "$PLATFORM" \
+                    '.hooks[$event] = ((.hooks[$event] // []) | map(
+                        if (.hooks | type) == "array" then
+                            .hooks = (.hooks | map(
+                                if (.type == "http" and .url == $url) then
+                                    . + {"headers": {"Authorization": $auth, "X-Claudiator-Device-Id": $device_id, "X-Claudiator-Device-Name": $device_name, "X-Claudiator-Platform": $platform}}
+                                else
+                                    .
+                                end
+                            ))
+                        else
+                            .
+                        end
+                    ))' \
+                    "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
+
                 # Check if HTTP hook already exists
                 EXISTING_HTTP=$(jq -r --arg event "$EVENT" --arg url "$HOOK_HTTP_URL" \
                     '.hooks[$event] // [] | map(select(.hooks[]? | select(.type == "http" and .url == $url))) | length' \
@@ -258,11 +280,17 @@ for event in events:
             })
 
     if use_http:
-        # Check if HTTP hook already exists
-        existing_http = any(
-            any(h.get('type') == 'http' and h.get('url') == hook_http_url for h in hook.get('hooks', []))
-            for hook in settings['hooks'][event]
-        )
+        existing_http = False
+        for hook_group in settings['hooks'][event]:
+            for h in hook_group.get('hooks', []):
+                if h.get('type') == 'http' and h.get('url') == hook_http_url:
+                    h['headers'] = {
+                        "Authorization": f"Bearer {api_key}",
+                        "X-Claudiator-Device-Id": device_id,
+                        "X-Claudiator-Device-Name": device_name,
+                        "X-Claudiator-Platform": platform
+                    }
+                    existing_http = True
 
         if not existing_http:
             settings['hooks'][event].append({
