@@ -1,4 +1,5 @@
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::Json;
 use chrono::{SecondsFormat, Utc};
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use crate::auth::WriteAuth;
 use crate::db::pool::DbPool;
 use crate::db::queries;
 use crate::error::AppError;
-use crate::models::request::EventPayload;
+use crate::models::request::{DeviceInfo, EventData, EventPayload};
 use crate::models::response::StatusOk;
 use crate::notif_dedup;
 use crate::router::AppState;
@@ -33,6 +34,43 @@ fn validate_event_payload(payload: &EventPayload) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+fn header_value(headers: &HeaderMap, names: &[&str]) -> Option<String> {
+    names.iter().find_map(|name| {
+        headers
+            .get(*name)
+            .and_then(|value| value.to_str().ok())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(String::from)
+    })
+}
+
+fn device_info_from_headers(headers: &HeaderMap) -> Result<DeviceInfo, AppError> {
+    let device_id = header_value(
+        headers,
+        &["X-Claudiator-Device-Id", "X-Device-Id"],
+    )
+    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Device-Id is required".into()))?;
+
+    let device_name = header_value(
+        headers,
+        &["X-Claudiator-Device-Name", "X-Device-Name"],
+    )
+    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Device-Name is required".into()))?;
+
+    let platform = header_value(
+        headers,
+        &["X-Claudiator-Platform", "X-Device-Platform"],
+    )
+    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Platform is required".into()))?;
+
+    Ok(DeviceInfo {
+        device_id,
+        device_name,
+        platform,
+    })
 }
 
 fn extract_session_title(payload: &EventPayload) -> Option<String> {
@@ -189,10 +227,9 @@ fn schedule_retention_cleanup(state: &Arc<AppState>) {
 }
 
 #[allow(clippy::too_many_lines)]
-pub async fn events_handler(
-    State(state): State<Arc<AppState>>,
-    _auth: WriteAuth,
-    Json(payload): Json<EventPayload>,
+async fn ingest_event(
+    state: Arc<AppState>,
+    payload: EventPayload,
 ) -> Result<Json<StatusOk>, AppError> {
     validate_event_payload(&payload)?;
 
@@ -347,6 +384,32 @@ pub async fn events_handler(
     );
 
     Ok(Json(StatusOk::ok()))
+}
+
+#[allow(clippy::too_many_lines)]
+pub async fn events_handler(
+    State(state): State<Arc<AppState>>,
+    _auth: WriteAuth,
+    Json(payload): Json<EventPayload>,
+) -> Result<Json<StatusOk>, AppError> {
+    ingest_event(state, payload).await
+}
+
+pub async fn http_hook_handler(
+    State(state): State<Arc<AppState>>,
+    _auth: WriteAuth,
+    headers: HeaderMap,
+    Json(event): Json<EventData>,
+) -> Result<Json<StatusOk>, AppError> {
+    let device = device_info_from_headers(&headers)?;
+    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+    let payload = EventPayload {
+        device,
+        event,
+        timestamp,
+    };
+
+    ingest_event(state, payload).await
 }
 
 fn derive_session_status(hook_event_name: &str, notification_type: Option<&str>) -> Option<String> {

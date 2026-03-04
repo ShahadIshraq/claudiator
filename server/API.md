@@ -157,6 +157,48 @@ The server stores only the 7 declared fields (`session_id`, `hook_event_name`, `
 
 ---
 
+### POST /api/v1/hooks/http
+
+Ingest a Claude Code HTTP hook event directly (without the `claudiator-hook` binary).
+
+**Required Headers**
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer {api_key}` |
+| `X-Claudiator-Device-Id` | Stable device UUID |
+| `X-Claudiator-Device-Name` | Human-readable device name |
+| `X-Claudiator-Platform` | `mac`, `linux`, or `windows` |
+
+**Request Body**
+
+The raw Claude Code hook event JSON. The server parses only the 7 fields it uses
+and discards all other fields (same behavior as the stdin hook client).
+
+```json
+{
+  "session_id": "string",
+  "hook_event_name": "string",
+  "cwd": "string | null",
+  "prompt": "string | null",
+  "notification_type": "string | null",
+  "tool_name": "string | null",
+  "message": "string | null"
+}
+```
+
+The server generates the `timestamp` internally when ingesting HTTP hook events.
+
+**Response: 200 OK**
+
+```json
+{
+  "status": "ok"
+}
+```
+
+---
+
 ### GET /api/v1/devices
 
 List all known devices with active session counts.

@@ -109,6 +109,47 @@ async fn test_events_valid() {
 }
 
 #[tokio::test]
+async fn test_http_hook_valid() {
+    let server = test_server();
+    let payload = serde_json::json!({
+        "session_id": "sess-http-1",
+        "hook_event_name": "SessionStart"
+    });
+
+    let response = server
+        .post("/api/v1/hooks/http")
+        .add_header("Authorization", "Bearer test-key")
+        .add_header("X-Claudiator-Device-Id", "dev-http-1")
+        .add_header("X-Claudiator-Device-Name", "HTTP Device")
+        .add_header("X-Claudiator-Platform", "mac")
+        .json(&payload)
+        .await;
+
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+    assert_eq!(json["status"], "ok");
+}
+
+#[tokio::test]
+async fn test_http_hook_missing_device_header() {
+    let server = test_server();
+    let payload = serde_json::json!({
+        "session_id": "sess-http-2",
+        "hook_event_name": "SessionStart"
+    });
+
+    let response = server
+        .post("/api/v1/hooks/http")
+        .add_header("Authorization", "Bearer test-key")
+        .add_header("X-Claudiator-Device-Name", "HTTP Device")
+        .add_header("X-Claudiator-Platform", "mac")
+        .json(&payload)
+        .await;
+
+    response.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
 async fn test_events_empty_device_id() {
     let server = test_server();
     let payload = serde_json::json!({
