@@ -25,6 +25,20 @@ Claudiator is a lightweight system that captures Claude Code hook events and for
 4. The server sends push notifications to your iOS device when sessions need attention (stopped, waiting for permission, idle)
 5. You see all active sessions across devices in the iOS app and orchestrate parallel agent work
 
+## HTTP Hooks (Direct)
+
+Claude Code can POST hook events directly over HTTP (no local hook binary). Claudiator supports this via `POST /api/v1/hooks/http`, which accepts the raw hook JSON and uses headers for device identity. See [server/API.md](server/API.md) and [hook/README.md](hook/README.md) for the exact payload and headers.
+
+## Migration: Stdin Hook → HTTP Hook
+
+1. Re-run the hook installer and choose `http` when prompted for hook transport:
+   - macOS/Linux: `hook/scripts/install.sh`
+   - Windows: `hook/scripts/install.ps1`
+2. The installer will add HTTP hook entries to `~/.claude/settings.json` using your device metadata and API key.
+3. Optionally remove the old `command` hooks if you want only HTTP hooks.
+
+Note: HTTP hooks embed the API key directly in `settings.json`. If you prefer not to store it there, use the stdin hook client instead.
+
 ## Using the iOS App
 
 The iOS app's push notifications are powered by APNs credentials tied to my own Apple Developer account. If you want push notification support, you have two options:
