@@ -113,6 +113,7 @@ All endpoints require `Authorization: Bearer <key>`. The `CLAUDIATOR_API_KEY` ma
 |---|---|---|---|
 | `GET` | `/api/v1/ping` | read | Health check, returns server version, data_version, and notification_version |
 | `POST` | `/api/v1/events` | write | Ingest a hook event from a device |
+| `POST` | `/api/v1/hooks/http` | write | Ingest a raw Claude Code HTTP hook event (device identity via headers) |
 | `GET` | `/api/v1/devices` | read | List all devices with active session counts |
 | `GET` | `/api/v1/devices/:device_id/sessions` | read | List sessions for a device |
 | `GET` | `/api/v1/sessions` | read | List all sessions across all devices |
