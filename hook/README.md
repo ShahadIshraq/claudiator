@@ -250,6 +250,40 @@ To integrate with Claude Code, add the hook to `~/.claude/settings.json`:
 
 When any of these events occur, Claude Code will invoke `claudiator-hook send` with the event JSON on stdin.
 
+## Claude Code HTTP Hook Integration (Direct)
+
+Claude Code also supports HTTP hooks that POST the hook event JSON directly to a URL. Use this if you want to bypass the `claudiator-hook` binary and send events straight to the server.
+
+Add HTTP hooks in `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "http",
+        "url": "https://your-server.example.com/api/v1/hooks/http",
+        "headers": {
+          "Authorization": "Bearer $CLAUDIATOR_API_KEY",
+          "X-Claudiator-Device-Id": "$CLAUDIATOR_DEVICE_ID",
+          "X-Claudiator-Device-Name": "$CLAUDIATOR_DEVICE_NAME",
+          "X-Claudiator-Platform": "$CLAUDIATOR_PLATFORM"
+        },
+        "allowedEnvVars": [
+          "CLAUDIATOR_API_KEY",
+          "CLAUDIATOR_DEVICE_ID",
+          "CLAUDIATOR_DEVICE_NAME",
+          "CLAUDIATOR_PLATFORM"
+        ]
+      }]
+    }]
+  }
+}
+```
+
+HTTP hook requests are authenticated the same way as the stdin hook client and must include the device headers shown above.
+
 ### Supported Events
 
 - `SessionStart` — Fired when a new Claude Code session begins

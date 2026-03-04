@@ -55,6 +55,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/api/v1/ping", get(handlers::ping::ping_handler))
         .route("/api/v1/events", post(handlers::events::events_handler))
         .route(
+            "/api/v1/hooks/http",
+            post(handlers::events::http_hook_handler),
+        )
+        .route(
             "/api/v1/devices",
             get(handlers::devices::list_devices_handler),
         )
