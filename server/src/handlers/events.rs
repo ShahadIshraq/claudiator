@@ -52,19 +52,31 @@ fn device_info_from_headers(headers: &HeaderMap) -> Result<DeviceInfo, AppError>
         headers,
         &["X-Claudiator-Device-Id", "X-Device-Id"],
     )
-    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Device-Id is required".into()))?;
+    .ok_or_else(|| {
+        AppError::BadRequest(
+            "Device id header is required (X-Claudiator-Device-Id or X-Device-Id)".into(),
+        )
+    })?;
 
     let device_name = header_value(
         headers,
         &["X-Claudiator-Device-Name", "X-Device-Name"],
     )
-    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Device-Name is required".into()))?;
+    .ok_or_else(|| {
+        AppError::BadRequest(
+            "Device name header is required (X-Claudiator-Device-Name or X-Device-Name)".into(),
+        )
+    })?;
 
     let platform = header_value(
         headers,
         &["X-Claudiator-Platform", "X-Device-Platform"],
     )
-    .ok_or_else(|| AppError::BadRequest("X-Claudiator-Platform is required".into()))?;
+    .ok_or_else(|| {
+        AppError::BadRequest(
+            "Platform header is required (X-Claudiator-Platform or X-Device-Platform)".into(),
+        )
+    })?;
 
     Ok(DeviceInfo {
         device_id,

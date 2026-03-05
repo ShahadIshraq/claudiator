@@ -319,7 +319,7 @@ PYEOF
         echo "Neither jq nor python3 found. Please manually add the following to ~/.claude/settings.json:"
         echo ""
         if [ "$USE_COMMAND" = true ] && [ "$USE_HTTP" = true ]; then
-            cat << JSONEOF
+            cat << 'JSONEOF'
 {
   "hooks": {
     "SessionStart": [
@@ -327,131 +327,30 @@ PYEOF
         "matcher": "",
         "hooks": [
           {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "matcher": "",
-        "hooks": [
-          {"type": "command", "command": "~/.claude/claudiator/claudiator-hook send"},
-          {"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}
+          {"type": "http", "url": "https://your-server.example.com/api/v1/hooks/http", "headers": {"Authorization": "Bearer <YOUR_API_KEY>", "X-Claudiator-Device-Id": "<YOUR_DEVICE_ID>", "X-Claudiator-Device-Name": "<YOUR_DEVICE_NAME>", "X-Claudiator-Platform": "<mac|linux|windows>"}}
         ]
       }
     ]
   }
 }
 JSONEOF
+            echo ""
+            echo "Repeat this hook stanza for: SessionEnd, Stop, Notification, UserPromptSubmit, PermissionRequest, TeammateIdle, TaskCompleted."
         elif [ "$USE_HTTP" = true ]; then
-            cat << JSONEOF
+            cat << 'JSONEOF'
 {
   "hooks": {
     "SessionStart": [
       {
         "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "matcher": "",
-        "hooks": [{"type": "http", "url": "${HOOK_HTTP_URL}", "headers": {"Authorization": "Bearer ${API_KEY}", "X-Claudiator-Device-Id": "${DEVICE_ID}", "X-Claudiator-Device-Name": "${DEVICE_NAME}", "X-Claudiator-Platform": "${PLATFORM}"}}]
+        "hooks": [{"type": "http", "url": "https://your-server.example.com/api/v1/hooks/http", "headers": {"Authorization": "Bearer <YOUR_API_KEY>", "X-Claudiator-Device-Id": "<YOUR_DEVICE_ID>", "X-Claudiator-Device-Name": "<YOUR_DEVICE_NAME>", "X-Claudiator-Platform": "<mac|linux|windows>"}}]
       }
     ]
   }
 }
 JSONEOF
+            echo ""
+            echo "Repeat this hook stanza for: SessionEnd, Stop, Notification, UserPromptSubmit, PermissionRequest, TeammateIdle, TaskCompleted."
         else
             cat << 'JSONEOF'
 {

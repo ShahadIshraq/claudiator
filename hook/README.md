@@ -283,6 +283,7 @@ Add HTTP hooks in `~/.claude/settings.json`:
 ```
 
 HTTP hook requests are authenticated the same way as the stdin hook client and must include the device headers shown above.
+The server still whitelists and stores only the same 7 non-sensitive event fields (`session_id`, `hook_event_name`, `cwd`, `prompt`, `notification_type`, `tool_name`, `message`); all other incoming fields are ignored.
 
 ### Supported Events
 
