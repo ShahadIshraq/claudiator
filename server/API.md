@@ -189,6 +189,12 @@ and discards all other fields (same behavior as the stdin hook client).
 
 The server generates the `timestamp` internally when ingesting HTTP hook events.
 
+**Sensitive Data Note**
+
+Claude Code may include additional event fields in HTTP hook requests depending on event type (for example: `tool_input`, `tool_response`, `custom_instructions`, `last_assistant_message`, `transcript_path`, and others). This endpoint stores only the 7 declared fields shown above and ignores the rest.
+
+However, those extra fields may still be present in the inbound HTTP request body in direct HTTP-hook mode. If you require client-side minimization before transmission, use the stdin command hook client (`claudiator-hook send`) instead.
+
 **Response: 200 OK**
 
 ```json
