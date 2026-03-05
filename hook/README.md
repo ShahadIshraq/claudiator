@@ -285,6 +285,16 @@ Add HTTP hooks in `~/.claude/settings.json`:
 HTTP hook requests are authenticated the same way as the stdin hook client and must include the device headers shown above.
 The server still whitelists and stores only the same 7 non-sensitive event fields (`session_id`, `hook_event_name`, `cwd`, `prompt`, `notification_type`, `tool_name`, `message`); all other incoming fields are ignored.
 
+### Sensitive Data Note (HTTP Hooks)
+
+Claude Code may include additional fields in HTTP hook payloads depending on event type (for example: `tool_input`, `tool_response`, `custom_instructions`, `last_assistant_message`, `transcript_path`, and more). Claudiator discards these on ingest and persists only the 7 whitelisted fields above.
+
+Important distinction:
+- HTTP hook mode: extra fields may still be transmitted over the network to your server endpoint before server-side filtering.
+- stdin command hook mode (`claudiator-hook send`): payload is trimmed on the client before network transmission.
+
+If your requirement is strict minimization before any network hop, prefer the stdin command hook mode.
+
 ### Supported Events
 
 - `SessionStart` — Fired when a new Claude Code session begins
