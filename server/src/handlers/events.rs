@@ -48,35 +48,26 @@ fn header_value(headers: &HeaderMap, names: &[&str]) -> Option<String> {
 }
 
 fn device_info_from_headers(headers: &HeaderMap) -> Result<DeviceInfo, AppError> {
-    let device_id = header_value(
-        headers,
-        &["X-Claudiator-Device-Id", "X-Device-Id"],
-    )
-    .ok_or_else(|| {
-        AppError::BadRequest(
-            "Device id header is required (X-Claudiator-Device-Id or X-Device-Id)".into(),
-        )
-    })?;
+    let device_id =
+        header_value(headers, &["X-Claudiator-Device-Id", "X-Device-Id"]).ok_or_else(|| {
+            AppError::BadRequest(
+                "Device id header is required (X-Claudiator-Device-Id or X-Device-Id)".into(),
+            )
+        })?;
 
-    let device_name = header_value(
-        headers,
-        &["X-Claudiator-Device-Name", "X-Device-Name"],
-    )
-    .ok_or_else(|| {
-        AppError::BadRequest(
-            "Device name header is required (X-Claudiator-Device-Name or X-Device-Name)".into(),
-        )
-    })?;
+    let device_name = header_value(headers, &["X-Claudiator-Device-Name", "X-Device-Name"])
+        .ok_or_else(|| {
+            AppError::BadRequest(
+                "Device name header is required (X-Claudiator-Device-Name or X-Device-Name)".into(),
+            )
+        })?;
 
-    let platform = header_value(
-        headers,
-        &["X-Claudiator-Platform", "X-Device-Platform"],
-    )
-    .ok_or_else(|| {
-        AppError::BadRequest(
-            "Platform header is required (X-Claudiator-Platform or X-Device-Platform)".into(),
-        )
-    })?;
+    let platform = header_value(headers, &["X-Claudiator-Platform", "X-Device-Platform"])
+        .ok_or_else(|| {
+            AppError::BadRequest(
+                "Platform header is required (X-Claudiator-Platform or X-Device-Platform)".into(),
+            )
+        })?;
 
     Ok(DeviceInfo {
         device_id,
