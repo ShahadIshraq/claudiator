@@ -230,16 +230,13 @@ fn schedule_retention_cleanup(state: &Arc<AppState>) {
 }
 
 #[allow(clippy::too_many_lines)]
-async fn ingest_event(
-    state: Arc<AppState>,
-    payload: EventPayload,
-) -> Result<Json<StatusOk>, AppError> {
-    validate_event_payload(&payload)?;
+fn ingest_event(state: &Arc<AppState>, payload: &EventPayload) -> Result<Json<StatusOk>, AppError> {
+    validate_event_payload(payload)?;
 
     let received_at = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
 
     // Extract title from UserPromptSubmit events
-    let title = extract_session_title(&payload);
+    let title = extract_session_title(payload);
 
     // Derive session status
     let session_status = derive_session_status(
@@ -377,7 +374,7 @@ async fn ingest_event(
         }
     }
 
-    schedule_retention_cleanup(&state);
+    schedule_retention_cleanup(state);
 
     tracing::info!(
         device_id = %payload.device.device_id,
@@ -395,7 +392,7 @@ pub async fn events_handler(
     _auth: WriteAuth,
     Json(payload): Json<EventPayload>,
 ) -> Result<Json<StatusOk>, AppError> {
-    ingest_event(state, payload).await
+    ingest_event(&state, &payload)
 }
 
 pub async fn http_hook_handler(
@@ -412,7 +409,7 @@ pub async fn http_hook_handler(
         timestamp,
     };
 
-    ingest_event(state, payload).await
+    ingest_event(&state, &payload)
 }
 
 fn derive_session_status(hook_event_name: &str, notification_type: Option<&str>) -> Option<String> {
