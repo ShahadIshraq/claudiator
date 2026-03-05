@@ -150,6 +150,60 @@ async fn test_http_hook_missing_device_header() {
 }
 
 #[tokio::test]
+async fn test_http_hook_missing_authorization() {
+    let server = test_server();
+    let payload = serde_json::json!({
+        "session_id": "sess-http-3",
+        "hook_event_name": "SessionStart"
+    });
+
+    let response = server
+        .post("/api/v1/hooks/http")
+        .add_header("X-Claudiator-Device-Id", "dev-http-3")
+        .add_header("X-Claudiator-Device-Name", "HTTP Device")
+        .add_header("X-Claudiator-Platform", "mac")
+        .json(&payload)
+        .await;
+
+    response.assert_status(StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_http_hook_read_scope_forbidden() {
+    let state = make_state();
+    let conn = state.db_pool.get().unwrap();
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true);
+    queries::insert_api_key(
+        &conn,
+        "k-http-read",
+        "http-reader",
+        "claud_read_http",
+        "read",
+        &now,
+        None,
+    )
+    .unwrap();
+    drop(conn);
+
+    let server = test_server_from_state(state);
+    let payload = serde_json::json!({
+        "session_id": "sess-http-4",
+        "hook_event_name": "SessionStart"
+    });
+
+    let response = server
+        .post("/api/v1/hooks/http")
+        .add_header("Authorization", "Bearer claud_read_http")
+        .add_header("X-Claudiator-Device-Id", "dev-http-4")
+        .add_header("X-Claudiator-Device-Name", "HTTP Device")
+        .add_header("X-Claudiator-Platform", "mac")
+        .json(&payload)
+        .await;
+
+    response.assert_status(StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 async fn test_events_empty_device_id() {
     let server = test_server();
     let payload = serde_json::json!({
