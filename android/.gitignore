@@ -5,6 +5,7 @@
 /build/
 /app/build/
 /app/google-services.json
+*-adminsdk-*.json
 *.apk
 *.aab
 *.jks
