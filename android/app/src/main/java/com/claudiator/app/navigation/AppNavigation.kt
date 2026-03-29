@@ -13,6 +13,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.claudiator.app.ClaudiatorApp
+import com.claudiator.app.ui.devices.DeviceDetailScreen
+import com.claudiator.app.ui.devices.DeviceListScreen
+import com.claudiator.app.ui.sessions.AllSessionsScreen
+import com.claudiator.app.ui.sessions.SessionDetailScreen
 import com.claudiator.app.ui.theme.LocalAppTheme
 import kotlinx.coroutines.launch
 
@@ -37,16 +41,32 @@ fun AppNavigation(app: ClaudiatorApp) {
             arguments = listOf(navArgument("deviceId") { defaultValue = "" }),
         ) { backStackEntry ->
             val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
-            // Placeholder - replaced by Task 12
-            PlaceholderScreen("Device: $deviceId")
+            DeviceDetailScreen(
+                deviceId = deviceId,
+                apiClient = app.apiClient,
+                versionMonitor = app.versionMonitor,
+                notificationManager = app.notificationManager,
+                onSessionClick = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             Screen.SessionDetail.route,
             arguments = listOf(navArgument("sessionId") { defaultValue = "" }),
         ) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
-            // Placeholder - replaced by Task 13
-            PlaceholderScreen("Session: $sessionId")
+            SessionDetailScreen(
+                sessionId = sessionId,
+                apiClient = app.apiClient,
+                versionMonitor = app.versionMonitor,
+                notificationManager = app.notificationManager,
+                onDeviceClick = { deviceId ->
+                    navController.navigate(Screen.DeviceDetail.createRoute(deviceId))
+                },
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }
@@ -89,8 +109,25 @@ fun MainScaffold(
                 .padding(padding),
         ) { page ->
             when (page) {
-                0 -> PlaceholderScreen("Devices") // Replaced by Task 12
-                1 -> PlaceholderScreen("Sessions") // Replaced by Task 13
+                0 -> DeviceListScreen(
+                    apiClient = app.apiClient,
+                    versionMonitor = app.versionMonitor,
+                    notificationManager = app.notificationManager,
+                    onDeviceClick = { deviceId ->
+                        rootNavController.navigate(Screen.DeviceDetail.createRoute(deviceId))
+                    },
+                )
+                1 -> AllSessionsScreen(
+                    apiClient = app.apiClient,
+                    versionMonitor = app.versionMonitor,
+                    notificationManager = app.notificationManager,
+                    onSessionClick = { sessionId ->
+                        rootNavController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                    },
+                    onDeviceClick = { deviceId ->
+                        rootNavController.navigate(Screen.DeviceDetail.createRoute(deviceId))
+                    },
+                )
                 2 -> PlaceholderScreen("Settings") // Replaced by Task 15
             }
         }
