@@ -6,8 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.ViewList
-import androidx.compose.material.icons.outlined.ViewModule
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -64,7 +64,7 @@ fun AllSessionsScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleGrouping() }) {
                         Icon(
-                            imageVector = if (state.isGroupedByDevice) Icons.Outlined.ViewList else Icons.Outlined.ViewModule,
+                            imageVector = if (state.isGroupedByDevice) Icons.Default.List else Icons.Default.Apps,
                             contentDescription = if (state.isGroupedByDevice) "Flat list" else "Group by device",
                         )
                     }

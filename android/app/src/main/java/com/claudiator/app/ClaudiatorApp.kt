@@ -4,7 +4,6 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.claudiator.app.services.*
-import com.claudiator.app.services.FcmService
 import com.claudiator.app.ui.theme.ThemeManager
 
 class ClaudiatorApp : Application() {
@@ -28,7 +27,7 @@ class ClaudiatorApp : Application() {
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            FcmService.CHANNEL_ID,
+            "claudiator_sessions",
             getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {

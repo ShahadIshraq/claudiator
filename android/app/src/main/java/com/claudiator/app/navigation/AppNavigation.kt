@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.outlined.*
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +41,7 @@ fun AppNavigation(app: ClaudiatorApp) {
         }
         composable(
             Screen.DeviceDetail.route,
-            arguments = listOf(navArgument("deviceId") { defaultValue = "" }),
+            arguments = listOf(navArgument("deviceId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
             DeviceDetailScreen(
@@ -54,7 +57,7 @@ fun AppNavigation(app: ClaudiatorApp) {
         }
         composable(
             Screen.SessionDetail.route,
-            arguments = listOf(navArgument("sessionId") { defaultValue = "" }),
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
             SessionDetailScreen(
@@ -87,8 +90,8 @@ fun MainScaffold(
         bottomBar = {
             NavigationBar {
                 val tabs = listOf(
-                    Triple(0, "Devices", Icons.Outlined.Devices),
-                    Triple(1, "Sessions", Icons.Outlined.Terminal),
+                    Triple(0, "Devices", Icons.Filled.Devices),
+                    Triple(1, "Sessions", Icons.Outlined.Code),
                     Triple(2, "Settings", Icons.Outlined.Settings),
                 )
                 tabs.forEach { (index, label, icon) ->
