@@ -27,7 +27,7 @@ class ClaudiatorApp : Application() {
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            "claudiator_sessions",
+            FcmService.CHANNEL_ID,
             getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {

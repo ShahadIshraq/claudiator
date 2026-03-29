@@ -3,8 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-    // google-services plugin commented out until google-services.json is added
-    // id("com.google.gms.google-services")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -78,9 +77,9 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // Firebase - commented out until google-services.json is added
-    // implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    // implementation("com.google.firebase:firebase-messaging-ktx")
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Testing
     testImplementation("junit:junit:4.13.2")
