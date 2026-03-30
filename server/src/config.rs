@@ -30,6 +30,12 @@ pub struct ServerConfig {
     #[arg(long, default_value = "false", env = "CLAUDIATOR_APNS_SANDBOX")]
     pub apns_sandbox: bool,
 
+    #[arg(long, env = "CLAUDIATOR_FCM_SERVICE_ACCOUNT_PATH")]
+    pub fcm_service_account_path: Option<String>,
+
+    #[arg(long, env = "CLAUDIATOR_FCM_PROJECT_ID")]
+    pub fcm_project_id: Option<String>,
+
     #[arg(long, default_value = "7", env = "CLAUDIATOR_RETENTION_EVENTS_DAYS")]
     pub retention_events_days: u64,
 
@@ -108,5 +114,17 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(config.retention_devices_days, 60);
+    }
+
+    #[test]
+    fn default_fcm_service_account_path_is_none() {
+        let config = ServerConfig::try_parse_from(["test", "--api-key", "k"]).unwrap();
+        assert!(config.fcm_service_account_path.is_none());
+    }
+
+    #[test]
+    fn default_fcm_project_id_is_none() {
+        let config = ServerConfig::try_parse_from(["test", "--api-key", "k"]).unwrap();
+        assert!(config.fcm_project_id.is_none());
     }
 }
