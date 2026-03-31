@@ -10,9 +10,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.claudiator.app.ClaudiatorApp
@@ -20,7 +18,8 @@ import com.claudiator.app.ui.devices.DeviceDetailScreen
 import com.claudiator.app.ui.devices.DeviceListScreen
 import com.claudiator.app.ui.sessions.AllSessionsScreen
 import com.claudiator.app.ui.sessions.SessionDetailScreen
-import com.claudiator.app.ui.theme.LocalAppTheme
+import com.claudiator.app.ui.settings.SettingsScreen
+import com.claudiator.app.ui.setup.SetupScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -33,8 +32,14 @@ fun AppNavigation(app: ClaudiatorApp) {
         startDestination = if (isConfigured) Screen.Main.route else Screen.Setup.route,
     ) {
         composable(Screen.Setup.route) {
-            // Placeholder - replaced by Task 11
-            PlaceholderScreen("Setup")
+            SetupScreen(
+                apiClient = app.apiClient,
+                onConnected = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Setup.route) { inclusive = true }
+                    }
+                },
+            )
         }
         composable(Screen.Main.route) {
             MainScaffold(app = app, rootNavController = navController)
@@ -82,6 +87,7 @@ fun MainScaffold(
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     val scope = rememberCoroutineScope()
 
+    // Start polling once
     LaunchedEffect(Unit) {
         app.versionMonitor.start(this)
     }
@@ -110,6 +116,8 @@ fun MainScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
+            // Keep adjacent pages alive to avoid re-creation on swipe
+            beyondViewportPageCount = 2,
         ) { page ->
             when (page) {
                 0 -> DeviceListScreen(
@@ -131,15 +139,18 @@ fun MainScaffold(
                         rootNavController.navigate(Screen.DeviceDetail.createRoute(deviceId))
                     },
                 )
-                2 -> PlaceholderScreen("Settings") // Replaced by Task 15
+                2 -> SettingsScreen(
+                    apiClient = app.apiClient,
+                    themeManager = app.themeManager,
+                    onDisconnect = {
+                        app.apiClient.disconnect()
+                        app.versionMonitor.stop()
+                        rootNavController.navigate(Screen.Setup.route) {
+                            popUpTo(Screen.Main.route) { inclusive = true }
+                        }
+                    },
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(name: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(name, style = MaterialTheme.typography.headlineMedium)
     }
 }

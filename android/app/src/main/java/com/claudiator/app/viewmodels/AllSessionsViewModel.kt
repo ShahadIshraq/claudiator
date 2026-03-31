@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.claudiator.app.models.Session
 import com.claudiator.app.services.ApiClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 data class AllSessionsUiState(
     val sessions: List<Session> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasMore: Boolean = false,
     val currentOffset: Int = 0,
@@ -30,9 +32,10 @@ class AllSessionsViewModel : ViewModel() {
 
     fun setFilter(filter: SessionFilter) { _uiState.update { it.copy(filter = filter) } }
 
-    fun refresh(apiClient: ApiClient) {
-        if (_uiState.value.sessions.isEmpty()) _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
+    fun refresh(apiClient: ApiClient): Job {
+        val isInitial = _uiState.value.sessions.isEmpty()
+        _uiState.update { it.copy(isLoading = isInitial, isRefreshing = !isInitial) }
+        return viewModelScope.launch {
             try {
                 val excludeEnded = _uiState.value.filter == SessionFilter.ACTIVE
                 val result = apiClient.fetchAllSessionsPage(excludeEnded = excludeEnded, limit = 50, offset = 0)
@@ -44,13 +47,14 @@ class AllSessionsViewModel : ViewModel() {
                         hasMore = result.hasMore,
                         currentOffset = result.nextOffset,
                         isLoading = false,
+                        isRefreshing = false,
                         error = null,
                         groupedSessions = grouped,
                         expandedDevices = expanded,
                     )
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message) }
             }
         }
     }

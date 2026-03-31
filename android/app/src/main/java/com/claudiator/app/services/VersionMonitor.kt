@@ -16,22 +16,26 @@ class VersionMonitor(
     private var pollingJob: Job? = null
 
     fun start(scope: CoroutineScope) {
-        if (pollingJob != null) return
+        if (pollingJob?.isActive == true) return
         pollingJob = scope.launch {
-            while (isActive) {
-                try {
-                    val ping = apiClient.ping()
-                    _dataVersion.value = ping.dataVersion
-                    if (ping.notificationVersion != notificationVersion) {
-                        notificationVersion = ping.notificationVersion
-                        val lastSeen = notificationManager.lastSeenId
-                        val notifications = apiClient.fetchNotifications(after = lastSeen)
-                        notificationManager.processNotifications(notifications)
+            try {
+                while (isActive) {
+                    try {
+                        val ping = apiClient.ping()
+                        _dataVersion.value = ping.dataVersion
+                        if (ping.notificationVersion != notificationVersion) {
+                            notificationVersion = ping.notificationVersion
+                            val lastSeen = notificationManager.lastSeenId
+                            val notifications = apiClient.fetchNotifications(after = lastSeen)
+                            notificationManager.processNotifications(notifications)
+                        }
+                    } catch (_: Exception) {
+                        // silently retry next cycle
                     }
-                } catch (_: Exception) {
-                    // silently retry next cycle
+                    delay(10_000)
                 }
-                delay(10_000)
+            } finally {
+                pollingJob = null
             }
         }
     }

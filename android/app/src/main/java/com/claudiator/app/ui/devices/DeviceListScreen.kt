@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.claudiator.app.services.ApiClient
 import com.claudiator.app.services.AppNotificationManager
 import com.claudiator.app.services.VersionMonitor
+import com.claudiator.app.ui.notifications.NotificationListSheet
 import com.claudiator.app.viewmodels.DeviceListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,9 +30,19 @@ fun DeviceListScreen(
     val state by viewModel.uiState.collectAsState()
     val notifState by notificationManager.state.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
+    var showNotifications by remember { mutableStateOf(false) }
 
+    // Auto-refresh on data version change
     LaunchedEffect(dataVersion) {
         viewModel.refresh(apiClient)
+    }
+
+    if (showNotifications) {
+        NotificationListSheet(
+            notificationManager = notificationManager,
+            apiClient = apiClient,
+            onDismiss = { showNotifications = false },
+        )
     }
 
     Scaffold(
@@ -39,31 +50,39 @@ fun DeviceListScreen(
             TopAppBar(
                 title = { Text("Devices") },
                 actions = {
-                    BadgedBox(
-                        badge = {
-                            if (notifState.unreadCount > 0) {
-                                Badge { Text(notifState.unreadCount.toString()) }
-                            }
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
-                        )
+                    IconButton(onClick = { showNotifications = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (notifState.unreadCount > 0) {
+                                    Badge { Text(notifState.unreadCount.toString()) }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Notifications,
+                                contentDescription = "Notifications",
+                            )
+                        }
                     }
                 },
             )
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
+            isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(apiClient) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            if (state.devices.isEmpty() && !state.isLoading) {
+            if (state.isLoading && state.devices.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (state.devices.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,

@@ -47,6 +47,7 @@ fun SessionDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
+    val theme = LocalAppTheme.current
     var detailsExpanded by remember { mutableStateOf(false) }
 
     // Mark session as read when entering
@@ -65,8 +66,7 @@ fun SessionDetailScreen(
         viewModel.refresh(apiClient, sessionId)
     }
 
-    // Derive session info from first event's context — use events as source of truth for timing
-    // We don't have a separate session detail API so derive from event list state
+    val session = state.session
     val firstEvent = state.events.firstOrNull()
     val lastEvent = state.events.lastOrNull()
 
@@ -86,7 +86,7 @@ fun SessionDetailScreen(
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
+            isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(apiClient, sessionId) },
             modifier = Modifier
                 .fillMaxSize()
@@ -106,16 +106,32 @@ fun SessionDetailScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(24.dp)
+                                    .size(14.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    .background(
+                                        if (session != null) theme.statusColor(session.status)
+                                        else MaterialTheme.colorScheme.surfaceVariant,
+                                    ),
                             )
                             Column {
+                                val title = when {
+                                    session != null && !session.title.isNullOrBlank() -> session.title
+                                    session != null && !session.cwd.isNullOrBlank() -> cwdShortDisplay(session.cwd)
+                                    else -> sessionId.take(12)
+                                }
                                 Text(
-                                    text = sessionId.take(12),
+                                    text = title,
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
                                 )
+                                if (session != null) {
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        text = statusDisplayLabel(session.status),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = theme.statusColor(session.status),
+                                    )
+                                }
                             }
                         }
                     }
@@ -154,6 +170,15 @@ fun SessionDetailScreen(
                                 HorizontalDivider(thickness = 0.5.dp)
                                 Spacer(Modifier.height(4.dp))
                                 DetailRow(label = "Session ID", value = sessionId)
+                                if (session != null) {
+                                    DetailRow(label = "Status", value = statusDisplayLabel(session.status))
+                                    if (session.deviceName != null) {
+                                        DetailRow(label = "Device", value = session.deviceName)
+                                    }
+                                    if (session.platform != null) {
+                                        DetailRow(label = "Platform", value = session.platform)
+                                    }
+                                }
                                 if (firstEvent != null) {
                                     DetailRow(
                                         label = "First event",
@@ -186,7 +211,18 @@ fun SessionDetailScreen(
                     )
                 }
 
-                if (state.events.isEmpty() && !state.isLoading) {
+                if (state.isLoading && state.events.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else if (state.events.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier

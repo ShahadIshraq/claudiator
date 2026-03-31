@@ -66,7 +66,7 @@ fun DeviceDetailScreen(
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = state.isLoading,
+            isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(apiClient, deviceId) },
             modifier = Modifier
                 .fillMaxSize()
@@ -128,7 +128,18 @@ fun DeviceDetailScreen(
                     }
                 }
 
-                if (state.sessions.isEmpty() && !state.isLoading) {
+                if (state.isLoading && state.sessions.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else if (state.sessions.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier

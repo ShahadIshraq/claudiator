@@ -6,8 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -19,6 +19,7 @@ import com.claudiator.app.services.ApiClient
 import com.claudiator.app.services.AppNotificationManager
 import com.claudiator.app.services.VersionMonitor
 import com.claudiator.app.ui.components.ThemedSegmentedPicker
+import com.claudiator.app.ui.notifications.NotificationListSheet
 import com.claudiator.app.viewmodels.AllSessionsViewModel
 import com.claudiator.app.viewmodels.SessionFilter
 
@@ -36,12 +37,14 @@ fun AllSessionsScreen(
     val notifState by notificationManager.state.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
     val listState = rememberLazyListState()
+    var showNotifications by remember { mutableStateOf(false) }
 
+    // Auto-refresh on data version change or filter change
     LaunchedEffect(dataVersion, state.filter) {
         viewModel.refresh(apiClient)
     }
 
-    // Infinite scroll: trigger load more when near the end
+    // Infinite scroll
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -57,6 +60,14 @@ fun AllSessionsScreen(
         }
     }
 
+    if (showNotifications) {
+        NotificationListSheet(
+            notificationManager = notificationManager,
+            apiClient = apiClient,
+            onDismiss = { showNotifications = false },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -64,22 +75,23 @@ fun AllSessionsScreen(
                 actions = {
                     IconButton(onClick = { viewModel.toggleGrouping() }) {
                         Icon(
-                            imageVector = if (state.isGroupedByDevice) Icons.Default.List else Icons.Default.Apps,
+                            imageVector = if (state.isGroupedByDevice) Icons.AutoMirrored.Filled.List else Icons.Default.Apps,
                             contentDescription = if (state.isGroupedByDevice) "Flat list" else "Group by device",
                         )
                     }
-                    BadgedBox(
-                        badge = {
-                            if (notifState.unreadCount > 0) {
-                                Badge { Text(notifState.unreadCount.toString()) }
-                            }
-                        },
-                        modifier = Modifier.padding(end = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
-                        )
+                    IconButton(onClick = { showNotifications = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (notifState.unreadCount > 0) {
+                                    Badge { Text(notifState.unreadCount.toString()) }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Notifications,
+                                contentDescription = "Notifications",
+                            )
+                        }
                     }
                 },
             )
@@ -105,11 +117,18 @@ fun AllSessionsScreen(
             }
 
             PullToRefreshBox(
-                isRefreshing = state.isLoading,
+                isRefreshing = state.isRefreshing,
                 onRefresh = { viewModel.refresh(apiClient) },
                 modifier = Modifier.fillMaxSize(),
             ) {
-                if (state.sessions.isEmpty() && !state.isLoading) {
+                if (state.isLoading && state.sessions.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else if (state.sessions.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,

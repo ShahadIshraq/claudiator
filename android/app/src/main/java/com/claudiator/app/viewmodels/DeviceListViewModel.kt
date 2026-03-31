@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.claudiator.app.models.Device
 import com.claudiator.app.services.ApiClient
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,7 @@ data class DeviceListUiState(
     val devices: List<Device> = emptyList(),
     val statusCounts: Map<String, SessionStatusCounts> = emptyMap(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
 )
 
@@ -33,9 +35,10 @@ class DeviceListViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(DeviceListUiState())
     val uiState: StateFlow<DeviceListUiState> = _uiState.asStateFlow()
 
-    fun refresh(apiClient: ApiClient) {
-        if (_uiState.value.devices.isEmpty()) _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
+    fun refresh(apiClient: ApiClient): Job {
+        val isInitial = _uiState.value.devices.isEmpty()
+        _uiState.update { it.copy(isLoading = isInitial, isRefreshing = !isInitial) }
+        return viewModelScope.launch {
             try {
                 val devicesDeferred = async { apiClient.fetchDevices() }
                 val sessionsDeferred = async { apiClient.fetchAllSessions() }
@@ -54,9 +57,9 @@ class DeviceListViewModel : ViewModel() {
                         else -> c
                     }
                 }
-                _uiState.update { it.copy(devices = devices, statusCounts = counts, isLoading = false, error = null) }
+                _uiState.update { it.copy(devices = devices, statusCounts = counts, isLoading = false, isRefreshing = false, error = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message) }
             }
         }
     }
