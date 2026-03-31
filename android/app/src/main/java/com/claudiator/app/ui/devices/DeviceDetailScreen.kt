@@ -46,6 +46,7 @@ fun DeviceDetailScreen(
     }
 
     Scaffold(
+        containerColor = theme.pageBackground(isDark),
         topBar = {
             TopAppBar(
                 title = {
@@ -54,6 +55,9 @@ fun DeviceDetailScreen(
                         maxLines = 1,
                     )
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = theme.pageBackground(isDark),
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

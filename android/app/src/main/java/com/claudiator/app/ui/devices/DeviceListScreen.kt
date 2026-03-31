@@ -16,6 +16,8 @@ import com.claudiator.app.services.ApiClient
 import com.claudiator.app.services.AppNotificationManager
 import com.claudiator.app.services.VersionMonitor
 import com.claudiator.app.ui.notifications.NotificationListSheet
+import com.claudiator.app.ui.theme.LocalAppTheme
+import com.claudiator.app.ui.theme.LocalIsDarkTheme
 import com.claudiator.app.viewmodels.DeviceListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,6 +32,8 @@ fun DeviceListScreen(
     val state by viewModel.uiState.collectAsState()
     val notifState by notificationManager.state.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
+    val theme = LocalAppTheme.current
+    val isDark = LocalIsDarkTheme.current
     var showNotifications by remember { mutableStateOf(false) }
 
     // Auto-refresh on data version change
@@ -46,9 +50,13 @@ fun DeviceListScreen(
     }
 
     Scaffold(
+        containerColor = theme.pageBackground(isDark),
         topBar = {
             TopAppBar(
                 title = { Text("Devices") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = theme.pageBackground(isDark),
+                ),
                 actions = {
                     IconButton(onClick = { showNotifications = true }) {
                         BadgedBox(

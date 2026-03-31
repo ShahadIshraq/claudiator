@@ -1,5 +1,6 @@
 package com.claudiator.app.ui.setup
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,7 @@ fun SetupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(theme.pageBackground(isDark))
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,

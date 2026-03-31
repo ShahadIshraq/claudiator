@@ -20,6 +20,8 @@ import com.claudiator.app.services.AppNotificationManager
 import com.claudiator.app.services.VersionMonitor
 import com.claudiator.app.ui.components.ThemedSegmentedPicker
 import com.claudiator.app.ui.notifications.NotificationListSheet
+import com.claudiator.app.ui.theme.LocalAppTheme
+import com.claudiator.app.ui.theme.LocalIsDarkTheme
 import com.claudiator.app.viewmodels.AllSessionsViewModel
 import com.claudiator.app.viewmodels.SessionFilter
 
@@ -36,6 +38,8 @@ fun AllSessionsScreen(
     val state by viewModel.uiState.collectAsState()
     val notifState by notificationManager.state.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
+    val theme = LocalAppTheme.current
+    val isDark = LocalIsDarkTheme.current
     val listState = rememberLazyListState()
     var showNotifications by remember { mutableStateOf(false) }
 
@@ -69,9 +73,13 @@ fun AllSessionsScreen(
     }
 
     Scaffold(
+        containerColor = theme.pageBackground(isDark),
         topBar = {
             TopAppBar(
                 title = { Text("Sessions") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = theme.pageBackground(isDark),
+                ),
                 actions = {
                     IconButton(onClick = { viewModel.toggleGrouping() }) {
                         Icon(

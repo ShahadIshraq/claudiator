@@ -28,6 +28,7 @@ import com.claudiator.app.services.VersionMonitor
 import com.claudiator.app.ui.components.PlatformIcon
 import com.claudiator.app.ui.components.ThemedCard
 import com.claudiator.app.ui.theme.LocalAppTheme
+import com.claudiator.app.ui.theme.LocalIsDarkTheme
 import com.claudiator.app.ui.theme.statusColor
 import com.claudiator.app.util.cwdShortDisplay
 import com.claudiator.app.util.relativeTime
@@ -48,6 +49,7 @@ fun SessionDetailScreen(
     val state by viewModel.uiState.collectAsState()
     val dataVersion by versionMonitor.dataVersion.collectAsState()
     val theme = LocalAppTheme.current
+    val isDark = LocalIsDarkTheme.current
     var detailsExpanded by remember { mutableStateOf(false) }
 
     // Mark session as read when entering
@@ -71,9 +73,13 @@ fun SessionDetailScreen(
     val lastEvent = state.events.lastOrNull()
 
     Scaffold(
+        containerColor = theme.pageBackground(isDark),
         topBar = {
             TopAppBar(
                 title = { Text("Session", maxLines = 1) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = theme.pageBackground(isDark),
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
