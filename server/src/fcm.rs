@@ -300,7 +300,10 @@ mod tests {
         let result = FcmClient::status_to_push_result(500, "Internal Server Error");
         match result {
             FcmPushResult::OtherError(msg) => {
-                assert!(msg.contains("500"), "error message must include status code");
+                assert!(
+                    msg.contains("500"),
+                    "error message must include status code"
+                );
                 assert!(
                     msg.contains("Internal Server Error"),
                     "error message must include body"
