@@ -21,6 +21,7 @@ fn make_state() -> Arc<router::AppState> {
         notification_version: AtomicU64::new(0),
         last_cleanup: AtomicU64::new(0),
         apns_client: None,
+        fcm_client: None,
         retention_events_days: 7,
         retention_sessions_days: 7,
         retention_devices_days: 30,

@@ -5,6 +5,7 @@ mod auth;
 mod config;
 mod db;
 mod error;
+mod fcm;
 mod handlers;
 mod models;
 mod notif_dedup;
@@ -100,6 +101,26 @@ async fn main() {
         None
     };
 
+    // Build FCM client if configured
+    let fcm_client = if let Some(ref sa_path) = config.fcm_service_account {
+        match fcm::FcmClient::from_service_account_file(sa_path) {
+            Ok(client) => {
+                tracing::info!("FCM client initialized");
+                Some(Arc::new(client))
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to initialize FCM client: {}. Android push disabled.",
+                    e
+                );
+                None
+            }
+        }
+    } else {
+        tracing::info!("FCM not configured, Android push notifications disabled");
+        None
+    };
+
     let state = Arc::new(AppState {
         master_key: config.api_key.clone(),
         db_pool,
@@ -107,6 +128,7 @@ async fn main() {
         notification_version: AtomicU64::new(notification_version),
         last_cleanup: AtomicU64::new(0),
         apns_client,
+        fcm_client,
         retention_events_days: config.retention_events_days,
         retention_sessions_days: config.retention_sessions_days,
         retention_devices_days: config.retention_devices_days,

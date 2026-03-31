@@ -30,6 +30,9 @@ pub struct ServerConfig {
     #[arg(long, default_value = "false", env = "CLAUDIATOR_APNS_SANDBOX")]
     pub apns_sandbox: bool,
 
+    #[arg(long, env = "CLAUDIATOR_FCM_SERVICE_ACCOUNT")]
+    pub fcm_service_account: Option<String>,
+
     #[arg(long, default_value = "7", env = "CLAUDIATOR_RETENTION_EVENTS_DAYS")]
     pub retention_events_days: u64,
 

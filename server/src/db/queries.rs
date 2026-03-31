@@ -515,7 +515,6 @@ pub fn delete_stale_devices(conn: &Connection, retention_days: u64) -> Result<us
 
 pub struct PushTokenRow {
     pub push_token: String,
-    #[allow(dead_code)]
     pub platform: String,
     pub sandbox: bool,
 }

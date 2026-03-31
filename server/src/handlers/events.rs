@@ -9,6 +9,7 @@ use crate::auth::WriteAuth;
 use crate::db::pool::DbPool;
 use crate::db::queries;
 use crate::error::AppError;
+use crate::fcm::FcmClient;
 use crate::models::request::{DeviceInfo, EventData, EventPayload};
 use crate::models::response::StatusOk;
 use crate::notif_dedup;
@@ -89,7 +90,8 @@ fn extract_session_title(payload: &EventPayload) -> Option<String> {
 }
 
 fn dispatch_push_notifications(
-    apns_client: Arc<ApnsClient>,
+    apns_client: Option<Arc<ApnsClient>>,
+    fcm_client: Option<Arc<FcmClient>>,
     db_pool: DbPool,
     title: String,
     body: String,
@@ -114,44 +116,94 @@ fn dispatch_push_notifications(
         };
 
         for token_row in &tokens {
-            let result = apns_client
-                .send_push(
-                    &token_row.push_token,
-                    &title,
-                    &body,
-                    Some(&collapse_id),
-                    &notification_id,
-                    &session_id,
-                    &device_id,
-                    token_row.sandbox,
-                )
-                .await;
+            let token_prefix =
+                &token_row.push_token[..8.min(token_row.push_token.len())];
 
-            match result {
-                crate::apns::ApnsPushResult::Success => {
-                    tracing::debug!(
-                        "Push sent to token {}",
-                        &token_row.push_token[..8.min(token_row.push_token.len())]
-                    );
-                }
-                crate::apns::ApnsPushResult::Gone => {
-                    tracing::info!(
-                        "Push token gone, removing: {}",
-                        &token_row.push_token[..8.min(token_row.push_token.len())]
-                    );
-                    if let Ok(c) = db_pool.get() {
-                        let _ = queries::delete_push_token(&c, &token_row.push_token);
+            match token_row.platform.as_str() {
+                "ios" => {
+                    let Some(ref apns) = apns_client else {
+                        tracing::debug!("Skipping iOS token (APNs not configured)");
+                        continue;
+                    };
+                    let result = apns
+                        .send_push(
+                            &token_row.push_token,
+                            &title,
+                            &body,
+                            Some(&collapse_id),
+                            &notification_id,
+                            &session_id,
+                            &device_id,
+                            token_row.sandbox,
+                        )
+                        .await;
+
+                    match result {
+                        crate::apns::ApnsPushResult::Success => {
+                            tracing::debug!("APNs push sent to token {}", token_prefix);
+                        }
+                        crate::apns::ApnsPushResult::Gone => {
+                            tracing::info!("APNs token gone, removing: {}", token_prefix);
+                            if let Ok(c) = db_pool.get() {
+                                let _ = queries::delete_push_token(&c, &token_row.push_token);
+                            }
+                        }
+                        crate::apns::ApnsPushResult::AuthError => {
+                            tracing::error!("APNs auth error — check credentials");
+                        }
+                        crate::apns::ApnsPushResult::Retry => {
+                            tracing::warn!("APNs rate limited, skipping remaining tokens");
+                            break;
+                        }
+                        crate::apns::ApnsPushResult::OtherError(e) => {
+                            tracing::warn!("APNs push error: {}", e);
+                        }
                     }
                 }
-                crate::apns::ApnsPushResult::AuthError => {
-                    tracing::error!("APNs auth error — check credentials");
+                "android" => {
+                    let Some(ref fcm) = fcm_client else {
+                        tracing::debug!("Skipping Android token (FCM not configured)");
+                        continue;
+                    };
+                    let result = fcm
+                        .send_push(
+                            &token_row.push_token,
+                            &title,
+                            &body,
+                            &notification_id,
+                            &session_id,
+                            &device_id,
+                        )
+                        .await;
+
+                    match result {
+                        crate::fcm::FcmPushResult::Success => {
+                            tracing::debug!("FCM push sent to token {}", token_prefix);
+                        }
+                        crate::fcm::FcmPushResult::InvalidToken => {
+                            tracing::info!("FCM token invalid, removing: {}", token_prefix);
+                            if let Ok(c) = db_pool.get() {
+                                let _ = queries::delete_push_token(&c, &token_row.push_token);
+                            }
+                        }
+                        crate::fcm::FcmPushResult::AuthError => {
+                            tracing::error!("FCM auth error — check service account credentials");
+                        }
+                        crate::fcm::FcmPushResult::Retry => {
+                            tracing::warn!("FCM rate limited, skipping remaining tokens");
+                            break;
+                        }
+                        crate::fcm::FcmPushResult::OtherError(e) => {
+                            tracing::warn!("FCM push error: {}", e);
+                        }
+                    }
                 }
-                crate::apns::ApnsPushResult::Retry => {
-                    tracing::warn!("APNs rate limited, skipping remaining tokens");
-                    break;
-                }
-                crate::apns::ApnsPushResult::OtherError(e) => {
-                    tracing::warn!("APNs push error: {}", e);
+                other => {
+                    tracing::warn!(
+                        "Unknown push platform '{}' for token {}, skipping",
+                        other,
+                        token_prefix
+                    );
                 }
             }
         }
@@ -349,13 +401,14 @@ fn ingest_event(state: &Arc<AppState>, payload: &EventPayload) -> Result<Json<St
                 &new_notif_version.to_string(),
             );
 
-            // APNs push dispatch
-            if let Some(ref apns_client) = state.apns_client {
+            // Push dispatch (APNs + FCM)
+            if state.apns_client.is_some() || state.fcm_client.is_some() {
                 // Use session_id as collapse_id with 64-byte truncation guard
                 let collapse_id = truncate_at_char_boundary(&payload.event.session_id, 64);
 
                 dispatch_push_notifications(
-                    apns_client.clone(),
+                    state.apns_client.clone(),
+                    state.fcm_client.clone(),
                     state.db_pool.clone(),
                     notif_title,
                     notif_body,
