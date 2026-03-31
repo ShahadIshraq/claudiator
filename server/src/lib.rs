@@ -3,6 +3,7 @@
 pub mod apns;
 pub(crate) mod auth;
 pub(crate) mod config;
+pub mod fcm;
 pub(crate) mod handlers;
 pub(crate) mod notif_dedup;
 pub(crate) mod utils;
