@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Claudiator</string>
+    <string name="tab_devices">Devices</string>
+    <string name="tab_sessions">Sessions</string>
+    <string name="tab_settings">Settings</string>
+    <string name="no_devices">No Devices</string>
+    <string name="no_sessions">No Sessions</string>
+    <string name="no_notifications">No Notifications</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="save">Save</string>
+    <string name="server_url">Server URL</string>
+    <string name="api_key">API Key</string>
+    <string name="mark_all_read">Mark All Read</string>
+    <string name="active">Active</string>
+    <string name="all">All</string>
+    <string name="notifications">Notifications</string>
+    <string name="notification_channel_name">Claudiator Sessions</string>
+    <string name="notification_channel_description">Claude Code session alerts</string>
+    <string name="disconnect_confirm_title">Disconnect?</string>
+    <string name="disconnect_confirm_message">This will remove your server configuration and API key.</string>
+    <string name="cancel">Cancel</string>
+</resources>
