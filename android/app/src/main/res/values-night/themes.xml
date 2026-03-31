@@ -2,6 +2,6 @@
     <style name="Theme.Claudiator" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">#FFF2F2F7</item>
+        <item name="android:windowBackground">#FF121212</item>
     </style>
 </resources>

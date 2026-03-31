@@ -1,5 +1,8 @@
 package com.claudiator.app.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -20,61 +23,88 @@ import com.claudiator.app.ui.sessions.AllSessionsScreen
 import com.claudiator.app.ui.sessions.SessionDetailScreen
 import com.claudiator.app.ui.settings.SettingsScreen
 import com.claudiator.app.ui.setup.SetupScreen
+import com.claudiator.app.ui.theme.LocalAppTheme
+import com.claudiator.app.ui.theme.LocalIsDarkTheme
 import kotlinx.coroutines.launch
+
+private const val NAV_ANIM_DURATION = 300
 
 @Composable
 fun AppNavigation(app: ClaudiatorApp) {
     val isConfigured by app.apiClient.isConfigured.collectAsState()
     val navController = rememberNavController()
+    val theme = LocalAppTheme.current
+    val isDark = LocalIsDarkTheme.current
 
-    NavHost(
-        navController = navController,
-        startDestination = if (isConfigured) Screen.Main.route else Screen.Setup.route,
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = theme.pageBackground(isDark),
     ) {
-        composable(Screen.Setup.route) {
-            SetupScreen(
-                apiClient = app.apiClient,
-                onConnected = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo(Screen.Setup.route) { inclusive = true }
-                    }
-                },
-            )
-        }
-        composable(Screen.Main.route) {
-            MainScaffold(app = app, rootNavController = navController)
-        }
-        composable(
-            Screen.DeviceDetail.route,
-            arguments = listOf(navArgument("deviceId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
-            DeviceDetailScreen(
-                deviceId = deviceId,
-                apiClient = app.apiClient,
-                versionMonitor = app.versionMonitor,
-                notificationManager = app.notificationManager,
-                onSessionClick = { sessionId ->
-                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
-                },
-                onBack = { navController.popBackStack() },
-            )
-        }
-        composable(
-            Screen.SessionDetail.route,
-            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
-            SessionDetailScreen(
-                sessionId = sessionId,
-                apiClient = app.apiClient,
-                versionMonitor = app.versionMonitor,
-                notificationManager = app.notificationManager,
-                onDeviceClick = { deviceId ->
-                    navController.navigate(Screen.DeviceDetail.createRoute(deviceId))
-                },
-                onBack = { navController.popBackStack() },
-            )
+        NavHost(
+            navController = navController,
+            startDestination = if (isConfigured) Screen.Main.route else Screen.Setup.route,
+            enterTransition = {
+                slideInHorizontally(tween(NAV_ANIM_DURATION)) { it } +
+                    fadeIn(tween(NAV_ANIM_DURATION))
+            },
+            exitTransition = {
+                slideOutHorizontally(tween(NAV_ANIM_DURATION)) { -it / 3 } +
+                    fadeOut(tween(NAV_ANIM_DURATION / 2))
+            },
+            popEnterTransition = {
+                slideInHorizontally(tween(NAV_ANIM_DURATION)) { -it / 3 } +
+                    fadeIn(tween(NAV_ANIM_DURATION))
+            },
+            popExitTransition = {
+                slideOutHorizontally(tween(NAV_ANIM_DURATION)) { it } +
+                    fadeOut(tween(NAV_ANIM_DURATION / 2))
+            },
+        ) {
+            composable(Screen.Setup.route) {
+                SetupScreen(
+                    apiClient = app.apiClient,
+                    onConnected = {
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.Setup.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+            composable(Screen.Main.route) {
+                MainScaffold(app = app, rootNavController = navController)
+            }
+            composable(
+                Screen.DeviceDetail.route,
+                arguments = listOf(navArgument("deviceId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
+                DeviceDetailScreen(
+                    deviceId = deviceId,
+                    apiClient = app.apiClient,
+                    versionMonitor = app.versionMonitor,
+                    notificationManager = app.notificationManager,
+                    onSessionClick = { sessionId ->
+                        navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                Screen.SessionDetail.route,
+                arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+                SessionDetailScreen(
+                    sessionId = sessionId,
+                    apiClient = app.apiClient,
+                    versionMonitor = app.versionMonitor,
+                    notificationManager = app.notificationManager,
+                    onDeviceClick = { deviceId ->
+                        navController.navigate(Screen.DeviceDetail.createRoute(deviceId))
+                    },
+                    onBack = { navController.popBackStack() },
+                )
+            }
         }
     }
 }
@@ -86,15 +116,19 @@ fun MainScaffold(
 ) {
     val pagerState = rememberPagerState(initialPage = 1) { 3 }
     val scope = rememberCoroutineScope()
+    val theme = LocalAppTheme.current
+    val isDark = LocalIsDarkTheme.current
 
-    // Start polling once
     LaunchedEffect(Unit) {
         app.versionMonitor.start(this)
     }
 
     Scaffold(
+        containerColor = theme.pageBackground(isDark),
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = theme.cardBackground(isDark),
+            ) {
                 val tabs = listOf(
                     Triple(0, "Devices", Icons.Filled.Devices),
                     Triple(1, "Sessions", Icons.Outlined.Code),
@@ -115,8 +149,8 @@ fun MainScaffold(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            // Keep adjacent pages alive to avoid re-creation on swipe
+                .padding(padding)
+                .background(theme.pageBackground(isDark)),
             beyondViewportPageCount = 2,
         ) { page ->
             when (page) {
