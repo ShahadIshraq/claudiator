@@ -89,6 +89,7 @@ fn extract_session_title(payload: &EventPayload) -> Option<String> {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn dispatch_push_notifications(
     apns_client: Option<Arc<ApnsClient>>,
     fcm_client: Option<Arc<FcmClient>>,
@@ -116,8 +117,7 @@ fn dispatch_push_notifications(
         };
 
         for token_row in &tokens {
-            let token_prefix =
-                &token_row.push_token[..8.min(token_row.push_token.len())];
+            let token_prefix = &token_row.push_token[..8.min(token_row.push_token.len())];
 
             match token_row.platform.as_str() {
                 "ios" => {

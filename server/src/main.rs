@@ -26,6 +26,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 #[tokio::main]
 #[allow(clippy::expect_used)]
+#[allow(clippy::too_many_lines)]
 async fn main() {
     let config = ServerConfig::parse();
 
@@ -102,6 +103,7 @@ async fn main() {
     };
 
     // Build FCM client if configured
+    #[allow(clippy::option_if_let_else)]
     let fcm_client = if let Some(ref sa_path) = config.fcm_service_account {
         match fcm::FcmClient::from_service_account_file(sa_path) {
             Ok(client) => {
